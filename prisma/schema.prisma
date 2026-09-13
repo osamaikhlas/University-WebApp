@@ -1,0 +1,115 @@
+// Prisma schema — Phase 1 (project foundation) subset.
+//
+// Only the tenancy/RBAC tables from docs/database-design.md §1 are implemented so far,
+// since they are needed before authentication/RBAC (the next phase per
+// docs/implementation-plan.md) can be built. The 20 circular-requirement content tables
+// (docs/database-design.md §3 onward) are added in a later phase.
+//
+// No college-specific data belongs in this schema or its seed data — see CLAUDE.md rule 1.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// The connection URL lives in prisma.config.ts (for the CLI) and is passed to the
+// @prisma/adapter-pg driver adapter at runtime (for PrismaClient) — see src/lib/prisma.ts.
+// Prisma 7 no longer supports `url` directly in this block.
+datasource db {
+  provider = "postgresql"
+}
+
+enum CollegeType {
+  GOVT_DEGREE
+  PRIVATE_DEGREE
+  LAW
+  EDUCATION
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model College {
+  id            String      @id @default(cuid())
+  name          String
+  type          CollegeType
+  // Marks seed/dev data so it can never be mistaken for a verified real college record
+  // (CLAUDE.md rule 14).
+  isPlaceholder Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  users     User[]
+  userRoles UserRole[]
+
+  @@map("colleges")
+}
+
+model User {
+  id           String     @id @default(cuid())
+  collegeId    String
+  name         String
+  email        String     @unique
+  passwordHash String
+  mfaEnabled   Boolean    @default(false)
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  college College    @relation(fields: [collegeId], references: [id])
+  roles   UserRole[]
+
+  @@index([collegeId])
+  @@map("users")
+}
+
+// Baseline role set is generic system taxonomy (docs/database-design.md §1), not
+// institutional data — real assignment of people to roles is a later, college-specific step.
+model Role {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+
+  permissions RolePermission[]
+  users       UserRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  description String?
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// Scoped per college (not just per user) so a user could hold different roles at different
+// colleges if the system is later operated as a multi-college template.
+model UserRole {
+  userId    String
+  roleId    String
+  collegeId String
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role    Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  college College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId, collegeId])
+  @@map("user_roles")
+}

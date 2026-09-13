@@ -1,0 +1,115 @@
+{
+  "$schema": "Test coverage manifest for the affiliated-college website and administration system. Update alongside any test work. Never remove or weaken an entry to make coverage look better than it is (CLAUDE.md rule 10) — change its status honestly instead.",
+  "lastUpdated": "2026-09-13",
+  "statusValues": ["not_started", "planned", "in_progress", "passing", "failing", "skipped"],
+  "foundation": {
+    "description": "Phase 1 (project foundation) infrastructure tests — not tied to a specific circular requirement, unlike the per-feature entries below which stay not_started until their real (non-placeholder) behavior is built.",
+    "items": [
+      {
+        "id": "fnd-env-validation",
+        "feature": "Environment variable validation (src/lib/env.ts)",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/env.test.ts — 6 cases (valid input, defaults, missing/invalid DATABASE_URL, invalid NODE_ENV). Run via `npm test`."
+      },
+      {
+        "id": "fnd-route-structure-public",
+        "feature": "Public route structure matches CLAUDE.md scope (29 sections)",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/routes.test.ts — asserts link count, a page.tsx exists for every link, no duplicate hrefs."
+      },
+      {
+        "id": "fnd-route-structure-admin",
+        "feature": "Admin route structure matches CLAUDE.md scope (23 sections)",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/routes.test.ts — same checks as public route structure."
+      },
+      {
+        "id": "fnd-page-placeholder",
+        "feature": "Shared PagePlaceholder component",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/PagePlaceholder.test.tsx — renders title/description, always shows a placeholder marker (rule 14), renders circular reference when provided."
+      },
+      {
+        "id": "fnd-public-site-e2e",
+        "feature": "Public site loads end-to-end (home, all nav links, 404 handling)",
+        "status": "planned",
+        "type": "e2e",
+        "notes": "tests/e2e/public-site.spec.ts — written and validated via `npx playwright test --list` (parses correctly, 3 tests found). Not executed: Playwright's Chromium binary is not installed in this environment. Run `npx playwright install` then `npm run test:e2e`."
+      },
+      {
+        "id": "fnd-admin-site-e2e",
+        "feature": "Admin site loads end-to-end (dashboard, no-auth banner, all nav links)",
+        "status": "planned",
+        "type": "e2e",
+        "notes": "tests/e2e/admin.spec.ts — written and validated via `npx playwright test --list`. Not executed here for the same reason as fnd-public-site-e2e."
+      },
+      {
+        "id": "fnd-health-check",
+        "feature": "Health-check endpoint (/api/health)",
+        "status": "passing",
+        "type": "manual + e2e (planned)",
+        "notes": "Manually verified against a running `next start` in this environment: returns 200/'ok' when DB reachable, 503/'degraded' with checks.database='unreachable' when not — never crashes. tests/e2e/health.spec.ts codifies this but has not been run via Playwright's runner (see fnd-public-site-e2e)."
+      }
+    ]
+  },
+  "public_website": [
+    { "id": "pub-home", "feature": "Home", "status": "not_started", "notes": "Placeholder route exists (src/app/(public)/page.tsx); no real content/data source yet." },
+    { "id": "pub-about", "feature": "About", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-college-profile", "feature": "College Profile", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-history", "feature": "History", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-vision-mission", "feature": "Vision/Mission", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-principals-message", "feature": "Principal's Message", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-departments", "feature": "Departments", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-programs", "feature": "Programs", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-faculty", "feature": "Faculty", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-non-teaching-staff", "feature": "Non-teaching Staff", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-infrastructure", "feature": "Infrastructure", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-admissions", "feature": "Admissions", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-academic-calendar", "feature": "Academic Calendar", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-timetable", "feature": "Timetable", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-examinations", "feature": "Examinations", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-results", "feature": "Results", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-notices", "feature": "Notices", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-events", "feature": "Events", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-activities", "feature": "Activities", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-gallery", "feature": "Gallery", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-scholarships", "feature": "Scholarships", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-student-support", "feature": "Student Support", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-rules-regulations", "feature": "Rules and Regulations", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-affiliation", "feature": "Affiliation", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-grievance", "feature": "Grievance", "status": "not_started", "notes": "Placeholder route exists; no submission form/backend yet. Must verify private grievance data is never publicly exposed (CLAUDE.md rule 6)." },
+    { "id": "pub-contact", "feature": "Contact", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-location", "feature": "Location", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-downloads", "feature": "Downloads", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "pub-search", "feature": "Search", "status": "not_started", "notes": "Placeholder route exists; no index/search backend yet. Must verify only published content is searchable/returned (CLAUDE.md rule 4)." }
+  ],
+  "admin_system": [
+    { "id": "adm-dashboard", "feature": "Dashboard", "status": "not_started", "notes": "Placeholder route exists (src/app/admin/page.tsx) with a module link grid; no real data." },
+    { "id": "adm-cms", "feature": "CMS", "status": "not_started", "notes": "Placeholder route exists. Must verify draft vs. published state separation (CLAUDE.md rule 4)." },
+    { "id": "adm-users", "feature": "Users", "status": "not_started", "notes": "Placeholder route exists; User/Role/Permission/RolePermission/UserRole tables now exist in prisma/schema.prisma (not yet wired to any UI/API)." },
+    { "id": "adm-roles", "feature": "Roles", "status": "not_started", "notes": "Placeholder route exists; Role table + baseline seed data (prisma/seed.ts) exist, not yet wired to any UI/API." },
+    { "id": "adm-permissions", "feature": "Permissions", "status": "not_started", "notes": "Placeholder route exists. Must verify server-side authorization, not just UI hiding (CLAUDE.md rule 5). No auth exists yet — see AdminNoAuthBanner." },
+    { "id": "adm-notices", "feature": "Notices", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "adm-events", "feature": "Events", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "adm-faculty", "feature": "Faculty", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "adm-staff", "feature": "Staff", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "adm-programs", "feature": "Programs", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "adm-admissions", "feature": "Admissions", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "adm-timetables", "feature": "Timetables", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "adm-academic-calendar", "feature": "Academic Calendar", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "adm-exams", "feature": "Exams", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "adm-results", "feature": "Results", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "adm-documents", "feature": "Documents", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "adm-gallery", "feature": "Gallery", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "adm-scholarships", "feature": "Scholarships", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "adm-student-support", "feature": "Student Support", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "adm-grievances", "feature": "Grievances", "status": "not_started", "notes": "Placeholder route exists. Must verify grievance data access is restricted to authorized roles (CLAUDE.md rules 5, 6)." },
+    { "id": "adm-compliance", "feature": "Compliance", "status": "not_started", "notes": "Placeholder route exists. Must verify compliance verification requires authorized human approval, not automated approval (CLAUDE.md rule 7)." },
+    { "id": "adm-audit-logs", "feature": "Audit logs", "status": "not_started", "notes": "Placeholder route exists; no AuditLog table/writer yet." },
+    { "id": "adm-approval-workflow", "feature": "Approval workflow", "status": "not_started", "notes": "Placeholder route exists; no ApprovalRequest table/state machine yet. Must verify no content or compliance status can be auto-approved (CLAUDE.md rule 7)." }
+  ]
+}

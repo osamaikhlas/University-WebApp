@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens for the shared UI/layout system.
+ * These are neutral placeholder values (no college branding exists yet — see CLAUDE.md rule 1/13).
+ * Swap --brand-* once real college branding (logo, colors) is supplied.
+ */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+
+  --surface: #ffffff;
+  --surface-muted: #f4f4f5;
+  --border-subtle: #e4e4e7;
+
+  --brand: #1d4ed8;
+  --brand-foreground: #ffffff;
+
+  --placeholder-bg: #fef9c3;
+  --placeholder-border: #eab308;
+  --placeholder-foreground: #713f12;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border-subtle: var(--border-subtle);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-placeholder-bg: var(--placeholder-bg);
+  --color-placeholder-border: var(--placeholder-border);
+  --color-placeholder-foreground: var(--placeholder-foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+
+    --surface: #111113;
+    --surface-muted: #18181b;
+    --border-subtle: #27272a;
+
+    --placeholder-bg: #3f2d03;
+    --placeholder-border: #a16207;
+    --placeholder-foreground: #fde68a;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
