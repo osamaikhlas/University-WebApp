@@ -56,6 +56,46 @@
       }
     ]
   },
+  "database": {
+    "description": "Phase 2 (database) — Prisma schema, migration, and seed verification. Tracks the data layer directly; the per-module pub-*/adm-* entries below stay not_started until real UI/API code reads from these tables.",
+    "items": [
+      {
+        "id": "db-schema-validate",
+        "feature": "Prisma schema validates and formats cleanly (39 requested models + supporting tables)",
+        "status": "passing",
+        "type": "cli",
+        "notes": "`npx prisma validate` and `npx prisma format` both clean against prisma/schema.prisma."
+      },
+      {
+        "id": "db-migration-applied",
+        "feature": "Migration applies to a real PostgreSQL database with zero drift",
+        "status": "passing",
+        "type": "manual",
+        "notes": "PostgreSQL 16 installed locally (Homebrew) since none was available in this environment. Migration SQL generated statically via `prisma migrate diff --from-empty --to-schema=prisma/schema.prisma --script` (prisma/migrations/20260913114324_init_content_modules/), then applied for real with `prisma migrate deploy` — succeeded. `prisma migrate diff --from-config-datasource --to-schema=prisma/schema.prisma --exit-code` confirms zero drift afterward."
+      },
+      {
+        "id": "db-seed-idempotent",
+        "feature": "Seed script populates one demo record per module and is idempotent",
+        "status": "passing",
+        "type": "manual",
+        "notes": "`npx prisma db seed` run twice against the real database; row counts unchanged on the second run (all upserts). Seeds baseline roles, one placeholder college, one [DEV SEED] admin user, one [PLACEHOLDER] demo record per content module, and all 20 ComplianceRequirement rows transcribed from docs/compliance-matrix.md."
+      },
+      {
+        "id": "db-compliance-verification-flow",
+        "feature": "ComplianceRequirement -> ComplianceEvidence -> ComplianceVerification human-decision flow works and is not auto-derived",
+        "status": "passing",
+        "type": "manual",
+        "notes": "Seeded one ComplianceEvidence + one ComplianceVerification (decision=VERIFIED) for requirement #4 (Faculty), then updated that requirement's status to VERIFIED. Verified via psql that only item #4 is VERIFIED and all other 19 remain NOT_STARTED (CLAUDE.md rule 7). No automated code path derives this status from evidence alone yet — that's the Phase 3+ approval workflow's job."
+      },
+      {
+        "id": "db-typecheck-lint-tests",
+        "feature": "Existing app code still typechecks/lints/passes tests against the new generated Prisma Client",
+        "status": "passing",
+        "type": "cli",
+        "notes": "`npm run typecheck`, `npm run lint`, `npm test` all clean after the schema change (15/15 unit tests)."
+      }
+    ]
+  },
   "public_website": [
     { "id": "pub-home", "feature": "Home", "status": "not_started", "notes": "Placeholder route exists (src/app/(public)/page.tsx); no real content/data source yet." },
     { "id": "pub-about", "feature": "About", "status": "not_started", "notes": "Placeholder route exists." },
@@ -81,7 +121,7 @@
     { "id": "pub-student-support", "feature": "Student Support", "status": "not_started", "notes": "Placeholder route exists." },
     { "id": "pub-rules-regulations", "feature": "Rules and Regulations", "status": "not_started", "notes": "Placeholder route exists." },
     { "id": "pub-affiliation", "feature": "Affiliation", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-grievance", "feature": "Grievance", "status": "not_started", "notes": "Placeholder route exists; no submission form/backend yet. Must verify private grievance data is never publicly exposed (CLAUDE.md rule 6)." },
+    { "id": "pub-grievance", "feature": "Grievance", "status": "not_started", "notes": "Placeholder route exists; Grievance table now exists (see `database` section) but no submission form/backend yet. Must verify private grievance data is never publicly exposed (CLAUDE.md rule 6)." },
     { "id": "pub-contact", "feature": "Contact", "status": "not_started", "notes": "Placeholder route exists." },
     { "id": "pub-location", "feature": "Location", "status": "not_started", "notes": "Placeholder route exists." },
     { "id": "pub-downloads", "feature": "Downloads", "status": "not_started", "notes": "Placeholder route exists." },
@@ -107,9 +147,9 @@
     { "id": "adm-gallery", "feature": "Gallery", "status": "not_started", "notes": "Placeholder route exists." },
     { "id": "adm-scholarships", "feature": "Scholarships", "status": "not_started", "notes": "Placeholder route exists." },
     { "id": "adm-student-support", "feature": "Student Support", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "adm-grievances", "feature": "Grievances", "status": "not_started", "notes": "Placeholder route exists. Must verify grievance data access is restricted to authorized roles (CLAUDE.md rules 5, 6)." },
-    { "id": "adm-compliance", "feature": "Compliance", "status": "not_started", "notes": "Placeholder route exists. Must verify compliance verification requires authorized human approval, not automated approval (CLAUDE.md rule 7)." },
-    { "id": "adm-audit-logs", "feature": "Audit logs", "status": "not_started", "notes": "Placeholder route exists; no AuditLog table/writer yet." },
+    { "id": "adm-grievances", "feature": "Grievances", "status": "not_started", "notes": "Placeholder route exists; Grievance/GrievanceNote tables now exist in prisma/schema.prisma (see `database` section), not yet wired to any UI/API. Must verify grievance data access is restricted to authorized roles (CLAUDE.md rules 5, 6)." },
+    { "id": "adm-compliance", "feature": "Compliance", "status": "not_started", "notes": "Placeholder route exists; ComplianceRequirement/ComplianceEvidence/ComplianceVerification tables now exist and are seeded with the 20 circular items (see `database` section), not yet wired to any UI/API. Must verify compliance verification requires authorized human approval, not automated approval (CLAUDE.md rule 7)." },
+    { "id": "adm-audit-logs", "feature": "Audit logs", "status": "not_started", "notes": "Placeholder route exists; AuditLog table now exists in prisma/schema.prisma (see `database` section), but no application code writes to it yet on any mutation." },
     { "id": "adm-approval-workflow", "feature": "Approval workflow", "status": "not_started", "notes": "Placeholder route exists; no ApprovalRequest table/state machine yet. Must verify no content or compliance status can be auto-approved (CLAUDE.md rule 7)." }
   ]
 }

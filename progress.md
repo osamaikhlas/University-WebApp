@@ -5,11 +5,13 @@ happens — do not let it go stale (see `CLAUDE.md` rule 15).
 
 ## Status
 
-**Phase 1 (project foundation) complete.** The stack is now chosen and scaffolded (Next.js +
-TypeScript + Tailwind + PostgreSQL/Prisma), with route structure, shared UI, and tooling in
-place. No real college content, authentication, or business logic exist yet — see
-`tests.json`'s `public_website`/`admin_system` sections, which remain `not_started` because
-every page is still a placeholder.
+**Phase 1 (project foundation) and Phase 2 (database) complete.** The stack is chosen and
+scaffolded (Next.js + TypeScript + Tailwind + PostgreSQL/Prisma), and the full data model for
+every module in `CLAUDE.md`'s required scope now exists as Prisma models, migrated against a
+real PostgreSQL database and seeded with clearly-marked dev/demo data. No real college
+content, authentication, or business logic exist yet — see `tests.json`'s
+`public_website`/`admin_system` sections, which remain `not_started` because every page is
+still a placeholder with no UI/API wired to the new schema yet.
 
 ## Completed
 
@@ -86,24 +88,90 @@ every page is still a placeholder.
     `public_website`/`admin_system` entries remain `not_started` (a route existing as a placeholder is
     not the real, tested behavior each entry describes) but now note that a placeholder route exists.
 
+- 2026-09-13 — **Implemented Phase 2: database** (per explicit instruction, using
+  `docs/database-design.md` as the reference model and a user-specified exact list of 39
+  models to create):
+  - Extended `prisma/schema.prisma` with every requested model: `CollegeProfile`,
+    `Department`, `Program`, `Course`, `Faculty`, `Staff`, `Infrastructure`, `Notice`,
+    `Event`, `Seminar`, `Workshop`, `AcademicCalendar`, `Timetable`, `Admission`,
+    `FeeStructure`, `EnrollmentStatistic`, `Examination`, `Result`, `Contact`, `Location`,
+    `Affiliation`, `Activity`, `Club`, `GalleryAlbum`, `GalleryItem`, `Scholarship`,
+    `StudentSupport`, `Policy`, `Regulation`, `Grievance`, `Document`, `Media`,
+    `ComplianceRequirement`, `ComplianceEvidence`, `ComplianceVerification`, `AuditLog`,
+    `Notification` (plus `GrievanceNote`, added beyond the requested list because `Grievance`
+    is unusable without somewhere to record internal case notes).
+  - Design decisions/divergences from `docs/database-design.md` (recorded as comments at the
+    top of `prisma/schema.prisma` too): `Document` and `Media` are generic attachment tables
+    keyed by `(entityType, entityId)` rather than a bespoke FK column per module, since the
+    doc itself notes Document is "shared by many modules"; `GalleryItem` wraps a `Media` row
+    with per-album curation/ordering/publication state rather than duplicating asset fields;
+    the doc's single `ComplianceItem` is split into `ComplianceRequirement` (denormalized
+    current status) + `ComplianceEvidence` (append-only evidence links) +
+    `ComplianceVerification` (append-only human verification decisions, so a full
+    verify/reject history survives per rule 8); `createdBy`/`updatedBy`/`publishedBy` are
+    plain user-id strings rather than enforced FK relations (would otherwise force ~90 named
+    back-relations onto `User`), while single-purpose actor fields that are actually queried
+    (`Grievance.assignedTo`, `Document/Media.uploadedBy`, `ComplianceEvidence.addedBy`,
+    `ComplianceVerification.verifiedBy`, `ComplianceRequirement.owner`, `AuditLog.actor`,
+    `Notification.user`) are real relations.
+  - Added a shared `ContentStatus` enum (`DRAFT`/`PENDING_REVIEW`/`APPROVED`/`PUBLISHED`/
+    `ARCHIVED`) used across every structured content model, plus `isPlaceholder`,
+    `publishedAt`/`publishedBy` where the model is independently publishable, and
+    `createdBy`/`updatedBy` audit stamps — consistent with rules 4, 8, 13, 14.
+  - Installed PostgreSQL 16 locally via Homebrew (`brew install postgresql@16`, service
+    started with `brew services start postgresql@16` — **this now auto-starts at login on
+    this machine**; stop with `brew services stop postgresql@16` if not wanted persistently)
+    since no database server was available in this environment, to actually validate the
+    migration and seed end-to-end rather than only generating unverified SQL.
+  - Generated the migration SQL statically (`prisma migrate diff --from-empty
+    --to-schema=prisma/schema.prisma --script`, since `prisma migrate dev` needs a reachable
+    shadow database at generation time) into
+    `prisma/migrations/20260913114324_init_content_modules/`, then **applied it for real**
+    against the local Postgres instance with `prisma migrate deploy` — succeeded with no
+    errors, and `prisma migrate diff --from-config-datasource --to-schema=prisma/schema.prisma
+    --exit-code` confirms zero drift between the applied database and the schema.
+  - Rewrote `prisma/seed.ts`: kept the Phase 1 role/college seed, added one `[DEV SEED]`
+    admin user (`.invalid` email, obviously-fake password hash, never a real credential) to
+    satisfy required uploader/actor foreign keys, one clearly `[PLACEHOLDER]`-marked demo
+    record per content module (department → program → course → faculty → ... → gallery
+    album/item → grievance/note → document), and all 20 `ComplianceRequirement` rows
+    transcribed from `docs/compliance-matrix.md` (itself transcribed from the circular) —
+    seeding the fixed checklist is system taxonomy, not invented college data, per the same
+    rationale already used for the Phase 1 role seed. Ran the seed against the real database
+    twice to confirm every `upsert` is idempotent (verified via row counts before/after).
+  - Verified an end-to-end worked example of the evidence → verification → status flow:
+    seeded one `ComplianceEvidence` row (Faculty item) and one `ComplianceVerification`
+    (`decision: VERIFIED`), then updated `ComplianceRequirement.status` to `VERIFIED` — spot
+    checked via `psql` that requirement #4 shows `VERIFIED` while the other 19 correctly
+    remain `NOT_STARTED` (nothing is auto-derived; this is a real demonstration of the
+    human-decision path rule 7 requires).
+  - Ran `npm run typecheck`, `npm run lint`, and `npm test` after the schema/client changes —
+    all clean/passing (15/15 unit tests), confirming the new generated Prisma Client types
+    don't break any existing code.
+  - Updated `tests.json` with a new `database` section tracking schema/migration/seed
+    verification directly (separate from the per-module `pub-*`/`adm-*` entries, which stay
+    `not_started` until real UI/API code reads from these tables).
+
 ## In progress
 
-- Nothing in progress. Phase 1 (project foundation) is complete; next up is
-  `docs/implementation-plan.md`'s Phase 1 (auth/RBAC/audit foundation), not yet started.
+- Nothing in progress. Phase 1 (project foundation) and Phase 2 (database) are complete;
+  next up is wiring authentication/RBAC and real CRUD/API code on top of this schema
+  (`docs/implementation-plan.md`'s own Phase 1/2), not yet started.
 
 ## Next steps
 
-1. Provision a real PostgreSQL database, point `DATABASE_URL` at it, then run `npm run db:migrate` and
-   `npm run db:seed` for real (only dry-run-verified so far — see Completed above).
-2. Run `npx playwright install && npm run test:e2e` in an environment with network access to actually
+1. Run `npx playwright install && npm run test:e2e` in an environment with network access to actually
    execute the e2e suite (only listed/validated so far, not run).
-3. Begin `docs/implementation-plan.md` Phase 1: authentication, full RBAC enforcement (the admin area
-   currently has zero auth — see the banner on every admin page), and audit logging.
+2. Begin `docs/implementation-plan.md` Phase 1: authentication, full RBAC enforcement (the admin area
+   currently has zero auth — see the banner on every admin page), and audit logging, now that the
+   underlying tables exist.
+3. Wire admin CRUD screens and public read pages to the new content tables, enforcing rule 4
+   (draft vs. published) at the query layer from the very first module.
 4. Gather real college data for the highest-priority sections (College Profile, Programs, Faculty,
    Contact, Location, Affiliation) — placeholders only until this is supplied.
 5. Resolve remaining open questions below (single college vs. template, languages, real admin role
    names, review-frequency cadence) — none of these block further engineering work right now, but they do
-   shape the content schema when the 20 content-requirement tables are built.
+   shape how the already-built content schema gets populated with real data.
 
 ## Decisions log
 
@@ -115,6 +183,8 @@ every page is still a placeholder.
 | 2026-09-13 | **Stack decision made** (via explicit instruction to implement it): Next.js (App Router) + TypeScript + Tailwind CSS v4 + PostgreSQL + Prisma 7 (driver-adapter architecture) + Vitest/Testing Library + Playwright. This resolves the "technology stack" open question from `docs/architecture.md` §0. |
 | 2026-09-13 | Pinned `prisma`/`@prisma/client` to the last stable line (`7.10.0`) rather than the `prisma` package's `latest` dist-tag, which currently points at an `8.0.0-rc.*` pre-release. |
 | 2026-09-13 | Tenancy/RBAC schema (`College`, `User`, `Role`, `Permission`, `RolePermission`, `UserRole`) built now, ahead of the content-requirement tables, since auth/RBAC is the next phase and depends on it. |
+| 2026-09-13 | **Phase 2 (database) implemented** per explicit instruction, covering all 39 requested models. `Document`/`Media` made generic `(entityType, entityId)` attachment tables rather than per-module FK columns; `ComplianceItem` (from `docs/database-design.md`) split into `ComplianceRequirement` + append-only `ComplianceEvidence`/`ComplianceVerification` for a fuller audit trail; `createdBy`/`updatedBy`/`publishedBy` kept as plain id strings (not FK relations) to avoid ~90 forced back-relations on `User`. |
+| 2026-09-13 | Installed PostgreSQL 16 locally via Homebrew to validate the migration/seed against a real database rather than only generating unverified SQL. The service is registered to auto-start at login (`brew services start postgresql@16`) — stop with `brew services stop postgresql@16` if that persistence isn't wanted on this machine. |
 
 ## Open questions
 

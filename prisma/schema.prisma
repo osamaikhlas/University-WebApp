@@ -1,11 +1,25 @@
-// Prisma schema — Phase 1 (project foundation) subset.
+// Prisma schema — Phase 2 (database).
 //
-// Only the tenancy/RBAC tables from docs/database-design.md §1 are implemented so far,
-// since they are needed before authentication/RBAC (the next phase per
-// docs/implementation-plan.md) can be built. The 20 circular-requirement content tables
-// (docs/database-design.md §3 onward) are added in a later phase.
+// Implements the models requested for Phase 2, using docs/database-design.md as the
+// reference data model. Where the requested model list diverges from
+// docs/database-design.md, the divergence is called out inline (e.g. ComplianceItem is
+// split into ComplianceEvidence + ComplianceVerification here; Document/Media are generic
+// attachment tables referenced by (entityType, entityId) rather than one bespoke FK column
+// per module, per database-design.md §3's note that Document is "shared by many modules").
 //
 // No college-specific data belongs in this schema or its seed data — see CLAUDE.md rule 1.
+// Content tables carry `isPlaceholder` so seed/dev data can never be mistaken for verified
+// content (CLAUDE.md rule 14).
+//
+// Audit-stamp convention: `createdBy` / `updatedBy` / `publishedBy` are plain user-id
+// strings, not enforced foreign keys. Adding a real FK relation for these on every one of
+// ~30 content tables would force ~90 named back-relations onto User for no functional gain
+// — the authoritative, queryable history of *who did what* is AuditLog, not these stamps.
+// Fields that represent one significant, singular action instead get a real relation
+// (Grievance.assignedTo, Document/Media.uploadedBy, ComplianceEvidence.addedBy,
+// ComplianceVerification.verifiedBy, ComplianceRequirement.owner, AuditLog.actor,
+// Notification.user) because those are actively queried ("show me everything assigned to
+// this officer") rather than just stamped for reference.
 
 generator client {
   provider = "prisma-client-js"
@@ -17,6 +31,10 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// ---------------------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------------------
 
 enum CollegeType {
   GOVT_DEGREE
@@ -30,6 +48,87 @@ enum UserStatus {
   SUSPENDED
 }
 
+// Shared draft -> review -> approve -> publish lifecycle (database-design.md §2) used by
+// every structured content table below.
+enum ContentStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum GrievanceStatus {
+  NEW
+  IN_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+enum InfrastructureCategory {
+  CLASSROOM
+  LAB
+  LIBRARY
+  COMPUTER_LAB
+  MOOT_COURT
+  OFFICE
+  SPORTS
+  OTHER
+}
+
+enum ContactType {
+  PHONE
+  EMAIL
+  OTHER
+}
+
+enum ProgramLevel {
+  UNDERGRADUATE
+  GRADUATE
+  DIPLOMA
+  CERTIFICATE
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+enum ComplianceCategory {
+  CONTENT
+  GOVERNANCE
+}
+
+enum ComplianceStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED_FOR_REVIEW
+  VERIFIED
+  REJECTED
+}
+
+enum VerificationDecision {
+  VERIFIED
+  REJECTED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  PUBLISH
+  APPROVE
+  REJECT
+  LOGIN
+  ROLE_CHANGE
+  OTHER
+}
+
+// ---------------------------------------------------------------------------------------
+// 1. Tenancy & identity (docs/database-design.md §1)
+// ---------------------------------------------------------------------------------------
+
 model College {
   id            String      @id @default(cuid())
   name          String
@@ -42,6 +141,40 @@ model College {
 
   users     User[]
   userRoles UserRole[]
+
+  profile                 CollegeProfile?
+  departments             Department[]
+  programs                Program[]
+  courses                 Course[]
+  faculty                 Faculty[]
+  staff                   Staff[]
+  infrastructure          Infrastructure[]
+  notices                 Notice[]
+  events                  Event[]
+  seminars                Seminar[]
+  workshops               Workshop[]
+  academicCalendarEntries AcademicCalendar[]
+  timetables              Timetable[]
+  admissions              Admission[]
+  feeStructures           FeeStructure[]
+  enrollmentStatistics    EnrollmentStatistic[]
+  examinations            Examination[]
+  results                 Result[]
+  contacts                Contact[]
+  locations               Location[]
+  affiliations            Affiliation[]
+  activities              Activity[]
+  clubs                   Club[]
+  galleryAlbums           GalleryAlbum[]
+  galleryItems            GalleryItem[]
+  scholarships            Scholarship[]
+  studentSupports         StudentSupport[]
+  policies                Policy[]
+  regulations             Regulation[]
+  grievances              Grievance[]
+  documents               Document[]
+  media                   Media[]
+  complianceRequirements  ComplianceRequirement[]
 
   @@map("colleges")
 }
@@ -60,6 +193,15 @@ model User {
 
   college College    @relation(fields: [collegeId], references: [id])
   roles   UserRole[]
+
+  assignedGrievances          Grievance[]              @relation("GrievanceAssignee")
+  uploadedDocuments           Document[]               @relation("DocumentUploader")
+  uploadedMedia               Media[]                  @relation("MediaUploader")
+  ownedComplianceRequirements ComplianceRequirement[]  @relation("ComplianceOwner")
+  addedComplianceEvidence     ComplianceEvidence[]     @relation("ComplianceEvidenceAdder")
+  compliancesVerified         ComplianceVerification[] @relation("ComplianceVerifier")
+  auditLogEntries             AuditLog[]               @relation("AuditActor")
+  notifications               Notification[]           @relation("NotificationRecipient")
 
   @@index([collegeId])
   @@map("users")
@@ -112,4 +254,981 @@ model UserRole {
 
   @@id([userId, roleId, collegeId])
   @@map("user_roles")
+}
+
+// ---------------------------------------------------------------------------------------
+// 2. College profile (circular item 1: About / College Profile / History / Vision & Mission
+//    / Principal's Message) — one aggregate row per college rather than a generic
+//    ContentItem table, since these sections are singular per college, not a list.
+// ---------------------------------------------------------------------------------------
+
+model CollegeProfile {
+  id               String        @id @default(cuid())
+  collegeId        String        @unique
+  overview         String?
+  missionStatement String?
+  visionStatement  String?
+  history          String?
+  principalName    String?
+  principalMessage String?
+  establishedYear  Int?
+  status           ContentStatus @default(DRAFT)
+  isPlaceholder    Boolean       @default(false)
+  publishedAt      DateTime?
+  publishedBy      String?
+  createdBy        String?
+  updatedBy        String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  college College @relation(fields: [collegeId], references: [id])
+
+  @@index([status])
+  @@map("college_profiles")
+}
+
+// ---------------------------------------------------------------------------------------
+// 3. Academic structure (circular items 3, 4, 6, 13)
+// ---------------------------------------------------------------------------------------
+
+model Department {
+  id            String        @id @default(cuid())
+  collegeId     String
+  name          String
+  description   String?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college   College    @relation(fields: [collegeId], references: [id])
+  programs  Program[]
+  faculty   Faculty[]
+  seminars  Seminar[]
+  workshops Workshop[]
+
+  @@index([collegeId])
+  @@map("departments")
+}
+
+model Program {
+  id            String        @id @default(cuid())
+  collegeId     String
+  departmentId  String
+  name          String
+  level         ProgramLevel
+  durationYears Int
+  description   String?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college              College               @relation(fields: [collegeId], references: [id])
+  department           Department            @relation(fields: [departmentId], references: [id])
+  courses              Course[]
+  admissions           Admission[]
+  feeStructures        FeeStructure[]
+  enrollmentStatistics EnrollmentStatistic[]
+  timetables           Timetable[]
+  examinations         Examination[]
+  results              Result[]
+  affiliations         Affiliation[]
+
+  @@index([collegeId])
+  @@index([departmentId])
+  @@map("programs")
+}
+
+model Course {
+  id            String        @id @default(cuid())
+  collegeId     String
+  programId     String
+  code          String
+  title         String
+  creditHours   Int?
+  semester      Int?
+  description   String?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college College @relation(fields: [collegeId], references: [id])
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, code])
+  @@index([collegeId])
+  @@map("courses")
+}
+
+// Affiliation is not embedded as a single FK on Program because a program's affiliation is
+// renewed/re-approved over time — a program has a history of Affiliation records, not one.
+model Affiliation {
+  id                String        @id @default(cuid())
+  collegeId         String
+  programId         String?
+  universityName    String
+  affiliationNumber String?
+  regulatoryBody    String?
+  validFrom         DateTime?
+  validTo           DateTime?
+  status            ContentStatus @default(DRAFT)
+  isPlaceholder     Boolean       @default(false)
+  publishedAt       DateTime?
+  publishedBy       String?
+  createdBy         String?
+  updatedBy         String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  college College  @relation(fields: [collegeId], references: [id])
+  program Program? @relation(fields: [programId], references: [id])
+
+  @@index([collegeId])
+  @@index([programId])
+  @@map("affiliations")
+}
+
+// ---------------------------------------------------------------------------------------
+// 4. People (circular items 4, 5)
+// ---------------------------------------------------------------------------------------
+
+model Faculty {
+  id             String        @id @default(cuid())
+  collegeId      String
+  departmentId   String
+  name           String
+  designation    String
+  qualifications String?
+  subjectsTaught String[]
+  email          String?
+  phone          String?
+  status         ContentStatus @default(DRAFT)
+  isPlaceholder  Boolean       @default(false)
+  publishedAt    DateTime?
+  publishedBy    String?
+  createdBy      String?
+  updatedBy      String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  college      College    @relation(fields: [collegeId], references: [id])
+  department   Department @relation(fields: [departmentId], references: [id])
+  advisedClubs Club[]
+
+  @@index([collegeId])
+  @@index([departmentId])
+  @@map("faculty")
+}
+
+model Staff {
+  id            String        @id @default(cuid())
+  collegeId     String
+  name          String
+  designation   String
+  department    String?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college College @relation(fields: [collegeId], references: [id])
+
+  @@index([collegeId])
+  @@map("staff")
+}
+
+model Club {
+  id               String        @id @default(cuid())
+  collegeId        String
+  name             String
+  description      String?
+  facultyAdvisorId String?
+  status           ContentStatus @default(DRAFT)
+  isPlaceholder    Boolean       @default(false)
+  publishedAt      DateTime?
+  publishedBy      String?
+  createdBy        String?
+  updatedBy        String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  college        College  @relation(fields: [collegeId], references: [id])
+  facultyAdvisor Faculty? @relation(fields: [facultyAdvisorId], references: [id])
+
+  @@index([collegeId])
+  @@map("clubs")
+}
+
+// ---------------------------------------------------------------------------------------
+// 5. Infrastructure (circular item 3)
+// ---------------------------------------------------------------------------------------
+
+model Infrastructure {
+  id            String                 @id @default(cuid())
+  collegeId     String
+  category      InfrastructureCategory
+  name          String
+  description   String?
+  status        ContentStatus          @default(DRAFT)
+  isPlaceholder Boolean                @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  college College @relation(fields: [collegeId], references: [id])
+
+  @@index([collegeId])
+  @@index([category])
+  @@map("infrastructure_items")
+}
+
+// ---------------------------------------------------------------------------------------
+// 6. Communications (circular items 2, 10, 14, 15)
+// ---------------------------------------------------------------------------------------
+
+model Notice {
+  id            String        @id @default(cuid())
+  collegeId     String
+  title         String
+  body          String
+  category      String?
+  publishDate   DateTime?
+  expiryDate    DateTime?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college      College       @relation(fields: [collegeId], references: [id])
+  examinations Examination[]
+
+  @@index([collegeId])
+  @@index([publishDate])
+  @@map("notices")
+}
+
+model Event {
+  id            String        @id @default(cuid())
+  collegeId     String
+  title         String
+  description   String?
+  startDate     DateTime
+  endDate       DateTime?
+  location      String?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college College @relation(fields: [collegeId], references: [id])
+
+  @@index([collegeId])
+  @@index([startDate])
+  @@map("events")
+}
+
+model Seminar {
+  id            String        @id @default(cuid())
+  collegeId     String
+  departmentId  String?
+  title         String
+  description   String?
+  speaker       String?
+  startDate     DateTime
+  endDate       DateTime?
+  venue         String?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college    College     @relation(fields: [collegeId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+
+  @@index([collegeId])
+  @@index([startDate])
+  @@map("seminars")
+}
+
+model Workshop {
+  id            String        @id @default(cuid())
+  collegeId     String
+  departmentId  String?
+  title         String
+  description   String?
+  facilitator   String?
+  startDate     DateTime
+  endDate       DateTime?
+  venue         String?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college    College     @relation(fields: [collegeId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+
+  @@index([collegeId])
+  @@index([startDate])
+  @@map("workshops")
+}
+
+model Activity {
+  id            String        @id @default(cuid())
+  collegeId     String
+  title         String
+  description   String?
+  category      String?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college College @relation(fields: [collegeId], references: [id])
+
+  @@index([collegeId])
+  @@map("activities")
+}
+
+// ---------------------------------------------------------------------------------------
+// 7. Calendar & scheduling (circular item 7)
+// ---------------------------------------------------------------------------------------
+
+model AcademicCalendar {
+  id            String        @id @default(cuid())
+  collegeId     String
+  title         String
+  description   String?
+  startDate     DateTime
+  endDate       DateTime?
+  category      String?
+  academicYear  String?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college College @relation(fields: [collegeId], references: [id])
+
+  @@index([collegeId])
+  @@index([academicYear])
+  @@map("academic_calendar_entries")
+}
+
+model Timetable {
+  id                 String        @id @default(cuid())
+  collegeId          String
+  programId          String
+  classGroup         String
+  effectiveFrom      DateTime
+  structuredSchedule Json?
+  status             ContentStatus @default(DRAFT)
+  isPlaceholder      Boolean       @default(false)
+  publishedAt        DateTime?
+  publishedBy        String?
+  createdBy          String?
+  updatedBy          String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  college College @relation(fields: [collegeId], references: [id])
+  program Program @relation(fields: [programId], references: [id])
+
+  @@index([collegeId])
+  @@index([programId])
+  @@map("timetables")
+}
+
+// ---------------------------------------------------------------------------------------
+// 8. Admissions & enrollment (circular items 8, 9)
+// ---------------------------------------------------------------------------------------
+
+model Admission {
+  id                   String        @id @default(cuid())
+  collegeId            String
+  programId            String
+  academicYear         String
+  eligibilityCriteria  String?
+  applicationStartDate DateTime?
+  applicationEndDate   DateTime?
+  status               ContentStatus @default(DRAFT)
+  isPlaceholder        Boolean       @default(false)
+  publishedAt          DateTime?
+  publishedBy          String?
+  createdBy            String?
+  updatedBy            String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  college       College        @relation(fields: [collegeId], references: [id])
+  program       Program        @relation(fields: [programId], references: [id])
+  feeStructures FeeStructure[]
+
+  @@index([collegeId])
+  @@index([programId])
+  @@map("admissions")
+}
+
+model FeeStructure {
+  id            String        @id @default(cuid())
+  collegeId     String
+  programId     String
+  admissionId   String?
+  academicYear  String
+  feeType       String
+  amount        Decimal       @db.Decimal(10, 2)
+  currency      String        @default("PKR")
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college   College    @relation(fields: [collegeId], references: [id])
+  program   Program    @relation(fields: [programId], references: [id])
+  admission Admission? @relation(fields: [admissionId], references: [id])
+
+  @@index([collegeId])
+  @@index([programId])
+  @@map("fee_structures")
+}
+
+model EnrollmentStatistic {
+  id            String        @id @default(cuid())
+  collegeId     String
+  programId     String
+  academicYear  String
+  sessionType   String?
+  totalEnrolled Int
+  maleCount     Int?
+  femaleCount   Int?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college College @relation(fields: [collegeId], references: [id])
+  program Program @relation(fields: [programId], references: [id])
+
+  @@index([collegeId])
+  @@index([programId])
+  @@map("enrollment_statistics")
+}
+
+// ---------------------------------------------------------------------------------------
+// 9. Examinations & results (circular item 10)
+// ---------------------------------------------------------------------------------------
+
+model Examination {
+  id                String        @id @default(cuid())
+  collegeId         String
+  programId         String
+  examType          String
+  academicYear      String?
+  scheduleStartDate DateTime?
+  scheduleEndDate   DateTime?
+  noticeId          String?
+  status            ContentStatus @default(DRAFT)
+  isPlaceholder     Boolean       @default(false)
+  publishedAt       DateTime?
+  publishedBy       String?
+  createdBy         String?
+  updatedBy         String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  college College  @relation(fields: [collegeId], references: [id])
+  program Program  @relation(fields: [programId], references: [id])
+  notice  Notice?  @relation(fields: [noticeId], references: [id])
+  results Result[]
+
+  @@index([collegeId])
+  @@index([programId])
+  @@map("examinations")
+}
+
+model Result {
+  id            String        @id @default(cuid())
+  collegeId     String
+  programId     String
+  examinationId String
+  publishDate   DateTime?
+  externalLink  String?
+  isPublic      Boolean       @default(false)
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college     College     @relation(fields: [collegeId], references: [id])
+  program     Program     @relation(fields: [programId], references: [id])
+  examination Examination @relation(fields: [examinationId], references: [id])
+
+  @@index([collegeId])
+  @@index([examinationId])
+  @@map("results")
+}
+
+// ---------------------------------------------------------------------------------------
+// 10. Contact & location (circular items 11, 12)
+// ---------------------------------------------------------------------------------------
+
+model Contact {
+  id            String        @id @default(cuid())
+  collegeId     String
+  type          ContactType
+  value         String
+  label         String?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college College @relation(fields: [collegeId], references: [id])
+
+  @@index([collegeId])
+  @@map("contacts")
+}
+
+model Location {
+  id            String        @id @default(cuid())
+  collegeId     String
+  address       String
+  latitude      Float?
+  longitude     Float?
+  mapEmbedUrl   String?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college College @relation(fields: [collegeId], references: [id])
+
+  @@index([collegeId])
+  @@map("locations")
+}
+
+// ---------------------------------------------------------------------------------------
+// 11. Gallery (circular item 16)
+// ---------------------------------------------------------------------------------------
+
+model GalleryAlbum {
+  id            String        @id @default(cuid())
+  collegeId     String
+  title         String
+  description   String?
+  category      String?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college College       @relation(fields: [collegeId], references: [id])
+  items   GalleryItem[]
+
+  @@index([collegeId])
+  @@map("gallery_albums")
+}
+
+// A curated appearance of a Media asset inside an album — the asset itself (url, altText,
+// upload metadata) lives once in Media and can in principle be reused; GalleryItem only
+// carries the album-specific curation/ordering/publication state.
+model GalleryItem {
+  id            String        @id @default(cuid())
+  collegeId     String
+  albumId       String
+  mediaId       String
+  caption       String?
+  order         Int           @default(0)
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college College      @relation(fields: [collegeId], references: [id])
+  album   GalleryAlbum @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  media   Media        @relation(fields: [mediaId], references: [id])
+
+  @@index([collegeId])
+  @@index([albumId])
+  @@map("gallery_items")
+}
+
+// ---------------------------------------------------------------------------------------
+// 12. Student support (circular item 17)
+// ---------------------------------------------------------------------------------------
+
+model Scholarship {
+  id            String        @id @default(cuid())
+  collegeId     String
+  name          String
+  description   String?
+  eligibility   String?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college College @relation(fields: [collegeId], references: [id])
+
+  @@index([collegeId])
+  @@map("scholarships")
+}
+
+model StudentSupport {
+  id            String        @id @default(cuid())
+  collegeId     String
+  name          String
+  description   String?
+  contactInfo   String?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college College @relation(fields: [collegeId], references: [id])
+
+  @@index([collegeId])
+  @@map("student_support_services")
+}
+
+// ---------------------------------------------------------------------------------------
+// 13. Policies (circular item 18)
+// ---------------------------------------------------------------------------------------
+
+model Policy {
+  id            String        @id @default(cuid())
+  collegeId     String
+  title         String
+  category      String?
+  body          String?
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  college College @relation(fields: [collegeId], references: [id])
+
+  @@index([collegeId])
+  @@map("policies")
+}
+
+model Regulation {
+  id             String        @id @default(cuid())
+  collegeId      String
+  title          String
+  category       String?
+  body           String?
+  regulatingBody String?
+  status         ContentStatus @default(DRAFT)
+  isPlaceholder  Boolean       @default(false)
+  publishedAt    DateTime?
+  publishedBy    String?
+  createdBy      String?
+  updatedBy      String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  college College @relation(fields: [collegeId], references: [id])
+
+  @@index([collegeId])
+  @@map("regulations")
+}
+
+// ---------------------------------------------------------------------------------------
+// 14. Grievance system (private data — CLAUDE.md rule 6). Never exposed through any public
+//     API route; access restricted to grievance.view permission holders, enforced at the
+//     query layer, not just hidden in the UI.
+// ---------------------------------------------------------------------------------------
+
+model Grievance {
+  id               String          @id @default(cuid())
+  collegeId        String
+  // Anonymous submission is allowed — both fields nullable.
+  submitterName    String?
+  // App layer must encrypt this at rest before persisting (CLAUDE.md rule 6); this column
+  // holds ciphertext, never plaintext contact info.
+  submitterContact String?
+  category         String?
+  description      String
+  status           GrievanceStatus @default(NEW)
+  assignedToId     String?
+  resolvedAt       DateTime?
+  isPlaceholder    Boolean         @default(false)
+  updatedBy        String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  college    College         @relation(fields: [collegeId], references: [id])
+  assignedTo User?           @relation("GrievanceAssignee", fields: [assignedToId], references: [id])
+  notes      GrievanceNote[]
+
+  @@index([collegeId])
+  @@index([status])
+  @@map("grievances")
+}
+
+// Internal-only case notes — never shown to the submitter or the public. Not in the
+// originally requested model list, but required for Grievance to be usable at all (a
+// grievance officer needs somewhere to record case progress); kept minimal.
+model GrievanceNote {
+  id          String   @id @default(cuid())
+  grievanceId String
+  authorId    String?
+  note        String
+  createdAt   DateTime @default(now())
+
+  grievance Grievance @relation(fields: [grievanceId], references: [id], onDelete: Cascade)
+
+  @@index([grievanceId])
+  @@map("grievance_notes")
+}
+
+// ---------------------------------------------------------------------------------------
+// 15. Documents & media — generic attachment tables referenced by (entityType, entityId)
+//     rather than a bespoke FK column on every module that needs an attachment or photo
+//     (database-design.md §3: "shared by many modules").
+// ---------------------------------------------------------------------------------------
+
+model Document {
+  id            String   @id @default(cuid())
+  collegeId     String
+  entityType    String
+  entityId      String
+  category      String?
+  title         String
+  fileUrl       String
+  mimeType      String?
+  sizeBytes     Int?
+  version       Int      @default(1)
+  uploadedById  String
+  uploadedAt    DateTime @default(now())
+  isPlaceholder Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  college    College @relation(fields: [collegeId], references: [id])
+  uploadedBy User    @relation("DocumentUploader", fields: [uploadedById], references: [id])
+
+  @@index([collegeId])
+  @@index([entityType, entityId])
+  @@map("documents")
+}
+
+model Media {
+  id            String    @id @default(cuid())
+  collegeId     String
+  entityType    String?
+  entityId      String?
+  url           String
+  // Required (not optional) to satisfy accessibility (WCAG alt text) regardless of module.
+  altText       String
+  caption       String?
+  mediaType     MediaType @default(IMAGE)
+  uploadedById  String
+  uploadedAt    DateTime  @default(now())
+  isPlaceholder Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  college      College       @relation(fields: [collegeId], references: [id])
+  uploadedBy   User          @relation("MediaUploader", fields: [uploadedById], references: [id])
+  galleryItems GalleryItem[]
+
+  @@index([collegeId])
+  @@index([entityType, entityId])
+  @@map("media_assets")
+}
+
+// ---------------------------------------------------------------------------------------
+// 16. Compliance model (docs/compliance-matrix.md, database-design.md §9)
+//
+// Divergence from database-design.md: the requested model list has no ComplianceItem —
+// instead ComplianceRequirement carries a denormalized `status` (queried constantly for the
+// dashboard) that the application may only advance to VERIFIED/REJECTED by writing a
+// ComplianceVerification row (CLAUDE.md rule 7: no automatic approval). Evidence collection
+// is tracked separately in ComplianceEvidence so a requirement can accumulate evidence
+// across multiple content records over time without conflating "evidence exists" with "a
+// human verified it".
+// ---------------------------------------------------------------------------------------
+
+model ComplianceRequirement {
+  id                String             @id @default(cuid())
+  collegeId         String
+  // 1-20 per the circular's content items, or a governance-item code.
+  itemNumber        Int
+  title             String
+  description       String
+  circularReference String
+  category          ComplianceCategory
+  // Denormalized current status. Must only be advanced to VERIFIED/REJECTED by the
+  // application creating a ComplianceVerification row — never derived automatically from
+  // evidence existing (CLAUDE.md rule 7).
+  status            ComplianceStatus   @default(NOT_STARTED)
+  ownerId           String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  college       College                  @relation(fields: [collegeId], references: [id])
+  owner         User?                    @relation("ComplianceOwner", fields: [ownerId], references: [id])
+  evidence      ComplianceEvidence[]
+  verifications ComplianceVerification[]
+
+  @@unique([collegeId, itemNumber])
+  @@index([collegeId])
+  @@index([status])
+  @@map("compliance_requirements")
+}
+
+// Points at whatever record(s) satisfy a requirement (a ContentItem-equivalent row, a
+// Faculty record, a Program record, etc.) via a generic (entityType, entityId) pair, mirroring
+// the Document/Media attachment pattern above.
+model ComplianceEvidence {
+  id            String   @id @default(cuid())
+  requirementId String
+  entityType    String
+  entityId      String
+  note          String?
+  addedById     String
+  createdAt     DateTime @default(now())
+
+  requirement ComplianceRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  addedBy     User                  @relation("ComplianceEvidenceAdder", fields: [addedById], references: [id])
+
+  @@index([requirementId])
+  @@index([entityType, entityId])
+  @@map("compliance_evidence")
+}
+
+// Append-only record of each human verification decision. The requirement's current
+// `status` is set from the most recent row here — kept as its own table (rather than fields
+// on ComplianceRequirement) so a full history of verify/reject cycles survives, per
+// CLAUDE.md rule 8 (audit history).
+model ComplianceVerification {
+  id              String               @id @default(cuid())
+  requirementId   String
+  decision        VerificationDecision
+  verifiedById    String
+  verifiedAt      DateTime             @default(now())
+  rejectionReason String?
+  createdAt       DateTime             @default(now())
+
+  requirement ComplianceRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  verifiedBy  User                  @relation("ComplianceVerifier", fields: [verifiedById], references: [id])
+
+  @@index([requirementId])
+  @@index([verifiedAt])
+  @@map("compliance_verifications")
+}
+
+// ---------------------------------------------------------------------------------------
+// 17. Audit logging & notifications (database-design.md §6, §7)
+// ---------------------------------------------------------------------------------------
+
+// Append-only — no update/delete path is exposed for this table (CLAUDE.md rule 8).
+model AuditLog {
+  id             String      @id @default(cuid())
+  actorId        String?
+  action         AuditAction
+  entityType     String
+  entityId       String
+  beforeSnapshot Json?
+  afterSnapshot  Json?
+  ipAddress      String?
+  createdAt      DateTime    @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id                String   @id @default(cuid())
+  userId            String
+  type              String
+  message           String
+  relatedEntityType String?
+  relatedEntityId   String?
+  read              Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  user User @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@map("notifications")
 }

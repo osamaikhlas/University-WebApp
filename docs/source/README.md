@@ -8,4 +8,4 @@ that defines the minimum information requirements for the college website.
 Do not invent official institutional information.
 
 Circular = requirements
-College records = actual official content
+College records = actual official conten
