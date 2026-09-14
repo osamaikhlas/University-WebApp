@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Activities" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function ActivitiesListPage({
@@ -48,7 +49,10 @@ export default async function ActivitiesListPage({
     <Container>
       <div className="flex flex-col gap-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <PageHeading title="Activities" description="Manage extracurricular and community activities." />
+          <PageHeading
+            title="Activities"
+            description="Manage extracurricular and community activities."
+          />
           {canManage ? <LinkButton href="/admin/activities/new">New activity</LinkButton> : null}
         </div>
 
@@ -67,13 +71,20 @@ export default async function ActivitiesListPage({
               key: "title",
               header: "Title",
               render: (row) => (
-                <Link href={`/admin/activities/${row.id}`} className="font-medium text-brand hover:underline">
+                <Link
+                  href={`/admin/activities/${row.id}`}
+                  className="font-medium text-brand hover:underline"
+                >
                   {row.title}
                 </Link>
               ),
             },
             { key: "category", header: "Category", render: (row) => row.category ?? "—" },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

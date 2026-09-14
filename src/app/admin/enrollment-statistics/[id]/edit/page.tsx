@@ -22,7 +22,7 @@ export default async function EditEnrollmentStatisticPage({
   if (!enrollmentStatistic) notFound();
 
   const programs = await prisma.program.findMany({
-    where: { collegeId: enrollmentStatistic.collegeId, status: { not: "ARCHIVED" } },
+    where: { collegeId: enrollmentStatistic.collegeId },
     orderBy: { name: "asc" },
   });
 
@@ -34,7 +34,11 @@ export default async function EditEnrollmentStatisticPage({
           description="Enrollment statistic"
         />
         <Card>
-          <EnrollmentStatisticForm mode="edit" enrollmentStatistic={enrollmentStatistic} programs={programs} />
+          <EnrollmentStatisticForm
+            mode="edit"
+            enrollmentStatistic={enrollmentStatistic}
+            programs={programs}
+          />
         </Card>
       </div>
     </Container>

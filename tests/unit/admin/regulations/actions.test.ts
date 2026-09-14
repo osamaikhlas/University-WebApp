@@ -23,7 +23,11 @@ vi.mock("next/navigation", () => ({
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
 import { getPrimaryCollege } from "@/lib/content";
-import { createRegulation, transitionRegulation, updateRegulation } from "@/app/admin/regulations/actions";
+import {
+  createRegulation,
+  transitionRegulation,
+  updateRegulation,
+} from "@/app/admin/regulations/actions";
 
 const fakeUser = { id: "user-1", collegeId: "college-1", permissions: new Set() } as never;
 const college = { id: "college-1" } as never;
@@ -60,7 +64,11 @@ describe("createRegulation", () => {
     ).rejects.toThrow("REDIRECT:/admin/regulations/reg-1");
 
     expect(prisma.regulation.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ title: "Code of Conduct", regulatingBody: "HEC", status: "DRAFT" }),
+      data: expect.objectContaining({
+        title: "Code of Conduct",
+        regulatingBody: "HEC",
+        status: "DRAFT",
+      }),
     });
   });
 });
@@ -77,7 +85,7 @@ describe("transitionRegulation", () => {
   it("does not throw an unhandled error on an illegal transition", async () => {
     vi.mocked(prisma.regulation.findUniqueOrThrow).mockResolvedValue({
       id: "reg-1",
-      status: "ARCHIVED",
+      status: "DRAFT",
     } as never);
 
     await expect(transitionRegulation("reg-1", "publish", new FormData())).rejects.toThrow(

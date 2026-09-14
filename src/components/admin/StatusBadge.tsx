@@ -3,18 +3,20 @@ import type { ContentStatusValue } from "@/lib/content-workflow";
 
 const STATUS_CLASSES: Record<ContentStatusValue, string> = {
   DRAFT: "bg-surface-muted text-foreground/70 border-border-subtle",
-  PENDING_REVIEW: "bg-warning-bg text-warning-foreground border-warning-border",
+  SUBMITTED: "bg-warning-bg text-warning-foreground border-warning-border",
+  UNDER_REVIEW: "bg-warning-bg text-warning-foreground border-warning-border",
   APPROVED: "bg-info-bg text-info-foreground border-info-border",
   PUBLISHED: "bg-success-bg text-success-foreground border-success-border",
-  ARCHIVED: "bg-surface-muted text-foreground/50 border-border-subtle line-through",
+  UPDATE_REQUIRED: "bg-danger-bg text-danger-foreground border-danger-border",
 };
 
 const STATUS_LABELS: Record<ContentStatusValue, string> = {
   DRAFT: "Draft",
-  PENDING_REVIEW: "Pending review",
+  SUBMITTED: "Submitted",
+  UNDER_REVIEW: "Under review",
   APPROVED: "Approved",
   PUBLISHED: "Published",
-  ARCHIVED: "Archived",
+  UPDATE_REQUIRED: "Update required",
 };
 
 export function StatusBadge({ status }: { status: ContentStatusValue }) {

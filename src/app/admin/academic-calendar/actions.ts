@@ -6,7 +6,12 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
 import { MODULE_PERMISSIONS } from "@/lib/admin/module-permissions";
 import { optionalDateField, requiredDateField } from "@/lib/admin/zod-helpers";
-import { applyWorkflowTransition, WorkflowError, type WorkflowActionName } from "@/lib/content-workflow";
+import {
+  applyWorkflowTransition,
+  WorkflowError,
+  MANAGE_PERMISSION_ACTIONS,
+  type WorkflowActionName,
+} from "@/lib/content-workflow";
 import { logAudit } from "@/lib/audit";
 import { getPrimaryCollege } from "@/lib/content";
 
@@ -123,11 +128,12 @@ export async function updateAcademicCalendarEntry(
 export async function transitionAcademicCalendarEntry(
   id: string,
   action: WorkflowActionName,
-  _formData: FormData,
+  formData: FormData,
 ): Promise<void> {
   const user = await requirePermission(
-    action === "submit_for_review" ? PERMISSIONS.manage : PERMISSIONS.publish,
+    MANAGE_PERMISSION_ACTIONS.has(action) ? PERMISSIONS.manage : PERMISSIONS.publish,
   );
+  const comment = formData.get("comment")?.toString();
 
   const entry = await prisma.academicCalendar.findUniqueOrThrow({ where: { id } });
 
@@ -138,10 +144,12 @@ export async function transitionAcademicCalendarEntry(
       currentStatus: entry.status,
       action,
       actorId: user.id,
+      comment,
       update: (data) => prisma.academicCalendar.update({ where: { id }, data }),
     });
   } catch (error) {
     if (!(error instanceof WorkflowError)) throw error;
+    redirect(`/admin/academic-calendar/${id}?workflowError=${encodeURIComponent(error.message)}`);
   }
 
   redirect(`/admin/academic-calendar/${id}`);

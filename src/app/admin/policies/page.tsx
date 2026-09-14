@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Policies" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function PoliciesListPage({
@@ -67,13 +68,20 @@ export default async function PoliciesListPage({
               key: "title",
               header: "Title",
               render: (row) => (
-                <Link href={`/admin/policies/${row.id}`} className="font-medium text-brand hover:underline">
+                <Link
+                  href={`/admin/policies/${row.id}`}
+                  className="font-medium text-brand hover:underline"
+                >
                   {row.title}
                 </Link>
               ),
             },
             { key: "category", header: "Category", render: (row) => row.category ?? "—" },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

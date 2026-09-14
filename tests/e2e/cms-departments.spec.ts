@@ -45,7 +45,7 @@ test.describe.serial("Departments CMS module — full workflow across roles", ()
     await page.goto(departmentUrl);
     await page.getByRole("button", { name: /submit for review/i }).click();
 
-    await expect(page.getByText("Pending review")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Submitted")).toBeVisible({ timeout: 15_000 });
   });
 
   test("EDITOR cannot reach the review/approve action even by direct navigation (server-enforced)", async ({
@@ -53,18 +53,27 @@ test.describe.serial("Departments CMS module — full workflow across roles", ()
   }) => {
     await loginAs(page, "editor");
     await page.goto(departmentUrl);
+    await expect(page.getByRole("button", { name: /start review/i })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /approve/i })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /^publish$/i })).toHaveCount(0);
   });
 
-  test("REVIEWER can see it in the Pending review filter and approve it", async ({ page }) => {
+  test("REVIEWER can see it in the Submitted filter and start review", async ({ page }) => {
     await loginAs(page, "reviewer");
-    await page.goto("/admin/departments?status=PENDING_REVIEW");
+    await page.goto("/admin/departments?status=SUBMITTED");
     await expect(page.getByRole("link", { name: departmentName })).toBeVisible();
 
     await page.goto(departmentUrl);
-    // A reviewer only approves/rejects/archives — never authors new content.
+    // A reviewer only reviews/approves/rejects/flags-for-update — never authors new content.
     await expect(page.getByRole("link", { name: /^edit$/i })).toHaveCount(0);
+    await page.getByRole("button", { name: /start review/i }).click();
+
+    await expect(page.getByText("Under review")).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("REVIEWER can approve the department under review", async ({ page }) => {
+    await loginAs(page, "reviewer");
+    await page.goto(departmentUrl);
     await page.getByRole("button", { name: /^approve$/i }).click();
 
     await expect(page.getByText("Approved")).toBeVisible({ timeout: 15_000 });
@@ -103,14 +112,23 @@ test.describe.serial("Departments CMS module — full workflow across roles", ()
     await expect(page).toHaveURL(/\/admin\/unauthorized$/);
   });
 
-  test("REVIEWER can archive the department", async ({ page }) => {
+  test("REVIEWER can flag the published department as needing an update", async ({ page }) => {
     await loginAs(page, "reviewer");
     await page.goto(departmentUrl);
-    await page.getByRole("button", { name: /^archive$/i }).click();
+    await page.getByRole("button", { name: /request update/i }).click();
 
-    await expect(page.getByText("Archived")).toBeVisible({ timeout: 15_000 });
-    // No further actions are possible from ARCHIVED.
+    await expect(page.getByText("Update required")).toBeVisible({ timeout: 15_000 });
+    // The reviewer (manage-permission-less here) has no further action from UPDATE_REQUIRED —
+    // only the author (manage permission) can return it to draft to fix it.
     await expect(page.locator('[aria-label="Workflow actions"]')).toHaveCount(0);
+  });
+
+  test("EDITOR can return the update-required department to draft to fix it", async ({ page }) => {
+    await loginAs(page, "editor");
+    await page.goto(departmentUrl);
+    await page.getByRole("button", { name: /return to draft/i }).click();
+
+    await expect(page.getByText("Draft")).toBeVisible({ timeout: 15_000 });
   });
 });
 
@@ -119,5 +137,48 @@ test.describe("FACULTY_EDITOR is scoped to the content_faculty domain, not conte
     await loginAs(page, "faculty-editor");
     await page.goto("/admin/departments/new");
     await expect(page).toHaveURL(/\/admin\/unauthorized$/);
+  });
+});
+
+test.describe.serial("Rejecting under-review content requires a reason (real browser UI)", () => {
+  const departmentName = `E2E Reject Test Department ${Date.now()}`;
+  let departmentUrl = "";
+
+  test("EDITOR creates and submits a department for review", async ({ page }) => {
+    await loginAs(page, "editor");
+    await page.goto("/admin/departments/new");
+    await page.getByLabel("Name").fill(departmentName);
+    await page.getByRole("button", { name: /create department/i }).click();
+
+    await expect(page.getByRole("button", { name: /submit for review/i })).toBeVisible();
+    departmentUrl = page.url();
+
+    await page.getByRole("button", { name: /submit for review/i }).click();
+    await expect(page.getByText("Submitted")).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("REVIEWER starts review, then clicking Reject with no comment is refused", async ({ page }) => {
+    await loginAs(page, "reviewer");
+    await page.goto(departmentUrl);
+    await page.getByRole("button", { name: /start review/i }).click();
+    await expect(page.getByText("Under review")).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole("button", { name: /^reject/i }).click();
+
+    // Refused: an error is shown, and the status is unchanged (still under review, not draft).
+    await expect(page.getByRole("alert")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Under review")).toBeVisible();
+  });
+
+  test("REVIEWER can reject after filling in the shared comment field, and the reason is required end-to-end", async ({
+    page,
+  }) => {
+    await loginAs(page, "reviewer");
+    await page.goto(departmentUrl);
+
+    await page.getByLabel(/comment.*reason/i).fill("Description is missing required accreditation info.");
+    await page.getByRole("button", { name: /^reject/i }).click();
+
+    await expect(page.getByText("Draft")).toBeVisible({ timeout: 15_000 });
   });
 });

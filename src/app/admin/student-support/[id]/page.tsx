@@ -16,9 +16,16 @@ import { transitionStudentSupport } from "@/app/admin/student-support/actions";
 
 export const metadata: Metadata = { title: "Student Support" };
 
-export default async function StudentSupportViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function StudentSupportViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.studentSupport.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const studentSupport = await prisma.studentSupport.findUnique({ where: { id } });
   if (!studentSupport) notFound();
@@ -34,7 +41,10 @@ export default async function StudentSupportViewPage({ params }: { params: Promi
           <div className="flex items-center gap-2">
             <StatusBadge status={studentSupport.status} />
             {canManage ? (
-              <LinkButton href={`/admin/student-support/${studentSupport.id}/edit`} variant="secondary">
+              <LinkButton
+                href={`/admin/student-support/${studentSupport.id}/edit`}
+                variant="secondary"
+              >
                 Edit
               </LinkButton>
             ) : null}
@@ -62,6 +72,7 @@ export default async function StudentSupportViewPage({ params }: { params: Promi
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionStudentSupport}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/student-support" className="text-sm text-brand hover:underline">

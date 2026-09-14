@@ -45,12 +45,15 @@ test.describe.serial("Notices CMS module — full workflow across roles", () => 
     await page.goto(noticeUrl);
     await page.getByRole("button", { name: /submit for review/i }).click();
 
-    await expect(page.getByText("Pending review")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Submitted")).toBeVisible({ timeout: 15_000 });
   });
 
-  test("REVIEWER can approve and publish the notice", async ({ page }) => {
+  test("REVIEWER can start review, approve, and publish the notice", async ({ page }) => {
     await loginAs(page, "reviewer");
     await page.goto(noticeUrl);
+    await page.getByRole("button", { name: /start review/i }).click();
+    await expect(page.getByText("Under review")).toBeVisible({ timeout: 15_000 });
+
     await page.getByRole("button", { name: /^approve$/i }).click();
     await expect(page.getByText("Approved")).toBeVisible({ timeout: 15_000 });
 
@@ -72,12 +75,12 @@ test.describe.serial("Notices CMS module — full workflow across roles", () => 
     await expect(page.getByRole("link", { name: /^edit$/i })).toHaveCount(0);
   });
 
-  test("REVIEWER can archive the notice", async ({ page }) => {
+  test("REVIEWER can flag the published notice as needing an update", async ({ page }) => {
     await loginAs(page, "reviewer");
     await page.goto(noticeUrl);
-    await page.getByRole("button", { name: /^archive$/i }).click();
+    await page.getByRole("button", { name: /request update/i }).click();
 
-    await expect(page.getByText("Archived")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Update required")).toBeVisible({ timeout: 15_000 });
   });
 });
 

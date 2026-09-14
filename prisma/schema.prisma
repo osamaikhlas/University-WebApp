@@ -48,14 +48,19 @@ enum UserStatus {
   SUSPENDED
 }
 
-// Shared draft -> review -> approve -> publish lifecycle (database-design.md §2) used by
-// every structured content table below.
+// Shared content approval workflow (database-design.md §2) used by every structured
+// content table below — see src/lib/content-workflow.ts for the full state machine:
+//   DRAFT -> SUBMITTED -> UNDER_REVIEW -> APPROVED -> PUBLISHED
+//   PUBLISHED -> UPDATE_REQUIRED -> DRAFT
+// Only PUBLISHED content is ever shown on the public site (CLAUDE.md rule 4); reaching
+// PUBLISHED always means the record passed through APPROVED first.
 enum ContentStatus {
   DRAFT
-  PENDING_REVIEW
+  SUBMITTED
+  UNDER_REVIEW
   APPROVED
   PUBLISHED
-  ARCHIVED
+  UPDATE_REQUIRED
 }
 
 enum GrievanceStatus {
@@ -103,23 +108,34 @@ enum ComplianceCategory {
 enum ComplianceStatus {
   NOT_STARTED
   IN_PROGRESS
-  SUBMITTED_FOR_REVIEW
+  READY_FOR_REVIEW
   VERIFIED
-  REJECTED
+  NEEDS_UPDATE
+  NOT_APPLICABLE
 }
 
 enum VerificationDecision {
   VERIFIED
-  REJECTED
+  NEEDS_UPDATE
 }
 
 enum AuditAction {
   CREATE
   UPDATE
   DELETE
+  SUBMIT
+  START_REVIEW
   PUBLISH
   APPROVE
   REJECT
+  REQUEST_UPDATE
+  RETURN_TO_DRAFT
+  COMPLIANCE_SUBMIT_FOR_REVIEW
+  COMPLIANCE_VERIFY
+  COMPLIANCE_REQUEST_UPDATE
+  COMPLIANCE_MARK_NOT_APPLICABLE
+  COMPLIANCE_REOPEN
+  COMPLIANCE_EVIDENCE_ADDED
   LOGIN
   LOGIN_FAILED
   LOGOUT
@@ -1161,11 +1177,25 @@ model Media {
 //
 // Divergence from database-design.md: the requested model list has no ComplianceItem —
 // instead ComplianceRequirement carries a denormalized `status` (queried constantly for the
-// dashboard) that the application may only advance to VERIFIED/REJECTED by writing a
-// ComplianceVerification row (CLAUDE.md rule 7: no automatic approval). Evidence collection
-// is tracked separately in ComplianceEvidence so a requirement can accumulate evidence
-// across multiple content records over time without conflating "evidence exists" with "a
-// human verified it".
+// dashboard). NOT_STARTED/IN_PROGRESS move automatically as the system recomputes each
+// requirement's completeness against real content (see src/lib/compliance.ts) — that is
+// bookkeeping, not an approval. READY_FOR_REVIEW/VERIFIED/NEEDS_UPDATE/NOT_APPLICABLE only
+// ever change through an explicit human action recorded as a ComplianceVerification row
+// (CLAUDE.md rule 7: a requirement must never become VERIFIED automatically). Evidence
+// collection is tracked separately in ComplianceEvidence so a requirement can accumulate
+// evidence across multiple content records over time without conflating "evidence exists"
+// with "a human verified it".
+//
+// Status lifecycle (src/lib/compliance-workflow.ts):
+//   NOT_STARTED <-> IN_PROGRESS   (automatic, from completeness/evidence)
+//   IN_PROGRESS --submit_for_review--> READY_FOR_REVIEW
+//   READY_FOR_REVIEW --verify--> VERIFIED
+//   READY_FOR_REVIEW --request_update--> NEEDS_UPDATE   (reason mandatory)
+//   VERIFIED --request_update--> NEEDS_UPDATE            (reason mandatory; re-flags a
+//                                                          previously-verified item)
+//   NEEDS_UPDATE --submit_for_review--> READY_FOR_REVIEW (after the owner fixes it)
+//   NOT_STARTED/IN_PROGRESS --mark_not_applicable--> NOT_APPLICABLE   (reason mandatory)
+//   NOT_APPLICABLE --reopen--> NOT_STARTED
 // ---------------------------------------------------------------------------------------
 
 model ComplianceRequirement {
@@ -1177,9 +1207,9 @@ model ComplianceRequirement {
   description       String
   circularReference String
   category          ComplianceCategory
-  // Denormalized current status. Must only be advanced to VERIFIED/REJECTED by the
-  // application creating a ComplianceVerification row — never derived automatically from
-  // evidence existing (CLAUDE.md rule 7).
+  // Denormalized current status — see the lifecycle comment above. Only NOT_STARTED and
+  // IN_PROGRESS are ever set automatically; every other value requires an explicit action
+  // that also writes a ComplianceVerification row (CLAUDE.md rule 7).
   status            ComplianceStatus   @default(NOT_STARTED)
   ownerId           String?
   createdAt         DateTime           @default(now())
@@ -1216,18 +1246,21 @@ model ComplianceEvidence {
   @@map("compliance_evidence")
 }
 
-// Append-only record of each human verification decision. The requirement's current
-// `status` is set from the most recent row here — kept as its own table (rather than fields
-// on ComplianceRequirement) so a full history of verify/reject cycles survives, per
-// CLAUDE.md rule 8 (audit history).
+// Append-only record of each human verification decision (reviewer notes live here too, on
+// both decisions — not just rejections) — this is the "verification history" the Compliance
+// Dashboard renders per requirement. The requirement's current `status` is set from the most
+// recent row here — kept as its own table (rather than fields on ComplianceRequirement) so a
+// full history of verify/needs-update cycles survives, per CLAUDE.md rule 8 (audit history).
 model ComplianceVerification {
-  id              String               @id @default(cuid())
-  requirementId   String
-  decision        VerificationDecision
-  verifiedById    String
-  verifiedAt      DateTime             @default(now())
-  rejectionReason String?
-  createdAt       DateTime             @default(now())
+  id            String               @id @default(cuid())
+  requirementId String
+  decision      VerificationDecision
+  verifiedById  String
+  verifiedAt    DateTime             @default(now())
+  // Reviewer notes. Mandatory for a NEEDS_UPDATE decision (the rejection reason); optional
+  // free-text commentary for a VERIFIED decision.
+  note          String?
+  createdAt     DateTime             @default(now())
 
   requirement ComplianceRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
   verifiedBy  User                  @relation("ComplianceVerifier", fields: [verifiedById], references: [id])
@@ -1250,6 +1283,7 @@ model AuditLog {
   entityId       String
   beforeSnapshot Json?
   afterSnapshot  Json?
+  comment        String?
   ipAddress      String?
   createdAt      DateTime    @default(now())
 

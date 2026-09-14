@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Student Support" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function StudentSupportListPage({
@@ -49,7 +50,9 @@ export default async function StudentSupportListPage({
       <div className="flex flex-col gap-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <PageHeading title="Student Support" description="Manage student support services." />
-          {canManage ? <LinkButton href="/admin/student-support/new">New service</LinkButton> : null}
+          {canManage ? (
+            <LinkButton href="/admin/student-support/new">New service</LinkButton>
+          ) : null}
         </div>
 
         <StatusFilter basePath="/admin/student-support" active={statusFilter ?? "ALL"} />
@@ -75,7 +78,11 @@ export default async function StudentSupportListPage({
                 </Link>
               ),
             },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

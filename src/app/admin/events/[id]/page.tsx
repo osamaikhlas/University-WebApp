@@ -16,9 +16,16 @@ import { transitionEvent } from "@/app/admin/events/actions";
 
 export const metadata: Metadata = { title: "Event" };
 
-export default async function EventViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EventViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.events.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const event = await prisma.event.findUnique({ where: { id } });
   if (!event) notFound();
@@ -72,6 +79,7 @@ export default async function EventViewPage({ params }: { params: Promise<{ id: 
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionEvent}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/events" className="text-sm text-brand hover:underline">

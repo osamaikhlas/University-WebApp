@@ -16,9 +16,16 @@ import { transitionResult } from "@/app/admin/results/actions";
 
 export const metadata: Metadata = { title: "Result" };
 
-export default async function ResultViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ResultViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.results.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const result = await prisma.result.findUnique({
     where: { id },
@@ -83,6 +90,7 @@ export default async function ResultViewPage({ params }: { params: Promise<{ id:
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionResult}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/results" className="text-sm text-brand hover:underline">

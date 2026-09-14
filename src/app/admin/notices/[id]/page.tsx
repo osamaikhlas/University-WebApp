@@ -16,9 +16,16 @@ import { transitionNotice } from "@/app/admin/notices/actions";
 
 export const metadata: Metadata = { title: "Notice" };
 
-export default async function NoticeViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function NoticeViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.notices.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const notice = await prisma.notice.findUnique({ where: { id } });
   if (!notice) notFound();
@@ -72,6 +79,7 @@ export default async function NoticeViewPage({ params }: { params: Promise<{ id:
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionNotice}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/notices" className="text-sm text-brand hover:underline">

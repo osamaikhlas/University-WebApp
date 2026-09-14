@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Admissions" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function AdmissionsListPage({
@@ -49,8 +50,13 @@ export default async function AdmissionsListPage({
     <Container>
       <div className="flex flex-col gap-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <PageHeading title="Admissions" description="Manage admission cycles, eligibility, and schedules." />
-          {canManage ? <LinkButton href="/admin/admissions/new">New admission cycle</LinkButton> : null}
+          <PageHeading
+            title="Admissions"
+            description="Manage admission cycles, eligibility, and schedules."
+          />
+          {canManage ? (
+            <LinkButton href="/admin/admissions/new">New admission cycle</LinkButton>
+          ) : null}
         </div>
 
         <StatusFilter basePath="/admin/admissions" active={statusFilter ?? "ALL"} />
@@ -82,7 +88,11 @@ export default async function AdmissionsListPage({
               header: "Applications open",
               render: (row) => row.applicationStartDate?.toLocaleDateString() ?? "—",
             },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

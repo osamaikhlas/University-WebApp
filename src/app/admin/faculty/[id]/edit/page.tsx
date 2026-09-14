@@ -18,7 +18,7 @@ export default async function EditFacultyPage({ params }: { params: Promise<{ id
   if (!faculty) notFound();
 
   const departments = await prisma.department.findMany({
-    where: { collegeId: faculty.collegeId, status: { not: "ARCHIVED" } },
+    where: { collegeId: faculty.collegeId },
     orderBy: { name: "asc" },
   });
 

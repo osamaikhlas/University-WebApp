@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Workshops" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function WorkshopsListPage({
@@ -68,14 +69,29 @@ export default async function WorkshopsListPage({
               key: "title",
               header: "Title",
               render: (row) => (
-                <Link href={`/admin/workshops/${row.id}`} className="font-medium text-brand hover:underline">
+                <Link
+                  href={`/admin/workshops/${row.id}`}
+                  className="font-medium text-brand hover:underline"
+                >
                   {row.title}
                 </Link>
               ),
             },
-            { key: "department", header: "Department", render: (row) => row.department?.name ?? "College-wide" },
-            { key: "startDate", header: "Start date", render: (row) => row.startDate.toLocaleDateString() },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "department",
+              header: "Department",
+              render: (row) => row.department?.name ?? "College-wide",
+            },
+            {
+              key: "startDate",
+              header: "Start date",
+              render: (row) => row.startDate.toLocaleDateString(),
+            },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

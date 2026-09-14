@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Exams" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function ExaminationsListPage({
@@ -68,7 +69,10 @@ export default async function ExaminationsListPage({
               key: "examType",
               header: "Exam type",
               render: (row) => (
-                <Link href={`/admin/exams/${row.id}`} className="font-medium text-brand hover:underline">
+                <Link
+                  href={`/admin/exams/${row.id}`}
+                  className="font-medium text-brand hover:underline"
+                >
                   {row.examType}
                 </Link>
               ),
@@ -79,7 +83,11 @@ export default async function ExaminationsListPage({
               header: "Schedule start",
               render: (row) => row.scheduleStartDate?.toLocaleDateString() ?? "—",
             },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

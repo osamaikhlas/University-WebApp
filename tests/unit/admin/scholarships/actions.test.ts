@@ -23,7 +23,11 @@ vi.mock("next/navigation", () => ({
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
 import { getPrimaryCollege } from "@/lib/content";
-import { createScholarship, transitionScholarship, updateScholarship } from "@/app/admin/scholarships/actions";
+import {
+  createScholarship,
+  transitionScholarship,
+  updateScholarship,
+} from "@/app/admin/scholarships/actions";
 
 const fakeUser = { id: "user-1", collegeId: "college-1", permissions: new Set() } as never;
 const college = { id: "college-1" } as never;
@@ -81,7 +85,7 @@ describe("transitionScholarship", () => {
   it("does not throw an unhandled error on an illegal transition", async () => {
     vi.mocked(prisma.scholarship.findUniqueOrThrow).mockResolvedValue({
       id: "sch-1",
-      status: "ARCHIVED",
+      status: "DRAFT",
     } as never);
 
     await expect(transitionScholarship("sch-1", "publish", new FormData())).rejects.toThrow(

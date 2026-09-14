@@ -1073,6 +1073,7 @@ async function main() {
       requirementId: facultyRequirement.id,
       decision: "VERIFIED",
       verifiedById: devUser.id,
+      note: "[DEV SEED] Example verification note only — not a real compliance decision.",
     },
   });
 

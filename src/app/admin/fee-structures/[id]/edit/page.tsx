@@ -10,7 +10,11 @@ import { FeeStructureForm } from "@/app/admin/fee-structures/FeeStructureForm";
 
 export const metadata: Metadata = { title: "Edit fee structure" };
 
-export default async function EditFeeStructurePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditFeeStructurePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   await requirePermission(MODULE_PERMISSIONS.feeStructures.manage);
   const { id } = await params;
 
@@ -19,11 +23,11 @@ export default async function EditFeeStructurePage({ params }: { params: Promise
 
   const [programs, admissions] = await Promise.all([
     prisma.program.findMany({
-      where: { collegeId: feeStructure.collegeId, status: { not: "ARCHIVED" } },
+      where: { collegeId: feeStructure.collegeId },
       orderBy: { name: "asc" },
     }),
     prisma.admission.findMany({
-      where: { collegeId: feeStructure.collegeId, status: { not: "ARCHIVED" } },
+      where: { collegeId: feeStructure.collegeId },
       orderBy: { academicYear: "desc" },
     }),
   ]);

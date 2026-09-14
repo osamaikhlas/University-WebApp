@@ -18,11 +18,14 @@ export const metadata: Metadata = { title: "Department" };
 
 export default async function DepartmentViewPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
 }) {
   const user = await requirePermission(MODULE_PERMISSIONS.departments.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const department = await prisma.department.findUnique({ where: { id } });
   if (!department) notFound();
@@ -62,6 +65,7 @@ export default async function DepartmentViewPage({
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionDepartment}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/departments" className="text-sm text-brand hover:underline">

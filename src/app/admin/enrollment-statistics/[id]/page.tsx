@@ -18,11 +18,14 @@ export const metadata: Metadata = { title: "Enrollment Statistic" };
 
 export default async function EnrollmentStatisticViewPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
 }) {
   const user = await requirePermission(MODULE_PERMISSIONS.enrollmentStatistics.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const enrollmentStatistic = await prisma.enrollmentStatistic.findUnique({
     where: { id },
@@ -31,7 +34,10 @@ export default async function EnrollmentStatisticViewPage({
   if (!enrollmentStatistic) notFound();
 
   const canManage = hasPermission(user.permissions, MODULE_PERMISSIONS.enrollmentStatistics.manage);
-  const canPublish = hasPermission(user.permissions, MODULE_PERMISSIONS.enrollmentStatistics.publish);
+  const canPublish = hasPermission(
+    user.permissions,
+    MODULE_PERMISSIONS.enrollmentStatistics.publish,
+  );
 
   return (
     <Container>
@@ -44,7 +50,10 @@ export default async function EnrollmentStatisticViewPage({
           <div className="flex items-center gap-2">
             <StatusBadge status={enrollmentStatistic.status} />
             {canManage ? (
-              <LinkButton href={`/admin/enrollment-statistics/${enrollmentStatistic.id}/edit`} variant="secondary">
+              <LinkButton
+                href={`/admin/enrollment-statistics/${enrollmentStatistic.id}/edit`}
+                variant="secondary"
+              >
                 Edit
               </LinkButton>
             ) : null}
@@ -86,6 +95,7 @@ export default async function EnrollmentStatisticViewPage({
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionEnrollmentStatistic}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/enrollment-statistics" className="text-sm text-brand hover:underline">

@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Clubs" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function ClubsListPage({
@@ -49,7 +50,10 @@ export default async function ClubsListPage({
     <Container>
       <div className="flex flex-col gap-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <PageHeading title="Clubs" description="Manage student clubs and their faculty advisors." />
+          <PageHeading
+            title="Clubs"
+            description="Manage student clubs and their faculty advisors."
+          />
           {canManage ? <LinkButton href="/admin/clubs/new">New club</LinkButton> : null}
         </div>
 
@@ -68,7 +72,10 @@ export default async function ClubsListPage({
               key: "name",
               header: "Name",
               render: (row) => (
-                <Link href={`/admin/clubs/${row.id}`} className="font-medium text-brand hover:underline">
+                <Link
+                  href={`/admin/clubs/${row.id}`}
+                  className="font-medium text-brand hover:underline"
+                >
                   {row.name}
                 </Link>
               ),
@@ -78,7 +85,11 @@ export default async function ClubsListPage({
               header: "Faculty advisor",
               render: (row) => row.facultyAdvisor?.name ?? "—",
             },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

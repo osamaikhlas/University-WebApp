@@ -5,7 +5,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
 import { MODULE_PERMISSIONS } from "@/lib/admin/module-permissions";
-import { applyWorkflowTransition, WorkflowError, type WorkflowActionName } from "@/lib/content-workflow";
+import {
+  applyWorkflowTransition,
+  WorkflowError,
+  MANAGE_PERMISSION_ACTIONS,
+  type WorkflowActionName,
+} from "@/lib/content-workflow";
 import { logAudit } from "@/lib/audit";
 import { getPrimaryCollege } from "@/lib/content";
 
@@ -60,7 +65,9 @@ export async function createFaculty(
     return { error: "No college record exists yet — cannot create content." };
   }
 
-  const department = await prisma.department.findUnique({ where: { id: parsed.data.departmentId } });
+  const department = await prisma.department.findUnique({
+    where: { id: parsed.data.departmentId },
+  });
   if (!department || department.collegeId !== college.id) {
     return { error: "Select a valid department." };
   }
@@ -110,7 +117,9 @@ export async function updateFaculty(
     return { error: "Faculty record not found." };
   }
 
-  const department = await prisma.department.findUnique({ where: { id: parsed.data.departmentId } });
+  const department = await prisma.department.findUnique({
+    where: { id: parsed.data.departmentId },
+  });
   if (!department || department.collegeId !== before.collegeId) {
     return { error: "Select a valid department." };
   }
@@ -144,11 +153,12 @@ export async function updateFaculty(
 export async function transitionFaculty(
   id: string,
   action: WorkflowActionName,
-  _formData: FormData,
+  formData: FormData,
 ): Promise<void> {
   const user = await requirePermission(
-    action === "submit_for_review" ? PERMISSIONS.manage : PERMISSIONS.publish,
+    MANAGE_PERMISSION_ACTIONS.has(action) ? PERMISSIONS.manage : PERMISSIONS.publish,
   );
+  const comment = formData.get("comment")?.toString();
 
   const faculty = await prisma.faculty.findUniqueOrThrow({ where: { id } });
 
@@ -159,10 +169,12 @@ export async function transitionFaculty(
       currentStatus: faculty.status,
       action,
       actorId: user.id,
+      comment,
       update: (data) => prisma.faculty.update({ where: { id }, data }),
     });
   } catch (error) {
     if (!(error instanceof WorkflowError)) throw error;
+    redirect(`/admin/faculty/${id}?workflowError=${encodeURIComponent(error.message)}`);
   }
 
   redirect(`/admin/faculty/${id}`);

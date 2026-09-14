@@ -4,25 +4,52 @@ import type { AuditAction } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 /**
- * Generic draft → review → publish → archive state machine shared by every CMS content
- * module (College Profile, Departments, Programs, Faculty, Staff, and future modules).
- * Built once here rather than reimplemented per module, per docs/implementation-plan.md's
- * original Phase 2 goal ("the shared draft → review → approve → publish machinery... built
- * once before any specific content module uses it").
+ * The content approval workflow shared by every CMS content module (College Profile,
+ * Departments, Programs, Faculty, Staff, Notices, ... — see
+ * src/lib/admin/module-permissions.ts for the full list). Built once here rather than
+ * reimplemented per module.
  *
- * Mirrors the `ContentStatus` enum in prisma/schema.prisma exactly.
+ * State machine (mirrors the `ContentStatus` enum in prisma/schema.prisma exactly):
+ *
+ *   DRAFT --submit_for_review--> SUBMITTED --start_review--> UNDER_REVIEW
+ *     UNDER_REVIEW --approve--> APPROVED --publish--> PUBLISHED
+ *     UNDER_REVIEW --reject--> DRAFT   (a rejection reason/comment is mandatory)
+ *   PUBLISHED --request_update--> UPDATE_REQUIRED --return_to_draft--> DRAFT
+ *
+ * Only PUBLISHED content is ever shown on the public site (CLAUDE.md rule 4) — see
+ * src/lib/content.ts's queries, every one of which filters on `status: "PUBLISHED"`. Reaching
+ * PUBLISHED always means the record passed through APPROVED first, since that is the only
+ * transition that leads there.
  */
-export type ContentStatusValue = "DRAFT" | "PENDING_REVIEW" | "APPROVED" | "PUBLISHED" | "ARCHIVED";
+export type ContentStatusValue =
+  "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "PUBLISHED" | "UPDATE_REQUIRED";
 
 export const WORKFLOW_ACTIONS = [
   "submit_for_review",
+  "start_review",
   "approve",
   "reject",
   "publish",
-  "archive",
+  "request_update",
+  "return_to_draft",
 ] as const;
 
 export type WorkflowActionName = (typeof WORKFLOW_ACTIONS)[number];
+
+/**
+ * Actions an author/manager performs on their own content (`manage` permission). Every other
+ * action is a higher-trust reviewer/publisher action (`publish` permission) — see
+ * `getAvailableActions` and each module's `transition*` Server Action. No role holds both
+ * `manage` and `publish` for the same domain (docs/permission-matrix.md), so an author can
+ * never approve, review, or publish their own submission.
+ */
+export const MANAGE_PERMISSION_ACTIONS = new Set<WorkflowActionName>([
+  "submit_for_review",
+  "return_to_draft",
+]);
+
+/** Actions that require a non-empty comment/reason — currently just rejection. */
+export const REASON_REQUIRED_ACTIONS = new Set<WorkflowActionName>(["reject"]);
 
 type Transition = {
   from: ContentStatusValue[];
@@ -31,27 +58,27 @@ type Transition = {
   label: string;
 };
 
-/**
- * The full state machine. `archive` is reachable from any non-archived state (abandoning a
- * draft counts as archiving it, not deleting it — CLAUDE.md rule 8: keep audit history,
- * never delete). There is deliberately no transition back out of ARCHIVED yet; see
- * progress.md's open questions.
- */
 export const WORKFLOW_TRANSITIONS: Record<WorkflowActionName, Transition> = {
   submit_for_review: {
     from: ["DRAFT"],
-    to: "PENDING_REVIEW",
-    auditAction: "UPDATE",
+    to: "SUBMITTED",
+    auditAction: "SUBMIT",
     label: "Submit for review",
   },
+  start_review: {
+    from: ["SUBMITTED"],
+    to: "UNDER_REVIEW",
+    auditAction: "START_REVIEW",
+    label: "Start review",
+  },
   approve: {
-    from: ["PENDING_REVIEW"],
+    from: ["UNDER_REVIEW"],
     to: "APPROVED",
     auditAction: "APPROVE",
     label: "Approve",
   },
   reject: {
-    from: ["PENDING_REVIEW"],
+    from: ["UNDER_REVIEW"],
     to: "DRAFT",
     auditAction: "REJECT",
     label: "Reject (send back to draft)",
@@ -62,11 +89,17 @@ export const WORKFLOW_TRANSITIONS: Record<WorkflowActionName, Transition> = {
     auditAction: "PUBLISH",
     label: "Publish",
   },
-  archive: {
-    from: ["DRAFT", "PENDING_REVIEW", "APPROVED", "PUBLISHED"],
-    to: "ARCHIVED",
-    auditAction: "UPDATE",
-    label: "Archive",
+  request_update: {
+    from: ["PUBLISHED"],
+    to: "UPDATE_REQUIRED",
+    auditAction: "REQUEST_UPDATE",
+    label: "Request update",
+  },
+  return_to_draft: {
+    from: ["UPDATE_REQUIRED"],
+    to: "DRAFT",
+    auditAction: "RETURN_TO_DRAFT",
+    label: "Return to draft",
   },
 };
 
@@ -80,10 +113,18 @@ export type WorkflowUpdateData = {
 };
 
 /**
- * Applies one workflow transition and writes the audit trail entry for it. `update` is an
+ * Applies one workflow transition, enforcing that a reason/comment is present for actions
+ * that require one (rejection must always carry a rejection reason), and writes the audit
+ * trail entry for it — actor, timestamp (`AuditLog.createdAt`), the before/after status, and
+ * the comment/reason are all stored on that one row (CLAUDE.md rule 8). `update` is an
  * injected callback (rather than a generic Prisma delegate) so this stays fully type-safe
  * against each module's own Prisma model without needing a structurally-unified delegate
  * type across models that don't actually share one.
+ *
+ * This function is the single place transitions are validated; it does not check
+ * permissions itself — every caller (each module's `transition*` Server Action) calls
+ * `requirePermission` first, re-deriving the caller's grant from the database rather than
+ * trusting the client (CLAUDE.md rule 5).
  */
 export async function applyWorkflowTransition(params: {
   entityType: string;
@@ -91,6 +132,7 @@ export async function applyWorkflowTransition(params: {
   currentStatus: ContentStatusValue;
   action: WorkflowActionName;
   actorId: string;
+  comment?: string;
   update: (data: WorkflowUpdateData) => Promise<unknown>;
 }): Promise<void> {
   const transition = WORKFLOW_TRANSITIONS[params.action];
@@ -99,6 +141,11 @@ export async function applyWorkflowTransition(params: {
     throw new WorkflowError(
       `Cannot "${transition.label}" from status ${params.currentStatus} — must be one of: ${transition.from.join(", ")}.`,
     );
+  }
+
+  const comment = params.comment?.trim() || undefined;
+  if (REASON_REQUIRED_ACTIONS.has(params.action) && !comment) {
+    throw new WorkflowError(`"${transition.label}" requires a reason/comment.`);
   }
 
   const data: WorkflowUpdateData = { status: transition.to, updatedBy: params.actorId };
@@ -115,6 +162,7 @@ export async function applyWorkflowTransition(params: {
       action: transition.auditAction,
       entityType: params.entityType,
       entityId: params.entityId,
+      comment,
       beforeSnapshot: { status: params.currentStatus },
       afterSnapshot: { status: transition.to },
     },
@@ -122,13 +170,13 @@ export async function applyWorkflowTransition(params: {
 }
 
 /**
- * Which of the 5 workflow actions are currently legal for `status`, filtered further by
- * what the caller is allowed to do (`canManage` covers submit-for-review; `canPublish`
- * covers approve/reject/publish/archive). This is what the UI uses to decide which buttons
- * to render — but it is never the security boundary by itself: each Server Action
- * independently re-checks the permission and re-validates the transition server-side
- * (CLAUDE.md rule 5), so a stale or tampered UI can never perform an action the caller
- * isn't actually allowed.
+ * Which of the workflow actions are currently legal for `status`, filtered further by what
+ * the caller is allowed to do (`canManage` covers submit-for-review/return-to-draft;
+ * `canPublish` covers start-review/approve/reject/publish/request-update). This is what the
+ * UI uses to decide which buttons to render — but it is never the security boundary by
+ * itself: each Server Action independently re-checks the permission and re-validates the
+ * transition server-side (CLAUDE.md rule 5), so a stale or tampered UI can never perform an
+ * action the caller isn't actually allowed.
  */
 export function getAvailableActions(
   status: ContentStatusValue,
@@ -136,7 +184,11 @@ export function getAvailableActions(
 ): WorkflowActionName[] {
   return WORKFLOW_ACTIONS.filter((action) => {
     if (!WORKFLOW_TRANSITIONS[action].from.includes(status)) return false;
-    if (action === "submit_for_review") return grants.canManage;
-    return grants.canPublish;
+    return MANAGE_PERMISSION_ACTIONS.has(action) ? grants.canManage : grants.canPublish;
   });
+}
+
+/** True for the only two statuses CLAUDE.md rule 4 allows public views/APIs to expose. */
+export function isPubliclyVisible(status: ContentStatusValue): boolean {
+  return status === "PUBLISHED";
 }

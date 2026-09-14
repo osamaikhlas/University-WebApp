@@ -47,7 +47,10 @@ describe("createSeminar", () => {
   it("requires content_general:manage", async () => {
     vi.mocked(prisma.seminar.create).mockResolvedValue({ id: "sem-1" } as never);
     await expect(
-      createSeminar({ error: null }, formData({ title: "AI in Education", startDate: "2026-10-01" })),
+      createSeminar(
+        { error: null },
+        formData({ title: "AI in Education", startDate: "2026-10-01" }),
+      ),
     ).rejects.toThrow("REDIRECT:/admin/seminars/sem-1");
     expect(requirePermission).toHaveBeenCalledWith("content_general:manage");
   });
@@ -56,7 +59,10 @@ describe("createSeminar", () => {
     vi.mocked(prisma.seminar.create).mockResolvedValue({ id: "sem-1" } as never);
 
     await expect(
-      createSeminar({ error: null }, formData({ title: "AI in Education", startDate: "2026-10-01" })),
+      createSeminar(
+        { error: null },
+        formData({ title: "AI in Education", startDate: "2026-10-01" }),
+      ),
     ).rejects.toThrow("REDIRECT:/admin/seminars/sem-1");
 
     expect(prisma.department.findUnique).not.toHaveBeenCalled();
@@ -113,14 +119,14 @@ describe("updateSeminar", () => {
 });
 
 describe("transitionSeminar", () => {
-  it("requires content_general:publish for archive", async () => {
+  it("requires content_general:publish for request_update", async () => {
     vi.mocked(prisma.seminar.findUniqueOrThrow).mockResolvedValue({
       id: "sem-1",
       status: "PUBLISHED",
     } as never);
     vi.mocked(prisma.seminar.update).mockResolvedValue({} as never);
 
-    await expect(transitionSeminar("sem-1", "archive", new FormData())).rejects.toThrow(
+    await expect(transitionSeminar("sem-1", "request_update", new FormData())).rejects.toThrow(
       "REDIRECT:/admin/seminars/sem-1",
     );
     expect(requirePermission).toHaveBeenCalledWith("content_general:publish");

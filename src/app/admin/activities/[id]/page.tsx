@@ -16,9 +16,16 @@ import { transitionActivity } from "@/app/admin/activities/actions";
 
 export const metadata: Metadata = { title: "Activity" };
 
-export default async function ActivityViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ActivityViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.activities.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const activity = await prisma.activity.findUnique({ where: { id } });
   if (!activity) notFound();
@@ -62,6 +69,7 @@ export default async function ActivityViewPage({ params }: { params: Promise<{ i
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionActivity}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/activities" className="text-sm text-brand hover:underline">

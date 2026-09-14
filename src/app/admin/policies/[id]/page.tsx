@@ -16,9 +16,16 @@ import { transitionPolicy } from "@/app/admin/policies/actions";
 
 export const metadata: Metadata = { title: "Policy" };
 
-export default async function PolicyViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PolicyViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.policies.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const policy = await prisma.policy.findUnique({ where: { id } });
   if (!policy) notFound();
@@ -62,6 +69,7 @@ export default async function PolicyViewPage({ params }: { params: Promise<{ id:
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionPolicy}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/policies" className="text-sm text-brand hover:underline">

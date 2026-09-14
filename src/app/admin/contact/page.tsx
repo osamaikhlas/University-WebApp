@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Contact" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function ContactListPage({
@@ -67,14 +68,21 @@ export default async function ContactListPage({
               key: "value",
               header: "Value",
               render: (row) => (
-                <Link href={`/admin/contact/${row.id}`} className="font-medium text-brand hover:underline">
+                <Link
+                  href={`/admin/contact/${row.id}`}
+                  className="font-medium text-brand hover:underline"
+                >
                   {row.value}
                 </Link>
               ),
             },
             { key: "type", header: "Type", render: (row) => row.type },
             { key: "label", header: "Label", render: (row) => row.label ?? "—" },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

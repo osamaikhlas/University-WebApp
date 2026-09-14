@@ -18,11 +18,11 @@ export default async function NewResultPage() {
   const [programs, examinations] = college
     ? await Promise.all([
         prisma.program.findMany({
-          where: { collegeId: college.id, status: { not: "ARCHIVED" } },
+          where: { collegeId: college.id },
           orderBy: { name: "asc" },
         }),
         prisma.examination.findMany({
-          where: { collegeId: college.id, status: { not: "ARCHIVED" } },
+          where: { collegeId: college.id },
           orderBy: { createdAt: "desc" },
         }),
       ])

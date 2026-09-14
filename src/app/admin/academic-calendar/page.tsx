@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Academic Calendar" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function AcademicCalendarListPage({
@@ -77,9 +78,21 @@ export default async function AcademicCalendarListPage({
                 </Link>
               ),
             },
-            { key: "startDate", header: "Date", render: (row) => row.startDate.toLocaleDateString() },
-            { key: "academicYear", header: "Academic year", render: (row) => row.academicYear ?? "—" },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "startDate",
+              header: "Date",
+              render: (row) => row.startDate.toLocaleDateString(),
+            },
+            {
+              key: "academicYear",
+              header: "Academic year",
+              render: (row) => row.academicYear ?? "—",
+            },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

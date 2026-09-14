@@ -18,7 +18,7 @@ export default async function EditWorkshopPage({ params }: { params: Promise<{ i
   if (!workshop) notFound();
 
   const departments = await prisma.department.findMany({
-    where: { collegeId: workshop.collegeId, status: { not: "ARCHIVED" } },
+    where: { collegeId: workshop.collegeId },
     orderBy: { name: "asc" },
   });
 

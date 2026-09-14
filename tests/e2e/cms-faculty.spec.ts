@@ -43,16 +43,19 @@ test.describe.serial("Faculty CMS module (content_faculty domain)", () => {
     // Confirm the transition actually completed (not just that no approve/publish button
     // exists — that'd also be true, misleadingly, if the click had silently failed to do
     // anything at all).
-    await expect(page.getByText("Pending review")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Submitted")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("button", { name: /^approve$/i })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /^publish$/i })).toHaveCount(0);
   });
 
-  test("PRINCIPAL can approve and publish faculty content (content_faculty:publish)", async ({
+  test("PRINCIPAL can start review, approve, and publish faculty content (content_faculty:publish)", async ({
     page,
   }) => {
     await loginAs(page, "principal");
     await page.goto(facultyUrl);
+    await page.getByRole("button", { name: /start review/i }).click();
+    await expect(page.getByText("Under review")).toBeVisible({ timeout: 15_000 });
+
     await page.getByRole("button", { name: /^approve$/i }).click();
     await expect(page.getByText("Approved")).toBeVisible({ timeout: 15_000 });
 

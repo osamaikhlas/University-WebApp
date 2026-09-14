@@ -100,7 +100,10 @@ describe("createFaculty", () => {
 
 describe("updateFaculty", () => {
   it("requires content_faculty:manage", async () => {
-    vi.mocked(prisma.faculty.findUnique).mockResolvedValue({ id: "fac-1", collegeId: "college-1" } as never);
+    vi.mocked(prisma.faculty.findUnique).mockResolvedValue({
+      id: "fac-1",
+      collegeId: "college-1",
+    } as never);
     vi.mocked(prisma.faculty.update).mockResolvedValue({} as never);
 
     await expect(updateFaculty("fac-1", { error: null }, formData(validFields))).rejects.toThrow(
@@ -111,20 +114,20 @@ describe("updateFaculty", () => {
 });
 
 describe("transitionFaculty", () => {
-  it("requires content_faculty:publish for archive", async () => {
+  it("requires content_faculty:publish for request_update", async () => {
     vi.mocked(prisma.faculty.findUniqueOrThrow).mockResolvedValue({
       id: "fac-1",
       status: "PUBLISHED",
     } as never);
     vi.mocked(prisma.faculty.update).mockResolvedValue({} as never);
 
-    await expect(transitionFaculty("fac-1", "archive", new FormData())).rejects.toThrow(
+    await expect(transitionFaculty("fac-1", "request_update", new FormData())).rejects.toThrow(
       "REDIRECT:/admin/faculty/fac-1",
     );
     expect(requirePermission).toHaveBeenCalledWith("content_faculty:publish");
     expect(prisma.faculty.update).toHaveBeenCalledWith({
       where: { id: "fac-1" },
-      data: expect.objectContaining({ status: "ARCHIVED" }),
+      data: expect.objectContaining({ status: "UPDATE_REQUIRED" }),
     });
   });
 });

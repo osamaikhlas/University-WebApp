@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Results" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function ResultsListPage({
@@ -68,7 +69,10 @@ export default async function ResultsListPage({
               key: "examination",
               header: "Examination",
               render: (row) => (
-                <Link href={`/admin/results/${row.id}`} className="font-medium text-brand hover:underline">
+                <Link
+                  href={`/admin/results/${row.id}`}
+                  className="font-medium text-brand hover:underline"
+                >
                   {row.examination.examType}
                 </Link>
               ),
@@ -80,7 +84,11 @@ export default async function ResultsListPage({
               render: (row) => row.publishDate?.toLocaleDateString() ?? "—",
             },
             { key: "isPublic", header: "Public", render: (row) => (row.isPublic ? "Yes" : "No") },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

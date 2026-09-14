@@ -24,7 +24,11 @@ vi.mock("next/navigation", () => ({
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
 import { getPrimaryCollege } from "@/lib/content";
-import { createAdmission, transitionAdmission, updateAdmission } from "@/app/admin/admissions/actions";
+import {
+  createAdmission,
+  transitionAdmission,
+  updateAdmission,
+} from "@/app/admin/admissions/actions";
 
 const fakeUser = { id: "user-1", collegeId: "college-1", permissions: new Set() } as never;
 const college = { id: "college-1" } as never;
@@ -116,7 +120,7 @@ describe("transitionAdmission", () => {
   it("requires content_admissions:publish for approve", async () => {
     vi.mocked(prisma.admission.findUniqueOrThrow).mockResolvedValue({
       id: "adm-1",
-      status: "PENDING_REVIEW",
+      status: "UNDER_REVIEW",
     } as never);
     vi.mocked(prisma.admission.update).mockResolvedValue({} as never);
 

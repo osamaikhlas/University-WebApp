@@ -16,9 +16,16 @@ import { transitionSeminar } from "@/app/admin/seminars/actions";
 
 export const metadata: Metadata = { title: "Seminar" };
 
-export default async function SeminarViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function SeminarViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.seminars.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const seminar = await prisma.seminar.findUnique({ where: { id }, include: { department: true } });
   if (!seminar) notFound();
@@ -80,6 +87,7 @@ export default async function SeminarViewPage({ params }: { params: Promise<{ id
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionSeminar}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/seminars" className="text-sm text-brand hover:underline">

@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Departments" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function DepartmentsListPage({
@@ -75,7 +76,11 @@ export default async function DepartmentsListPage({
                 </Link>
               ),
             },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
             {
               key: "updated",
               header: "Updated",

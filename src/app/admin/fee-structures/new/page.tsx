@@ -18,11 +18,11 @@ export default async function NewFeeStructurePage() {
   const [programs, admissions] = college
     ? await Promise.all([
         prisma.program.findMany({
-          where: { collegeId: college.id, status: { not: "ARCHIVED" } },
+          where: { collegeId: college.id },
           orderBy: { name: "asc" },
         }),
         prisma.admission.findMany({
-          where: { collegeId: college.id, status: { not: "ARCHIVED" } },
+          where: { collegeId: college.id },
           orderBy: { academicYear: "desc" },
         }),
       ])

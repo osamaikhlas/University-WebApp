@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Affiliation" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function AffiliationListPage({
@@ -49,8 +50,13 @@ export default async function AffiliationListPage({
     <Container>
       <div className="flex flex-col gap-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <PageHeading title="Affiliation" description="Manage university/regulatory affiliation records." />
-          {canManage ? <LinkButton href="/admin/affiliation/new">New affiliation</LinkButton> : null}
+          <PageHeading
+            title="Affiliation"
+            description="Manage university/regulatory affiliation records."
+          />
+          {canManage ? (
+            <LinkButton href="/admin/affiliation/new">New affiliation</LinkButton>
+          ) : null}
         </div>
 
         <StatusFilter basePath="/admin/affiliation" active={statusFilter ?? "ALL"} />
@@ -68,18 +74,29 @@ export default async function AffiliationListPage({
               key: "universityName",
               header: "University",
               render: (row) => (
-                <Link href={`/admin/affiliation/${row.id}`} className="font-medium text-brand hover:underline">
+                <Link
+                  href={`/admin/affiliation/${row.id}`}
+                  className="font-medium text-brand hover:underline"
+                >
                   {row.universityName}
                 </Link>
               ),
             },
-            { key: "program", header: "Program", render: (row) => row.program?.name ?? "College-wide" },
+            {
+              key: "program",
+              header: "Program",
+              render: (row) => row.program?.name ?? "College-wide",
+            },
             {
               key: "validFrom",
               header: "Valid from",
               render: (row) => row.validFrom?.toLocaleDateString() ?? "—",
             },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

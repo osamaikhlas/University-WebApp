@@ -17,15 +17,24 @@ route is behind real login + server-side, database-verified permission checks (s
 `docs/permission-matrix.md`), and the public site's 20 sections now render real,
 publish-gated database content through a shared shell. The homepage (`/`) is a
 fully-fleshed, information-dense 15-section page. **Staff can now actually author content
-through the admin UI** for 28 modules — list/view/create/edit pages plus a real
-draft → pending_review → approved → published → archived workflow, sharing one generic
-workflow engine and audit-log writer rather than 28 reimplementations of either — instead of
+through the admin UI** for 28 modules — list/view/create/edit pages plus the real content
+approval workflow (`DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED → PUBLISHED`, and
+`PUBLISHED → UPDATE_REQUIRED → DRAFT`; every transition enforces permissions, records the
+actor/timestamp/an optional comment, and writes an audit log entry, with a mandatory reason
+on rejection), sharing one generic workflow engine and audit-log writer rather than 28
+reimplementations of either — instead of
 every admin page being `PagePlaceholder` and every table populated only by
 `prisma/seed.ts`. All 4 permission domains (`content_general`, `content_admissions`,
-`content_examinations`, `content_faculty`) have real CMS modules exercising them. The other 5
-admin modules (Grievances, Compliance, Users/Roles/Permissions UI, Audit log viewer,
-Approval workflow queue) are still placeholder-gated, not built — see `tests.json`'s
-`admin_system` section.
+`content_examinations`, `content_faculty`) have real CMS modules exercising them.
+**The Compliance Dashboard (`/admin/compliance`) is now built too** — all 20 circular
+requirements, each showing its number/title/description/required information/responsible
+module/status/completeness/public page/last updated/last verified/verifier/evidence/reviewer
+notes, with an automatic completeness check computed live against real database content and
+a `verify`/`request_update` (reject-review)/`mark_not_applicable`/`reopen` workflow gated so
+`VERIFIED` can only ever be reached by an authorized human reviewer (CLAUDE.md rule 7). The
+other 4 admin modules (Grievances, Users/Roles/Permissions UI, Audit log viewer, Approval
+workflow queue) are still placeholder-gated, not built — see `tests.json`'s `admin_system`
+section.
 
 ## Completed
 
@@ -687,6 +696,220 @@ Approval workflow queue) are still placeholder-gated, not built — see `tests.j
     coverage; and updated `pub-events`/`pub-scholarships`/`pub-student-support`/`pub-rules`/
     `pub-affiliation`/`pub-contact` notes to point at their new admin CMS modules.
 
+- 2026-09-14 — **Replaced the shared content workflow engine with the explicit content
+  approval workflow required for this project** (per explicit instruction: `DRAFT ->
+  SUBMITTED -> UNDER_REVIEW -> APPROVED -> PUBLISHED`, and `PUBLISHED -> UPDATE_REQUIRED ->
+  DRAFT`; every transition enforces permissions, stores actor/timestamp/comment, and writes
+  an audit log; rejection requires a reason; only PUBLISHED content is public) — decided
+  (see the decisions log below) to migrate this in place across all 28 existing CMS modules
+  rather than add it as a second, parallel engine:
+  - **Schema**: replaced the `ContentStatus` enum's `PENDING_REVIEW`/`ARCHIVED` values with
+    `SUBMITTED`/`UNDER_REVIEW`/`UPDATE_REQUIRED` (`DRAFT`/`APPROVED`/`PUBLISHED` unchanged);
+    added `SUBMIT`/`START_REVIEW`/`REQUEST_UPDATE`/`RETURN_TO_DRAFT` to `AuditAction`; added
+    `AuditLog.comment` (`String?`) to hold each transition's comment/reason, since storing it
+    only in the `Json` before/after snapshots would make it unqueryable and easy to overlook.
+    Migration `prisma/migrations/20260914150000_content_approval_workflow_v2` was hand-written
+    (not `prisma migrate dev`, which refuses to run non-interactively) with an explicit
+    `CASE`-based remap (`PENDING_REVIEW -> SUBMITTED`, `ARCHIVED -> DRAFT`) for every one of
+    the ~30 content tables' `status` columns, applied for real against the local Postgres
+    instance via `prisma migrate deploy` with zero drift afterward — though in practice no
+    row in the seeded dev database actually held either removed value, so this ran as a
+    schema-only change.
+  - **Engine** (`src/lib/content-workflow.ts`, fully rewritten): 7 actions
+    (`submit_for_review`, `start_review`, `approve`, `reject`, `publish`, `request_update`,
+    `return_to_draft`) implementing the exact required chain plus the reject-to-DRAFT
+    shortcut from `UNDER_REVIEW` (decided over adding a distinct `REJECTED` status — see
+    decisions log). `applyWorkflowTransition` now takes an optional `comment`, throws
+    `WorkflowError` if `reject` is called with an empty/whitespace-only one, and always
+    writes it (when present, for any action) onto the `AuditLog` row it creates — actor and
+    timestamp were already covered by that row's existing `actorId`/`createdAt` columns, so
+    "store timestamp"/"store actor" needed no new fields, just the existing audit-log write
+    firing on every transition (already true before this change). New
+    `MANAGE_PERMISSION_ACTIONS` constant classifies `submit_for_review`/`return_to_draft` as
+    author-tier actions and everything else as reviewer/publisher-tier (decided as two
+    distinct actions/actors for `submit`→`start_review` — see decisions log), and a new
+    `isPubliclyVisible()` helper (true only for `PUBLISHED`) gives `src/lib/content.ts`'s
+    already-correct `status: "PUBLISHED"`-only queries a named, testable assertion of rule 4
+    rather than leaving it implicit.
+  - **UI**: `WorkflowActions` (`src/components/admin/WorkflowActions.tsx`) rewritten to
+    render one shared `<textarea name="comment">` plus one submit button per legal action,
+    each button overriding its target via `formAction` (a plain HTML attribute Next.js
+    Server Actions support) so the one comment field's value reaches whichever action's
+    `formData` regardless of which button was clicked — no client JS needed, preserving the
+    "pure server-rendered forms" design principle from the original engine. A
+    `workflowError` prop (new) renders a `role="alert"` `<Alert>` when a transition's Server
+    Action redirects back with `?workflowError=<message>` (a real, user-facing case now —
+    "reject with no reason" — not just the previous benign stale-button race). `StatusBadge`/
+    `StatusFilter` updated to the 6 new status labels/colors (`UPDATE_REQUIRED` uses the
+    `danger` token, since it means the public site currently has a flagged/no-longer-good
+    version live).
+  - **All 28 modules' `actions.ts`** (identical hand-written pattern, so transformed via a
+    scripted regex rewrite rather than 28 manual edits — verified against every file
+    afterward): `transition*` now reads `formData.get("comment")`, passes it through to
+    `applyWorkflowTransition`, checks `MANAGE_PERMISSION_ACTIONS.has(action)` instead of the
+    old `action === "submit_for_review"` literal, and on `WorkflowError` redirects with
+    `?workflowError=${encodeURIComponent(error.message)}` instead of silently swallowing it.
+    **All 29 view pages** (`[id]/page.tsx` plus the 2 singleton pages, College Profile and
+    Location) similarly gained a `searchParams` prop, extracted `workflowError`, and pass it
+    to `WorkflowActions`. The ~24 `new`/`edit` pages' FK-picker queries (e.g. "which
+    Departments can this Faculty record reference") dropped their `status: { not: "ARCHIVED"
+    }` filter — with `ARCHIVED` gone there is no longer an "excluded" status, so every
+    non-deleted record is now offered (previously DRAFT/SUBMITTED/etc. records were *already*
+    offered; only `ARCHIVED` was ever excluded).
+  - Tests: `tests/unit/content-workflow.test.ts` rewritten (13 → 32 tests) to cover every one
+    of the 7 transitions (parameterized), the reason-required-for-reject rule (empty and
+    whitespace-only), comment storage on both reject and non-reject transitions,
+    `publishedAt`/`publishedBy` set only on `publish`, `getAvailableActions` for all 6
+    statuses × both grant combinations, and `isPubliclyVisible`. Every one of the 28
+    `tests/unit/admin/<module>/actions.test.ts` files' `transition*` describe block was
+    updated (removed actions/statuses replaced with their nearest equivalent in the new
+    chain: `archive` → `request_update`, `PENDING_REVIEW` → `UNDER_REVIEW`, `ARCHIVED` as an
+    illegal-transition starting status → `DRAFT`); Departments' and Gallery's blocks (the two
+    modules with fuller-than-one-test coverage) were rewritten to exercise the complete chain
+    including reject-without-a-reason. All 7 CMS e2e specs (`cms-departments`,
+    `cms-notices`, `cms-admissions`, `cms-faculty`, `cms-gallery`, `cms-results`,
+    `cms-timetables`) updated for the new status labels and the new required `start_review`
+    step before `approve`; `cms-departments.spec.ts`'s main flow was extended to also
+    exercise `request_update` → `return_to_draft`, and a new describe block
+    ("Rejecting under-review content requires a reason (real browser UI)") added there as
+    the first e2e proof that the shared-textarea-plus-`formAction` mechanism actually works
+    in a real browser, not just at the Server Action level.
+  - **Ran the full suite for real**: `npm run typecheck`/`npm run lint`/`npm run build` all
+    clean; `npm test` (343/343 unit) and `npx playwright test` (94/94 e2e) both fully green,
+    including a full re-seed of the real local database against the migrated schema.
+  - Updated `tests.json`: rewrote `cms-workflow-engine`'s feature/notes to describe the new
+    state machine and point at the migration; added `cms-workflow-reject-reason-e2e`; updated
+    the `cms_modules` section description's workflow-chain summary.
+
+- **Implemented the university compliance module** (`docs/compliance-matrix.md`, CLAUDE.md
+  rule 7), per explicit instruction:
+  - `/admin/compliance` lists all 20 circular requirements (number, title, description,
+    responsible module, status, completeness, public page, evidence count, last verified,
+    verifier, last updated); `/admin/compliance/[id]` shows every requested field for one
+    requirement in full (required information, owner, the completeness checklist, the
+    verify/reject-review/mark-not-applicable/reopen actions, the evidence list + an
+    add-evidence form, and the full verification history).
+  - **Schema**: `ComplianceStatus` migrated
+    (`prisma/migrations/20260914160000_compliance_workflow`, applied against the real local
+    Postgres instance with zero drift afterward) from the old
+    `not_started/in_progress/submitted_for_review/verified/rejected` set to the requested
+    `NOT_STARTED/IN_PROGRESS/READY_FOR_REVIEW/VERIFIED/NEEDS_UPDATE/NOT_APPLICABLE`;
+    `VerificationDecision.REJECTED` renamed to `NEEDS_UPDATE` to match; existing rows
+    remapped (`SUBMITTED_FOR_REVIEW → READY_FOR_REVIEW`, `REJECTED → NEEDS_UPDATE`) rather than
+    assuming a clean database, same principle as the content-workflow-v2 migration earlier
+    this session. `ComplianceVerification.rejectionReason` renamed to `note` and generalized
+    to carry reviewer notes on a `VERIFIED` decision too, not just the mandatory reason for a
+    `NEEDS_UPDATE` one. 6 new `AuditAction` values added for the compliance workflow's own
+    transitions plus evidence attachment.
+  - **`src/lib/compliance-workflow.ts`** (mirrors `content-workflow.ts`'s shape): 5 explicit
+    actions — `submit_for_review` (owner-level, `compliance:view`),
+    `verify`/`request_update`/`mark_not_applicable`/`reopen` (reviewer-level,
+    `compliance:verify`). `verify` and `request_update` are the *only* two actions that write
+    a `ComplianceVerification` row, and `verify` is the *only* action that can ever set
+    `VERIFIED` — a requirement cannot reach `VERIFIED` any other way, not even automatically
+    from 100% completeness (CLAUDE.md rule 7, and the user's explicit instruction repeating
+    it). `request_update` doubles as the "reject/review" button the task asked for — same
+    target status, same mandatory-reason rule, whether flagging a `READY_FOR_REVIEW` item or
+    an already-`VERIFIED` one found to need fixing later.
+  - **The one automatic transition**: `NOT_STARTED <-> IN_PROGRESS`, via
+    `syncAutomaticStatus`, driven by whether real content or attached evidence exists for the
+    requirement yet (this satisfies "implement automatic completeness checks... based on
+    actual database content" without touching the human-gated states) — it is a no-op once a
+    requirement reaches `READY_FOR_REVIEW`/`VERIFIED`/`NEEDS_UPDATE`/`NOT_APPLICABLE`, so an
+    automatic recompute can never override a human decision. Called from the list/detail page
+    loaders (a read-time side effect, logged to the audit trail with a null actor so "the
+    system changed this, not a person" stays traceable) rather than from a cron job, since
+    there is no background-job infrastructure in this project yet.
+  - **`src/lib/compliance.ts`**: static per-requirement metadata (required information,
+    responsible module + admin link, public page) for all 20 items, plus one automatic
+    completeness check per item queried against the real content tables that item traces to
+    (`docs/compliance-matrix.md` §1) — e.g. item 4 (Faculty) checks both "at least one
+    published faculty member" and "every published department has at least one." Item 19
+    (Grievance mechanism) checks that a `PRINCIPAL`/`ADMINISTRATOR`/`SUPER_ADMIN` is actually
+    assigned via `UserRole`, since its requirement is procedural (a mechanism exists and is
+    staffed), not a content table to publish. Item 20 (any other information) has no fixed
+    data source by design and always reports 0% automatic completeness — reviewed case by
+    case via manually attached evidence only, per `docs/compliance-matrix.md`.
+  - Evidence attachment (`ComplianceEvidence`, pre-existing generic `(entityType, entityId)`
+    pointer model) and reviewer notes (`ComplianceVerification.note`) both wired to real forms
+    on the detail page; verification history is simply every `ComplianceVerification` row for
+    the requirement, newest first — nothing is overwritten, so a full verify/needs-update
+    audit trail always survives (CLAUDE.md rule 8).
+  - **Tests**: `tests/unit/compliance-workflow.test.ts` (34 tests: every transition, the
+    reason-required rule for `request_update`/`mark_not_applicable`, permission
+    classification, the "VERIFIED only via verify" invariant, `syncAutomaticStatus` never
+    overriding a human-gated status); `tests/unit/compliance.test.ts` (17 tests: all 20 items'
+    metadata is present and well-formed, per-item completeness math including partial/zero
+    results and an unknown-item fallback, and the overview/detail loaders' automatic-sync
+    wiring); `tests/unit/admin/compliance/actions.test.ts` (10 tests: permission-per-action,
+    reason enforcement, evidence creation + audit log, illegal-transition/race handling);
+    `tests/e2e/cms-compliance.spec.ts` (6 tests against the real dev server + seeded
+    database). The e2e spec is written differently from every other CMS module's: the 20
+    `ComplianceRequirement` rows are a fixed, pre-seeded checklist, not a creatable resource,
+    so tests can't get a clean starting state by creating a fresh record the way every other
+    module's e2e spec does — each mutating block instead reads the requirement's current
+    status first and normalizes it before asserting, so the suite stays deterministic across
+    repeated runs against the same persistent dev database (verified by running it three
+    times back-to-back without reseeding in between).
+  - Full verification suite re-run after this work: `npm run typecheck`/`npm run lint`/
+    `npm run build` all clean; `npm test` now 404/404 (up from 343); `npx playwright test` all
+    100/100 (up from 94) when run at reduced worker concurrency (the dev server times out
+    under the default full-parallel load on this machine — confirmed by re-running the
+    handful of affected specs, including this new one, in isolation and at `--workers=3`,
+    where every one passes; this is local dev-server capacity, not a regression).
+
+- **Made the compliance completeness engine explicit and field-level**, per explicit
+  instruction ("do not use a generic 'page exists = compliant' rule... inspect actual
+  structured data"), replacing the first pass's per-item `{requiredInformation,
+  responsibleModule, publicPage}` metadata + separate mostly-count-based checks with one
+  unified, exported `ComplianceRule` record (`src/lib/compliance.ts`) for all 20 items:
+  - Each rule now explicitly declares `requiredRecords`, `requiredFields`,
+    `requiredDocuments` (`null` where not appropriate), `publicRoute`, `responsibleRole`
+    (e.g. `FACULTY_EDITOR (author); REVIEWER or PRINCIPAL (publish)`), and
+    `responsibleModule` — all as plain data, readable on the requirement's detail page
+    (new "Required records"/"Required fields"/"Required documents"/"Responsible role"
+    sections) rather than buried inside a check function.
+  - The `check()` for nearly every item now uses a new `everyRecordHasFields` helper to
+    verify specific fields are populated on **every** matching published record, not just
+    that a row count is non-zero — e.g. Faculty requires every published faculty member to
+    have a designation, qualifications, subjectsTaught, and an email or phone, and every
+    published Department to have at least one such faculty member; Admissions requires
+    eligibilityCriteria + both application dates on every admission cycle; Contact requires
+    a labeled published phone **and** a labeled published email, not just "a contact
+    exists."
+  - Items 8 (Admissions), 10 (Examinations/Results), 13 (Affiliation), and 18
+    (Policies/Regulations) also require a **document**, satisfied by a human explicitly
+    attaching a published `Document` as `ComplianceEvidence` for that specific requirement
+    (`hasPublishedDocumentEvidence`) — this uses `ComplianceEvidence`'s existing generic
+    `(entityType, entityId)` pointer for its actual intended purpose, rather than guessing
+    at a freeform `Document.category` string (every document created through the admin
+    Documents module shares `entityType: "College"`, so category-keyword matching would
+    have been unreliable).
+  - Grievance mechanism (item 19) still checks for an assigned
+    `PRINCIPAL`/`ADMINISTRATOR`/`SUPER_ADMIN` `UserRole` — "a working mechanism" is
+    procedural (is someone actually staffed to handle it), not a content table to publish,
+    matching the explicit example in the instruction.
+  - Confirmed live against the real dev database that this genuinely changes results, not
+    just refactors code: the seeded Faculty record — human-`VERIFIED` in the prior session
+    at what the old count-only check reported as 100% — now correctly shows **67%**
+    completeness (missing qualifications and email/phone), while its `VERIFIED` status
+    correctly stays untouched (`syncAutomaticStatus` never overrides a human decision, only
+    the automatic `NOT_STARTED`/`IN_PROGRESS` portion). Admissions similarly dropped from a
+    count-only 100% to a real **50%** once application-date fields and the required
+    prospectus-document check were added.
+  - `tests/unit/compliance.test.ts` rewritten around one describe block per item (1-20, 68
+    tests total): every item that has field-level checks gets both a "record exists but a
+    required field is missing → still not 100%" test (the actual proof this isn't a
+    page-exists rubric) and a fully-compliant case; a metadata test asserts every rule
+    declares non-empty `requiredRecords`/`requiredFields`/`responsibleRole`/
+    `responsibleModule` and a `check` function; a dedicated test confirms exactly items 8/10/
+    13/18 declare `requiredDocuments` and the other 16 don't.
+  - Full re-verification: `tsc`/`eslint` clean, `npm test` 453/453 (up from 404), `npx
+    playwright test` 100/100 (`tests/e2e/cms-compliance.spec.ts` updated for the renamed
+    "Required records"/"Required fields" UI sections, plus a new assertion that Faculty's
+    missing-qualifications gap is visibly surfaced on the real page even though the
+    requirement is `VERIFIED`).
+
 ## In progress
 
 - Nothing in progress. Phase 1 (project foundation), Phase 2 (database), Phase 3
@@ -696,26 +919,29 @@ Approval workflow queue) are still placeholder-gated, not built — see `tests.j
   Examinations/Results/Documents/Infrastructure/Activities/Clubs/Gallery/Scholarships/
   Student Support/Policies/Regulations/Affiliation/Contact/Location are complete — every
   `content_general` and `content_faculty` module is now built, alongside all of
-  `content_admissions`/`content_examinations` from the prior session. Only Grievances and
-  Compliance remain content-shaped modules without a CMS module, and both need their own
-  design pass (see Next steps) rather than the generic workflow reused as-is.
+  `content_admissions`/`content_examinations` from the prior session. The Compliance
+  Dashboard is now built too (see Completed above), with its own state machine rather than
+  the generic content workflow reused as-is. Only Grievances remains a content-shaped module
+  without a CMS module, and needs its own design pass (see Next steps) — CLAUDE.md rule 6
+  (private-by-default) means it can't reuse either workflow as-is, since neither assumes
+  "must never reach a public view at all."
 - **Reminder to self**: commit this work to git at the next natural checkpoint (with the
   user's go-ahead) — everything since `b9099b1` is still uncommitted working-tree state,
   which is what made the `tests.json` mishap above possible in the first place.
 
 ## Next steps
 
-1. Design (don't just reuse the generic workflow for) Grievances and Compliance —
-   CLAUDE.md rules 6/7 (private-by-default, human-approval-only) don't map cleanly onto the
-   generic draft → review → publish → archive workflow, which assumes content becomes
-   *public* once published. Grievances must never reach a public view at all; Compliance
-   verification needs a human-approval step distinct from "publish." Both need their own
-   state machine, not `content-workflow.ts` as-is. Everything else content-shaped in
-   CLAUDE.md's required scope now has a real CMS module (28 total, all 4 permission
-   domains) — this is genuinely the last content-authoring gap.
+1. Design (don't just reuse either existing workflow for) Grievances — CLAUDE.md rule 6
+   (private-by-default) doesn't map cleanly onto either `content-workflow.ts` (assumes
+   content becomes *public* once published) or `compliance-workflow.ts` (built around a
+   fixed 20-item checklist, not a growing list of submissions); Grievances must never reach a
+   public view at all and needs its own state machine (new/assigned/in-progress/resolved,
+   per `GrievanceStatus`). Compliance is now built (see Completed above) — this is genuinely
+   the last content-authoring gap in CLAUDE.md's required scope.
 2. Build the generic `ApprovalRequest`/notification layer on top of the workflow engine
    (`docs/implementation-plan.md` Phase 2's other half) — right now a REVIEWER discovers
-   pending work only by manually filtering a module's list to `?status=PENDING_REVIEW`;
+   pending work only by manually filtering a module's list to `?status=SUBMITTED` or
+   `?status=UNDER_REVIEW`;
    `/admin/approval-workflow` (still a placeholder) should become a cross-module "things
    waiting on me" queue, and an EDITOR should get notified when their submission is
    approved/rejected.
@@ -779,6 +1005,20 @@ Approval workflow queue) are still placeholder-gated, not built — see `tests.j
 | 2026-09-14 | Gallery's `GalleryItem` creation Server Action also creates a fresh `Media` row in the same action, rather than requiring a separate media-library step first — the new asset is attached to the *album* (`entityType: "GalleryAlbum"`), not the item, since the item doesn't exist yet when the Media row is written. This keeps the admin UX to one form per photo instead of a two-step "upload, then attach" flow, at the cost of `Media` rows not being reusable across albums from this UI (a real limitation to revisit if photo reuse across albums becomes common). |
 | 2026-09-14 | Location is modeled as a singleton in the admin UI (create redirects to the view page if one exists; no list page), matching College Profile — but `Location.collegeId` has no `@unique` constraint in the schema (unlike `CollegeProfile.collegeId`), so its existence checks use `findFirst` rather than `findUnique`. A deliberate minimal fix rather than adding a migration to make `collegeId` unique, since nothing in the admin UI can currently create a second row anyway (the "new" page's own guard prevents it) — worth revisiting if a future data-import path could ever insert a duplicate outside the admin UI. |
 | 2026-09-14 | Added `publishedAt`/`publishedBy` to `Contact` and `Location` (`prisma/migrations/20260914093028_add_workflow_fields_contact_location`) — the same fix as `FeeStructure`/`EnrollmentStatistic`/`Result` in the prior session: both models had `status` but not the publish-timestamp columns the shared `applyWorkflowTransition` engine writes on a `publish` transition. Audited every remaining `ContentStatus`-bearing model afterward (`grep`/`awk` over prisma/schema.prisma) to check for the same gap ahead of time rather than discovering it module-by-module: every model with a real CMS module now has both columns, except `Course` — a `Program` sub-resource with no CMS module of its own yet (not requested this session; still just seed-only data). Flagged so whoever builds a Courses CMS module doesn't rediscover this same issue from scratch. |
+| 2026-09-14 | **Content approval workflow v2**: migrated the shared engine in place across all 28 existing CMS modules (rather than adding a second, parallel engine) to the exact required chain `DRAFT -> SUBMITTED -> UNDER_REVIEW -> APPROVED -> PUBLISHED` / `PUBLISHED -> UPDATE_REQUIRED -> DRAFT` — confirmed with the user before starting given the blast radius (enum migration + 28 modules' actions/pages/tests). |
+| 2026-09-14 | Rejection sends `UNDER_REVIEW` content back to `DRAFT` (same target as before, now requiring a reason) rather than introducing a distinct `REJECTED` status — keeps `DRAFT` as the single "author needs to act on this" state rather than splitting it across `DRAFT`/`REJECTED`/`UPDATE_REQUIRED`. `ARCHIVED` was dropped entirely (not folded into any new status) since it wasn't part of the required chain and had no real seeded data depending on it. |
+| 2026-09-14 | `submit_for_review` (author, `DRAFT -> SUBMITTED`) and `start_review` (reviewer, `SUBMITTED -> UNDER_REVIEW`) are two distinct actions rather than collapsing straight to `UNDER_REVIEW` — `SUBMITTED` is a real queue state a reviewer explicitly claims, not just a momentary pass-through. No new permission tier was needed for this: `start_review` uses the same `:publish` permission as `approve`/`reject`/`publish`/`request_update`, since the existing permission matrix only has `manage`/`publish` tiers per domain and adding a third tier for this alone wasn't asked for. |
+| 2026-09-14 | The rejection reason (and any other transition's optional comment) is stored on a new `AuditLog.comment` column, not inside the existing `beforeSnapshot`/`afterSnapshot` `Json` blobs — keeps it a plain queryable string rather than something buried in JSON that every future reader has to know to look for. |
+| 2026-09-14 | Existing `ARCHIVED`/`PENDING_REVIEW` rows (none existed in the seeded dev database, verified via `psql` before writing the migration) are remapped by the migration as `ARCHIVED -> DRAFT` / `PENDING_REVIEW -> SUBMITTED` rather than the migration assuming a clean database — written this way on principle (CLAUDE.md rule 8: never silently lose a real row's status to a failed migration), even though it happened to run as a no-op remap in practice here. |
+| 2026-09-14 | The ~24 `new`/`edit` pages' FK-picker queries dropped their `status: { not: "ARCHIVED" }` filter rather than being redirected at a new "equivalent excluded" status (e.g. `UPDATE_REQUIRED`) — with `ARCHIVED` gone there's no remaining status that means "don't offer this as a reference," so every non-deleted record of the referenced type is now selectable, same as it always effectively was for every status except the removed one. |
+| 2026-09-14 | **Compliance module**: adopted the user's exact 6-status list (`NOT_STARTED/IN_PROGRESS/READY_FOR_REVIEW/VERIFIED/NEEDS_UPDATE/NOT_APPLICABLE`) in place of `docs/compliance-matrix.md` §3's originally-documented 5-status lifecycle (`not_started/in_progress/submitted_for_review/verified/rejected`) — same in-place-migration principle as the content-workflow-v2 decision above, applied to a second, independent state machine rather than trying to unify the two (a compliance requirement and a piece of content are genuinely different things with different lifecycles). |
+| 2026-09-14 | `request_update` is one action serving as both the "reject" button (from `READY_FOR_REVIEW`) and a way to flag an already-`VERIFIED` item as needing fixing later — not two separate actions — since both cases have the same target status (`NEEDS_UPDATE`), the same mandatory-reason rule, and the same reviewer authority (`compliance:verify`). `NOT_APPLICABLE` is a new status beyond the original `docs/compliance-matrix.md` lifecycle, added because the user's requested status list included it and because not every one of the 20 circular items necessarily applies to every college (e.g. a "moot court room" facility item for a college with no Law program). |
+| 2026-09-14 | Only `NOT_STARTED <-> IN_PROGRESS` is automatic; every other status change is an explicit human action. This reads CLAUDE.md rule 7 ("no content or compliance status can be auto-approved") as being about *approval decisions* specifically, not all bookkeeping — the user's own instruction singles out `VERIFIED` ("must NEVER become VERIFIED automatically... requires an authorized human reviewer") rather than saying no status may ever move automatically, which is why `NOT_STARTED`/`IN_PROGRESS` were judged safe to derive from real data while everything downstream of them still requires a person. |
+| 2026-09-14 | `ComplianceVerification.rejectionReason` renamed to `note` rather than adding a second column — both a `VERIFIED` decision's optional commentary and a `NEEDS_UPDATE` decision's mandatory reason are "what the reviewer wrote," and the verification-history UI shows them identically either way. |
+| 2026-09-14 | Item 19's (Grievance mechanism) completeness check tests for an assigned `PRINCIPAL`/`ADMINISTRATOR`/`SUPER_ADMIN` via `UserRole` rather than any Grievance-table content, since the circular's requirement is that a *mechanism* exists and is reachable/staffed, not that grievances have actually been filed — an idle grievance inbox with nobody assigned to it is the actual compliance gap this check is meant to catch. |
+| 2026-09-14 | Item 20's (any other information) completeness check is a hard-coded "always 0%, no fixed data source" rather than being derived from its `ComplianceEvidence` count — `docs/compliance-matrix.md` describes it as "extensible... reviewed case by case," and evidence existing isn't the same claim as "the underlying data is actually complete," which every other item's check makes. This is a deliberate exception to the completeness engine's premise, not a placeholder. |
+| 2026-09-14 | **"Required documents" is checked via `ComplianceEvidence` pointing at a published `Document`** (`hasPublishedDocumentEvidence`), not via `Document.category` keyword matching, and applies only to items 8/10/13/18 rather than universally — chosen because every `Document` row created through the existing admin Documents module already shares one fixed `entityType: "College"` sentinel (a prior-session decision), so there is no reliable structural signal in `Document` itself for "this is the admission prospectus" vs. "this is a random circular." A reviewer explicitly attaching evidence to the specific requirement is the one place that link is unambiguous, and it reuses `ComplianceEvidence`'s already-built generic pointer shape rather than adding a new field or convention. |
+| 2026-09-14 | **`everyRecordHasFields` checks every matching published record, not "at least one."** A requirement with 10 faculty records where only 1 has qualifications filled in is not actually compliant with "faculty details, including qualifications" — the stricter reading was chosen deliberately, even though it means realistic seed/placeholder data now reports partial completeness almost everywhere instead of misleadingly reaching 100% off one fully-filled-in demo record. |
 
 ## Open questions
 
@@ -808,18 +1048,32 @@ Approval workflow queue) are still placeholder-gated, not built — see `tests.j
   `entityType`/`entityId`)? Blocks closing the `pub-downloads` gap in `tests.json`.
 - How should the compliance report / website URL submission to the Inspector of Colleges be tracked —
   `docs/database-design.md` §9 proposes a `ComplianceReportExport` model for this; needs confirmation it
-  matches how the college actually wants to submit.
+  matches how the college actually wants to submit. Still not built — the Compliance Dashboard itself
+  (list/detail/verify/evidence/history) is done, but generating and recording submission of the report
+  artifact is a separate, not-yet-requested piece.
+- `ComplianceEvidence.entityId` is freeform text (matching its existing generic
+  `(entityType, entityId)` shape), not validated against a real row of that type, and marking a
+  requirement `VERIFIED` doesn't check that its evidence actually points at `PUBLISHED` records —
+  `docs/database-design.md` §9 proposes exactly that constraint ("evidenceRefs must point at records
+  whose own status = published"). Left as a human-judgment call for now (the reviewer sees the evidence
+  list before deciding) rather than an enforced constraint, since building real cross-model existence
+  validation for an open-ended `entityType` wasn't part of what was asked; worth revisiting if reviewers
+  start verifying items with stale/bad evidence pointers in practice.
 - Review-frequency cadence per content type (e.g. how often Notices vs. Faculty vs. Affiliation should be
   reviewed) is left as a policy decision for the college — see `docs/architecture.md` §12.
-- Should an author (EDITOR/FACULTY_EDITOR/etc.) be able to archive their own DRAFT/
-  PENDING_REVIEW record without a reviewer, or is requiring `:publish` for every archive
-  (including abandoning your own unpublished draft) too strict in practice? See the
-  2026-09-14 decisions log entry.
 - Is "editing doesn't revert status" (a PUBLISHED record can be edited in place without
   going back through review) the right policy, or should any edit to already-published
   content require re-approval? Currently no role's real-world workflow has been confirmed
-  either way.
-- Rejecting a PENDING_REVIEW item currently just flips it back to DRAFT with an audit log
-  entry — there's no field for the reviewer to record *why* (a rejection reason), so the
-  author has to be told out-of-band. Worth adding a `note`/`comment` to `AuditLog` or a
-  dedicated rejection-reason field once the notification system (see Next steps) exists.
+  either way. Note this now interacts with `request_update`/`UPDATE_REQUIRED` (see the
+  2026-09-14 content-approval-workflow-v2 decisions log entry) — a reviewer who wants an
+  edit re-reviewed should use `request_update` rather than relying on an in-place edit
+  being blocked.
+- The rejection-reason gap noted here previously is now resolved (rejection requires a
+  non-empty reason, stored on the `AuditLog` row's new `comment` column — see the
+  2026-09-14 content-approval-workflow-v2 decisions log entry) — but there is still no
+  notification system to actively tell the author *when* their content is rejected; they
+  currently have to check the record's audit trail themselves.
+- `request_update`/`UPDATE_REQUIRED` only has `manage`-permission `return_to_draft`
+  available to move it back to `DRAFT` for editing — should the reviewer's `request_update`
+  comment be surfaced more prominently on the edit form itself (not just in the audit log),
+  so the author doesn't have to go hunting for why an update was requested?

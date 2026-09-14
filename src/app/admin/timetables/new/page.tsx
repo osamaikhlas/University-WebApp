@@ -17,7 +17,7 @@ export default async function NewTimetablePage() {
   const college = await getPrimaryCollege();
   const programs = college
     ? await prisma.program.findMany({
-        where: { collegeId: college.id, status: { not: "ARCHIVED" } },
+        where: { collegeId: college.id },
         orderBy: { name: "asc" },
       })
     : [];

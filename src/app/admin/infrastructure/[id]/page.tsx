@@ -16,9 +16,16 @@ import { transitionInfrastructure } from "@/app/admin/infrastructure/actions";
 
 export const metadata: Metadata = { title: "Infrastructure item" };
 
-export default async function InfrastructureViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function InfrastructureViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.infrastructure.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const infrastructure = await prisma.infrastructure.findUnique({ where: { id } });
   if (!infrastructure) notFound();
@@ -34,7 +41,10 @@ export default async function InfrastructureViewPage({ params }: { params: Promi
           <div className="flex items-center gap-2">
             <StatusBadge status={infrastructure.status} />
             {canManage ? (
-              <LinkButton href={`/admin/infrastructure/${infrastructure.id}/edit`} variant="secondary">
+              <LinkButton
+                href={`/admin/infrastructure/${infrastructure.id}/edit`}
+                variant="secondary"
+              >
                 Edit
               </LinkButton>
             ) : null}
@@ -62,6 +72,7 @@ export default async function InfrastructureViewPage({ params }: { params: Promi
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionInfrastructure}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/infrastructure" className="text-sm text-brand hover:underline">

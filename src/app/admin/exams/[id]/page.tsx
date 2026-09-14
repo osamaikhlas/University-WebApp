@@ -16,9 +16,16 @@ import { transitionExamination } from "@/app/admin/exams/actions";
 
 export const metadata: Metadata = { title: "Examination" };
 
-export default async function ExaminationViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ExaminationViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.examinations.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const examination = await prisma.examination.findUnique({
     where: { id },
@@ -63,7 +70,9 @@ export default async function ExaminationViewPage({ params }: { params: Promise<
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <dt className="font-medium text-foreground/70">Schedule start date</dt>
-                <dd className="mt-1">{examination.scheduleStartDate?.toLocaleDateString() ?? "—"}</dd>
+                <dd className="mt-1">
+                  {examination.scheduleStartDate?.toLocaleDateString() ?? "—"}
+                </dd>
               </div>
               <div>
                 <dt className="font-medium text-foreground/70">Schedule end date</dt>
@@ -79,6 +88,7 @@ export default async function ExaminationViewPage({ params }: { params: Promise<
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionExamination}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/exams" className="text-sm text-brand hover:underline">

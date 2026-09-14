@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Notices" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function NoticesListPage({
@@ -67,14 +68,25 @@ export default async function NoticesListPage({
               key: "title",
               header: "Title",
               render: (row) => (
-                <Link href={`/admin/notices/${row.id}`} className="font-medium text-brand hover:underline">
+                <Link
+                  href={`/admin/notices/${row.id}`}
+                  className="font-medium text-brand hover:underline"
+                >
                   {row.title}
                 </Link>
               ),
             },
             { key: "category", header: "Category", render: (row) => row.category ?? "—" },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
-            { key: "updated", header: "Updated", render: (row) => row.updatedAt.toLocaleDateString() },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
+            {
+              key: "updated",
+              header: "Updated",
+              render: (row) => row.updatedAt.toLocaleDateString(),
+            },
           ]}
         />
       </div>

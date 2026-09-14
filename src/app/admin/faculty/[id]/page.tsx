@@ -16,9 +16,16 @@ import { transitionFaculty } from "@/app/admin/faculty/actions";
 
 export const metadata: Metadata = { title: "Faculty record" };
 
-export default async function FacultyViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function FacultyViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.faculty.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const faculty = await prisma.faculty.findUnique({ where: { id }, include: { department: true } });
   if (!faculty) notFound();
@@ -76,6 +83,7 @@ export default async function FacultyViewPage({ params }: { params: Promise<{ id
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionFaculty}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/faculty" className="text-sm text-brand hover:underline">

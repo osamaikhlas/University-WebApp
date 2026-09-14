@@ -18,11 +18,14 @@ export const metadata: Metadata = { title: "Gallery item" };
 
 export default async function ItemViewPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; itemId: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
 }) {
   const user = await requirePermission(MODULE_PERMISSIONS.gallery.view);
   const { id: albumId, itemId } = await params;
+  const { workflowError } = await searchParams;
 
   const item = await prisma.galleryItem.findUnique({
     where: { id: itemId },
@@ -38,11 +41,17 @@ export default async function ItemViewPage({
     <Container>
       <div className="flex flex-col gap-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <PageHeading title={item.caption || item.media.altText} description={`Item in ${item.album.title}`} />
+          <PageHeading
+            title={item.caption || item.media.altText}
+            description={`Item in ${item.album.title}`}
+          />
           <div className="flex items-center gap-2">
             <StatusBadge status={item.status} />
             {canManage ? (
-              <LinkButton href={`/admin/gallery/${albumId}/items/${item.id}/edit`} variant="secondary">
+              <LinkButton
+                href={`/admin/gallery/${albumId}/items/${item.id}/edit`}
+                variant="secondary"
+              >
                 Edit
               </LinkButton>
             ) : null}
@@ -84,6 +93,7 @@ export default async function ItemViewPage({
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionForItem}
+          workflowError={workflowError}
         />
 
         <Link href={`/admin/gallery/${albumId}`} className="text-sm text-brand hover:underline">

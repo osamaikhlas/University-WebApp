@@ -16,9 +16,16 @@ import { transitionFeeStructure } from "@/app/admin/fee-structures/actions";
 
 export const metadata: Metadata = { title: "Fee Structure" };
 
-export default async function FeeStructureViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function FeeStructureViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.feeStructures.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const feeStructure = await prisma.feeStructure.findUnique({
     where: { id },
@@ -37,7 +44,10 @@ export default async function FeeStructureViewPage({ params }: { params: Promise
           <div className="flex items-center gap-2">
             <StatusBadge status={feeStructure.status} />
             {canManage ? (
-              <LinkButton href={`/admin/fee-structures/${feeStructure.id}/edit`} variant="secondary">
+              <LinkButton
+                href={`/admin/fee-structures/${feeStructure.id}/edit`}
+                variant="secondary"
+              >
                 Edit
               </LinkButton>
             ) : null}
@@ -77,6 +87,7 @@ export default async function FeeStructureViewPage({ params }: { params: Promise
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionFeeStructure}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/fee-structures" className="text-sm text-brand hover:underline">

@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Infrastructure" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function InfrastructureListPage({
@@ -48,8 +49,13 @@ export default async function InfrastructureListPage({
     <Container>
       <div className="flex flex-col gap-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <PageHeading title="Infrastructure" description="Manage campus facilities (classrooms, labs, library, etc.)." />
-          {canManage ? <LinkButton href="/admin/infrastructure/new">New infrastructure item</LinkButton> : null}
+          <PageHeading
+            title="Infrastructure"
+            description="Manage campus facilities (classrooms, labs, library, etc.)."
+          />
+          {canManage ? (
+            <LinkButton href="/admin/infrastructure/new">New infrastructure item</LinkButton>
+          ) : null}
         </div>
 
         <StatusFilter basePath="/admin/infrastructure" active={statusFilter ?? "ALL"} />
@@ -76,7 +82,11 @@ export default async function InfrastructureListPage({
               ),
             },
             { key: "category", header: "Category", render: (row) => row.category },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

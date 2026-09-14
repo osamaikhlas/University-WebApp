@@ -5,7 +5,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
 import { MODULE_PERMISSIONS } from "@/lib/admin/module-permissions";
-import { applyWorkflowTransition, WorkflowError, type WorkflowActionName } from "@/lib/content-workflow";
+import {
+  applyWorkflowTransition,
+  WorkflowError,
+  MANAGE_PERMISSION_ACTIONS,
+  type WorkflowActionName,
+} from "@/lib/content-workflow";
 import { logAudit } from "@/lib/audit";
 import { getPrimaryCollege } from "@/lib/content";
 
@@ -105,11 +110,12 @@ export async function updateDepartment(
 export async function transitionDepartment(
   id: string,
   action: WorkflowActionName,
-  _formData: FormData,
+  formData: FormData,
 ): Promise<void> {
   const user = await requirePermission(
-    action === "submit_for_review" ? PERMISSIONS.manage : PERMISSIONS.publish,
+    MANAGE_PERMISSION_ACTIONS.has(action) ? PERMISSIONS.manage : PERMISSIONS.publish,
   );
+  const comment = formData.get("comment")?.toString();
 
   const department = await prisma.department.findUniqueOrThrow({ where: { id } });
 
@@ -120,12 +126,12 @@ export async function transitionDepartment(
       currentStatus: department.status,
       action,
       actorId: user.id,
+      comment,
       update: (data) => prisma.department.update({ where: { id }, data }),
     });
   } catch (error) {
-    // A stale button (someone else transitioned it a moment ago) — redirect back to the
-    // current, real state rather than crashing with a 500 for what is just a race.
     if (!(error instanceof WorkflowError)) throw error;
+    redirect(`/admin/departments/${id}?workflowError=${encodeURIComponent(error.message)}`);
   }
 
   redirect(`/admin/departments/${id}`);

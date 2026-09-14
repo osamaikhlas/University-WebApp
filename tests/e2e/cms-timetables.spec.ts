@@ -54,14 +54,17 @@ test.describe.serial("Timetables CMS module (required Program FK + optional JSON
     await loginAs(page, "editor");
     await page.goto(timetableUrl);
     await page.getByRole("button", { name: /submit for review/i }).click();
-    await expect(page.getByText("Pending review")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Submitted")).toBeVisible({ timeout: 15_000 });
   });
 
   // Separate test (fresh page/context) so navigating to /login isn't short-circuited by
   // an existing authenticated session redirecting straight back to /admin.
-  test("REVIEWER approves and publishes", async ({ page }) => {
+  test("REVIEWER starts review, approves, and publishes", async ({ page }) => {
     await loginAs(page, "reviewer");
     await page.goto(timetableUrl);
+    await page.getByRole("button", { name: /start review/i }).click();
+    await expect(page.getByText("Under review")).toBeVisible({ timeout: 15_000 });
+
     await page.getByRole("button", { name: /^approve$/i }).click();
     await expect(page.getByText("Approved")).toBeVisible({ timeout: 15_000 });
 

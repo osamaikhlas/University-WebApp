@@ -19,7 +19,9 @@ test.describe.serial("Admissions CMS module (content_admissions domain)", () => 
   const academicYear = `E2E ${Date.now()}`;
   let admissionUrl = "";
 
-  test("ADMISSION_OFFICER can create an admission cycle, which starts as a draft", async ({ page }) => {
+  test("ADMISSION_OFFICER can create an admission cycle, which starts as a draft", async ({
+    page,
+  }) => {
     await loginAs(page, "admission-officer");
     await page.goto("/admin/admissions/new");
 
@@ -43,12 +45,15 @@ test.describe.serial("Admissions CMS module (content_admissions domain)", () => 
     await loginAs(page, "admission-officer");
     await page.goto(admissionUrl);
     await page.getByRole("button", { name: /submit for review/i }).click();
-    await expect(page.getByText("Pending review")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Submitted")).toBeVisible({ timeout: 15_000 });
   });
 
-  test("REVIEWER approves and publishes", async ({ page }) => {
+  test("REVIEWER starts review, approves, and publishes", async ({ page }) => {
     await loginAs(page, "reviewer");
     await page.goto(admissionUrl);
+    await page.getByRole("button", { name: /start review/i }).click();
+    await expect(page.getByText("Under review")).toBeVisible({ timeout: 15_000 });
+
     await page.getByRole("button", { name: /^approve$/i }).click();
     await expect(page.getByText("Approved")).toBeVisible({ timeout: 15_000 });
 
@@ -56,7 +61,9 @@ test.describe.serial("Admissions CMS module (content_admissions domain)", () => 
     await expect(page.getByText("Published")).toBeVisible({ timeout: 15_000 });
   });
 
-  test("the published admission cycle is now visible on the public Admissions page", async ({ page }) => {
+  test("the published admission cycle is now visible on the public Admissions page", async ({
+    page,
+  }) => {
     await page.goto("/admissions");
     await expect(page.getByText(academicYear)).toBeVisible();
   });

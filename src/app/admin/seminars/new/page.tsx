@@ -16,7 +16,7 @@ export default async function NewSeminarPage() {
   const college = await getPrimaryCollege();
   const departments = college
     ? await prisma.department.findMany({
-        where: { collegeId: college.id, status: { not: "ARCHIVED" } },
+        where: { collegeId: college.id },
         orderBy: { name: "asc" },
       })
     : [];

@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Enrollment Statistics" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function EnrollmentStatisticsListPage({
@@ -49,9 +50,14 @@ export default async function EnrollmentStatisticsListPage({
     <Container>
       <div className="flex flex-col gap-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <PageHeading title="Enrollment Statistics" description="Manage per-program enrollment counts." />
+          <PageHeading
+            title="Enrollment Statistics"
+            description="Manage per-program enrollment counts."
+          />
           {canManage ? (
-            <LinkButton href="/admin/enrollment-statistics/new">New enrollment statistic</LinkButton>
+            <LinkButton href="/admin/enrollment-statistics/new">
+              New enrollment statistic
+            </LinkButton>
           ) : null}
         </div>
 
@@ -81,7 +87,11 @@ export default async function EnrollmentStatisticsListPage({
             { key: "program", header: "Program", render: (row) => row.program.name },
             { key: "sessionType", header: "Session", render: (row) => row.sessionType ?? "—" },
             { key: "totalEnrolled", header: "Total enrolled", render: (row) => row.totalEnrolled },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

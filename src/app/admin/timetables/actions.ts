@@ -6,7 +6,12 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
 import { MODULE_PERMISSIONS } from "@/lib/admin/module-permissions";
 import { requiredDateField } from "@/lib/admin/zod-helpers";
-import { applyWorkflowTransition, WorkflowError, type WorkflowActionName } from "@/lib/content-workflow";
+import {
+  applyWorkflowTransition,
+  WorkflowError,
+  MANAGE_PERMISSION_ACTIONS,
+  type WorkflowActionName,
+} from "@/lib/content-workflow";
 import { logAudit } from "@/lib/audit";
 import { getPrimaryCollege } from "@/lib/content";
 
@@ -148,11 +153,12 @@ export async function updateTimetable(
 export async function transitionTimetable(
   id: string,
   action: WorkflowActionName,
-  _formData: FormData,
+  formData: FormData,
 ): Promise<void> {
   const user = await requirePermission(
-    action === "submit_for_review" ? PERMISSIONS.manage : PERMISSIONS.publish,
+    MANAGE_PERMISSION_ACTIONS.has(action) ? PERMISSIONS.manage : PERMISSIONS.publish,
   );
+  const comment = formData.get("comment")?.toString();
 
   const timetable = await prisma.timetable.findUniqueOrThrow({ where: { id } });
 
@@ -163,10 +169,12 @@ export async function transitionTimetable(
       currentStatus: timetable.status,
       action,
       actorId: user.id,
+      comment,
       update: (data) => prisma.timetable.update({ where: { id }, data }),
     });
   } catch (error) {
     if (!(error instanceof WorkflowError)) throw error;
+    redirect(`/admin/timetables/${id}?workflowError=${encodeURIComponent(error.message)}`);
   }
 
   redirect(`/admin/timetables/${id}`);

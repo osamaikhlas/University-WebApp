@@ -24,7 +24,11 @@ vi.mock("next/navigation", () => ({
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
 import { getPrimaryCollege } from "@/lib/content";
-import { createAffiliation, transitionAffiliation, updateAffiliation } from "@/app/admin/affiliation/actions";
+import {
+  createAffiliation,
+  transitionAffiliation,
+  updateAffiliation,
+} from "@/app/admin/affiliation/actions";
 
 const fakeUser = { id: "user-1", collegeId: "college-1", permissions: new Set() } as never;
 const college = { id: "college-1" } as never;
@@ -88,22 +92,48 @@ describe("createAffiliation", () => {
 describe("updateAffiliation", () => {
   it("returns an error when the affiliation doesn't exist", async () => {
     vi.mocked(prisma.affiliation.findUnique).mockResolvedValue(null);
-    const result = await updateAffiliation("missing", { error: null }, formData({ universityName: "X" }));
+    const result = await updateAffiliation(
+      "missing",
+      { error: null },
+      formData({ universityName: "X" }),
+    );
     expect(result.error).toBeTruthy();
   });
 });
 
 describe("transitionAffiliation", () => {
-  it("requires content_general:publish for reject", async () => {
+  it("rejecting without a reason is refused and does not update the record", async () => {
     vi.mocked(prisma.affiliation.findUniqueOrThrow).mockResolvedValue({
       id: "aff-1",
-      status: "PENDING_REVIEW",
+      status: "UNDER_REVIEW",
+    } as never);
+
+    await expect(transitionAffiliation("aff-1", "reject", new FormData())).rejects.toThrow(
+      "REDIRECT:/admin/affiliation/aff-1?workflowError=",
+    );
+    expect(requirePermission).toHaveBeenCalledWith("content_general:publish");
+    expect(prisma.affiliation.update).not.toHaveBeenCalled();
+  });
+
+  it("requires content_general:publish for reject and stores the reason", async () => {
+    vi.mocked(prisma.affiliation.findUniqueOrThrow).mockResolvedValue({
+      id: "aff-1",
+      status: "UNDER_REVIEW",
     } as never);
     vi.mocked(prisma.affiliation.update).mockResolvedValue({} as never);
 
-    await expect(transitionAffiliation("aff-1", "reject", new FormData())).rejects.toThrow(
-      "REDIRECT:/admin/affiliation/aff-1",
-    );
+    await expect(
+      transitionAffiliation("aff-1", "reject", formData({ comment: "Missing signed agreement." })),
+    ).rejects.toThrow("REDIRECT:/admin/affiliation/aff-1");
     expect(requirePermission).toHaveBeenCalledWith("content_general:publish");
+    expect(prisma.affiliation.update).toHaveBeenCalledWith({
+      where: { id: "aff-1" },
+      data: expect.objectContaining({ status: "DRAFT" }),
+    });
+    expect(prisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ action: "REJECT", comment: "Missing signed agreement." }),
+      }),
+    );
   });
 });

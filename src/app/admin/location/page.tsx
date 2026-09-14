@@ -16,13 +16,20 @@ import { transitionLocation } from "@/app/admin/location/actions";
 
 export const metadata: Metadata = { title: "Location" };
 
-export default async function LocationPage() {
+export default async function LocationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.location.view);
+  const { workflowError } = await searchParams;
   const canManage = hasPermission(user.permissions, MODULE_PERMISSIONS.location.manage);
   const canPublish = hasPermission(user.permissions, MODULE_PERMISSIONS.location.publish);
 
   const college = await getPrimaryCollege();
-  const location = college ? await prisma.location.findFirst({ where: { collegeId: college.id } }) : null;
+  const location = college
+    ? await prisma.location.findFirst({ where: { collegeId: college.id } })
+    : null;
 
   return (
     <Container>
@@ -44,7 +51,11 @@ export default async function LocationPage() {
         {!location ? (
           <EmptyState
             title="No location has been created yet."
-            action={canManage ? <LinkButton href="/admin/location/new">Create location</LinkButton> : undefined}
+            action={
+              canManage ? (
+                <LinkButton href="/admin/location/new">Create location</LinkButton>
+              ) : undefined
+            }
           />
         ) : (
           <>
@@ -79,6 +90,7 @@ export default async function LocationPage() {
               canManage={canManage}
               canPublish={canPublish}
               transition={transitionLocation}
+              workflowError={workflowError}
             />
           </>
         )}

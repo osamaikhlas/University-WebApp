@@ -18,7 +18,7 @@ export default async function EditSeminarPage({ params }: { params: Promise<{ id
   if (!seminar) notFound();
 
   const departments = await prisma.department.findMany({
-    where: { collegeId: seminar.collegeId, status: { not: "ARCHIVED" } },
+    where: { collegeId: seminar.collegeId },
     orderBy: { name: "asc" },
   });
 

@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Timetables" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function TimetablesListPage({
@@ -49,7 +50,10 @@ export default async function TimetablesListPage({
     <Container>
       <div className="flex flex-col gap-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <PageHeading title="Timetables" description="Manage class-wise/program-wise timetables." />
+          <PageHeading
+            title="Timetables"
+            description="Manage class-wise/program-wise timetables."
+          />
           {canManage ? <LinkButton href="/admin/timetables/new">New timetable</LinkButton> : null}
         </div>
 
@@ -82,7 +86,11 @@ export default async function TimetablesListPage({
               header: "Effective from",
               render: (row) => row.effectiveFrom.toLocaleDateString(),
             },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

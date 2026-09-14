@@ -16,8 +16,13 @@ import { transitionCollegeProfile } from "@/app/admin/college-profile/actions";
 
 export const metadata: Metadata = { title: "College Profile" };
 
-export default async function CollegeProfilePage() {
+export default async function CollegeProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.collegeProfile.view);
+  const { workflowError } = await searchParams;
   const canManage = hasPermission(user.permissions, MODULE_PERMISSIONS.collegeProfile.manage);
   const canPublish = hasPermission(user.permissions, MODULE_PERMISSIONS.collegeProfile.publish);
 
@@ -49,7 +54,11 @@ export default async function CollegeProfilePage() {
         {!profile ? (
           <EmptyState
             title="No college profile has been created yet."
-            action={canManage ? <LinkButton href="/admin/college-profile/new">Create profile</LinkButton> : undefined}
+            action={
+              canManage ? (
+                <LinkButton href="/admin/college-profile/new">Create profile</LinkButton>
+              ) : undefined
+            }
           />
         ) : (
           <>
@@ -96,6 +105,7 @@ export default async function CollegeProfilePage() {
               canManage={canManage}
               canPublish={canPublish}
               transition={transitionCollegeProfile}
+              workflowError={workflowError}
             />
           </>
         )}

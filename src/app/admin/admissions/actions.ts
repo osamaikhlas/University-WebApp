@@ -6,7 +6,12 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
 import { MODULE_PERMISSIONS } from "@/lib/admin/module-permissions";
 import { optionalDateField } from "@/lib/admin/zod-helpers";
-import { applyWorkflowTransition, WorkflowError, type WorkflowActionName } from "@/lib/content-workflow";
+import {
+  applyWorkflowTransition,
+  WorkflowError,
+  MANAGE_PERMISSION_ACTIONS,
+  type WorkflowActionName,
+} from "@/lib/content-workflow";
 import { logAudit } from "@/lib/audit";
 import { getPrimaryCollege } from "@/lib/content";
 
@@ -136,11 +141,12 @@ export async function updateAdmission(
 export async function transitionAdmission(
   id: string,
   action: WorkflowActionName,
-  _formData: FormData,
+  formData: FormData,
 ): Promise<void> {
   const user = await requirePermission(
-    action === "submit_for_review" ? PERMISSIONS.manage : PERMISSIONS.publish,
+    MANAGE_PERMISSION_ACTIONS.has(action) ? PERMISSIONS.manage : PERMISSIONS.publish,
   );
+  const comment = formData.get("comment")?.toString();
 
   const admission = await prisma.admission.findUniqueOrThrow({ where: { id } });
 
@@ -151,10 +157,12 @@ export async function transitionAdmission(
       currentStatus: admission.status,
       action,
       actorId: user.id,
+      comment,
       update: (data) => prisma.admission.update({ where: { id }, data }),
     });
   } catch (error) {
     if (!(error instanceof WorkflowError)) throw error;
+    redirect(`/admin/admissions/${id}?workflowError=${encodeURIComponent(error.message)}`);
   }
 
   redirect(`/admin/admissions/${id}`);

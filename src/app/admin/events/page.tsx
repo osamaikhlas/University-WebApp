@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Events" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function EventsListPage({
@@ -67,14 +68,25 @@ export default async function EventsListPage({
               key: "title",
               header: "Title",
               render: (row) => (
-                <Link href={`/admin/events/${row.id}`} className="font-medium text-brand hover:underline">
+                <Link
+                  href={`/admin/events/${row.id}`}
+                  className="font-medium text-brand hover:underline"
+                >
                   {row.title}
                 </Link>
               ),
             },
-            { key: "startDate", header: "Start date", render: (row) => row.startDate.toLocaleDateString() },
+            {
+              key: "startDate",
+              header: "Start date",
+              render: (row) => row.startDate.toLocaleDateString(),
+            },
             { key: "location", header: "Location", render: (row) => row.location ?? "—" },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

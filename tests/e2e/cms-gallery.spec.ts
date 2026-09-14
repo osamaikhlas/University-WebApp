@@ -47,34 +47,44 @@ test.describe.serial("Gallery CMS module (nested album -> item resources)", () =
     await expect(page.getByText("Draft").first()).toBeVisible();
   });
 
-  test("EDITOR submits both for review, then REVIEWER approves and publishes both", async ({ page }) => {
+  test("EDITOR submits both for review, then REVIEWER approves and publishes both", async ({
+    page,
+  }) => {
     await loginAs(page, "editor");
     await page.goto(albumUrl);
     await page.getByRole("button", { name: /submit for review/i }).click();
-    await expect(page.getByText("Pending review")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Submitted")).toBeVisible({ timeout: 15_000 });
 
     await page.goto(itemUrl);
     await page.getByRole("button", { name: /submit for review/i }).click();
-    await expect(page.getByText("Pending review")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Submitted")).toBeVisible({ timeout: 15_000 });
   });
 
-  test("REVIEWER approves and publishes both the album and the item", async ({ page }) => {
+  test("REVIEWER starts review, approves, and publishes both the album and the item", async ({
+    page,
+  }) => {
     await loginAs(page, "reviewer");
 
     await page.goto(albumUrl);
+    await page.getByRole("button", { name: /start review/i }).click();
+    await expect(page.getByText("Under review")).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: /^approve$/i }).click();
     await expect(page.getByText("Approved")).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: /^publish$/i }).click();
     await expect(page.getByText("Published")).toBeVisible({ timeout: 15_000 });
 
     await page.goto(itemUrl);
+    await page.getByRole("button", { name: /start review/i }).click();
+    await expect(page.getByText("Under review")).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: /^approve$/i }).click();
     await expect(page.getByText("Approved")).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: /^publish$/i }).click();
     await expect(page.getByText("Published")).toBeVisible({ timeout: 15_000 });
   });
 
-  test("the published album and item are now visible on the public Gallery page", async ({ page }) => {
+  test("the published album and item are now visible on the public Gallery page", async ({
+    page,
+  }) => {
     await page.goto("/gallery");
     await expect(page.getByRole("heading", { name: albumTitle })).toBeVisible();
     await expect(page.getByText(itemCaption)).toBeVisible();

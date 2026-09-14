@@ -16,9 +16,16 @@ import { transitionContact } from "@/app/admin/contact/actions";
 
 export const metadata: Metadata = { title: "Contact" };
 
-export default async function ContactViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ContactViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.contact.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const contact = await prisma.contact.findUnique({ where: { id } });
   if (!contact) notFound();
@@ -62,6 +69,7 @@ export default async function ContactViewPage({ params }: { params: Promise<{ id
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionContact}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/contact" className="text-sm text-brand hover:underline">

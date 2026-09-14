@@ -17,7 +17,7 @@ export default async function NewProgramPage() {
   const college = await getPrimaryCollege();
   const departments = college
     ? await prisma.department.findMany({
-        where: { collegeId: college.id, status: { not: "ARCHIVED" } },
+        where: { collegeId: college.id },
         orderBy: { name: "asc" },
       })
     : [];
@@ -25,7 +25,10 @@ export default async function NewProgramPage() {
   return (
     <Container>
       <div className="flex flex-col gap-6 py-10">
-        <PageHeading title="New program" description="Create a new program. It starts as a draft." />
+        <PageHeading
+          title="New program"
+          description="Create a new program. It starts as a draft."
+        />
         {departments.length === 0 ? (
           <Alert tone="warning">
             No departments exist yet. Create a department first before adding programs to it.

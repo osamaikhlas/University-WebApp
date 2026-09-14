@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Gallery" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function GalleryListPage({
@@ -68,14 +69,21 @@ export default async function GalleryListPage({
               key: "title",
               header: "Title",
               render: (row) => (
-                <Link href={`/admin/gallery/${row.id}`} className="font-medium text-brand hover:underline">
+                <Link
+                  href={`/admin/gallery/${row.id}`}
+                  className="font-medium text-brand hover:underline"
+                >
                   {row.title}
                 </Link>
               ),
             },
             { key: "category", header: "Category", render: (row) => row.category ?? "—" },
             { key: "items", header: "Items", render: (row) => row._count.items },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

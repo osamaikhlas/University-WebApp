@@ -5,7 +5,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
 import { MODULE_PERMISSIONS } from "@/lib/admin/module-permissions";
-import { applyWorkflowTransition, WorkflowError, type WorkflowActionName } from "@/lib/content-workflow";
+import {
+  applyWorkflowTransition,
+  WorkflowError,
+  MANAGE_PERMISSION_ACTIONS,
+  type WorkflowActionName,
+} from "@/lib/content-workflow";
 import { logAudit } from "@/lib/audit";
 import { getPrimaryCollege } from "@/lib/content";
 
@@ -110,11 +115,12 @@ export async function updateScholarship(
 export async function transitionScholarship(
   id: string,
   action: WorkflowActionName,
-  _formData: FormData,
+  formData: FormData,
 ): Promise<void> {
   const user = await requirePermission(
-    action === "submit_for_review" ? PERMISSIONS.manage : PERMISSIONS.publish,
+    MANAGE_PERMISSION_ACTIONS.has(action) ? PERMISSIONS.manage : PERMISSIONS.publish,
   );
+  const comment = formData.get("comment")?.toString();
 
   const scholarship = await prisma.scholarship.findUniqueOrThrow({ where: { id } });
 
@@ -125,10 +131,12 @@ export async function transitionScholarship(
       currentStatus: scholarship.status,
       action,
       actorId: user.id,
+      comment,
       update: (data) => prisma.scholarship.update({ where: { id }, data }),
     });
   } catch (error) {
     if (!(error instanceof WorkflowError)) throw error;
+    redirect(`/admin/scholarships/${id}?workflowError=${encodeURIComponent(error.message)}`);
   }
 
   redirect(`/admin/scholarships/${id}`);

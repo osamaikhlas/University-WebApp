@@ -48,7 +48,10 @@ describe("createInfrastructure", () => {
   it("requires content_general:manage", async () => {
     vi.mocked(prisma.infrastructure.create).mockResolvedValue({ id: "infra-1" } as never);
     await expect(
-      createInfrastructure({ error: null }, formData({ category: "LIBRARY", name: "Main Library" })),
+      createInfrastructure(
+        { error: null },
+        formData({ category: "LIBRARY", name: "Main Library" }),
+      ),
     ).rejects.toThrow("REDIRECT:/admin/infrastructure/infra-1");
     expect(requirePermission).toHaveBeenCalledWith("content_general:manage");
   });
@@ -88,16 +91,16 @@ describe("updateInfrastructure", () => {
 });
 
 describe("transitionInfrastructure", () => {
-  it("requires content_general:publish for archive", async () => {
+  it("requires content_general:publish for request_update", async () => {
     vi.mocked(prisma.infrastructure.findUniqueOrThrow).mockResolvedValue({
       id: "infra-1",
       status: "PUBLISHED",
     } as never);
     vi.mocked(prisma.infrastructure.update).mockResolvedValue({} as never);
 
-    await expect(transitionInfrastructure("infra-1", "archive", new FormData())).rejects.toThrow(
-      "REDIRECT:/admin/infrastructure/infra-1",
-    );
+    await expect(
+      transitionInfrastructure("infra-1", "request_update", new FormData()),
+    ).rejects.toThrow("REDIRECT:/admin/infrastructure/infra-1");
     expect(requirePermission).toHaveBeenCalledWith("content_general:publish");
   });
 });

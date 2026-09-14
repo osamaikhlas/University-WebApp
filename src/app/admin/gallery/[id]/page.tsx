@@ -17,9 +17,16 @@ import { transitionAlbum } from "@/app/admin/gallery/actions";
 
 export const metadata: Metadata = { title: "Gallery album" };
 
-export default async function AlbumViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function AlbumViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.gallery.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const album = await prisma.galleryAlbum.findUnique({
     where: { id },
@@ -66,6 +73,7 @@ export default async function AlbumViewPage({ params }: { params: Promise<{ id: 
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionAlbum}
+          workflowError={workflowError}
         />
 
         <div className="flex flex-col gap-4">
@@ -99,7 +107,11 @@ export default async function AlbumViewPage({ params }: { params: Promise<{ id: 
               },
               { key: "mediaType", header: "Type", render: (row) => row.media.mediaType },
               { key: "order", header: "Order", render: (row) => row.order },
-              { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+              {
+                key: "status",
+                header: "Status",
+                render: (row) => <StatusBadge status={row.status} />,
+              },
             ]}
           />
         </div>

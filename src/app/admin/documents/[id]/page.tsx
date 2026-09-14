@@ -16,9 +16,16 @@ import { transitionDocument } from "@/app/admin/documents/actions";
 
 export const metadata: Metadata = { title: "Document" };
 
-export default async function DocumentViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DocumentViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.documents.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const document = await prisma.document.findUnique({ where: { id } });
   if (!document) notFound();
@@ -64,7 +71,9 @@ export default async function DocumentViewPage({ params }: { params: Promise<{ i
               </div>
               <div>
                 <dt className="font-medium text-foreground/70">Size</dt>
-                <dd className="mt-1">{document.sizeBytes != null ? `${document.sizeBytes} bytes` : "—"}</dd>
+                <dd className="mt-1">
+                  {document.sizeBytes != null ? `${document.sizeBytes} bytes` : "—"}
+                </dd>
               </div>
             </div>
           </dl>
@@ -76,6 +85,7 @@ export default async function DocumentViewPage({ params }: { params: Promise<{ i
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionDocument}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/documents" className="text-sm text-brand hover:underline">

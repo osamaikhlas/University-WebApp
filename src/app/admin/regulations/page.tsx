@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Regulations" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function RegulationsListPage({
@@ -67,13 +68,24 @@ export default async function RegulationsListPage({
               key: "title",
               header: "Title",
               render: (row) => (
-                <Link href={`/admin/regulations/${row.id}`} className="font-medium text-brand hover:underline">
+                <Link
+                  href={`/admin/regulations/${row.id}`}
+                  className="font-medium text-brand hover:underline"
+                >
                   {row.title}
                 </Link>
               ),
             },
-            { key: "regulatingBody", header: "Regulating body", render: (row) => row.regulatingBody ?? "—" },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "regulatingBody",
+              header: "Regulating body",
+              render: (row) => row.regulatingBody ?? "—",
+            },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

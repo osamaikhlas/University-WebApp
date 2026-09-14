@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Fee Structures" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function FeeStructuresListPage({
@@ -50,7 +51,9 @@ export default async function FeeStructuresListPage({
       <div className="flex flex-col gap-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <PageHeading title="Fee Structures" description="Manage per-program fee amounts." />
-          {canManage ? <LinkButton href="/admin/fee-structures/new">New fee structure</LinkButton> : null}
+          {canManage ? (
+            <LinkButton href="/admin/fee-structures/new">New fee structure</LinkButton>
+          ) : null}
         </div>
 
         <StatusFilter basePath="/admin/fee-structures" active={statusFilter ?? "ALL"} />
@@ -78,8 +81,16 @@ export default async function FeeStructuresListPage({
             },
             { key: "program", header: "Program", render: (row) => row.program.name },
             { key: "academicYear", header: "Academic year", render: (row) => row.academicYear },
-            { key: "amount", header: "Amount", render: (row) => `${row.amount.toString()} ${row.currency}` },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "amount",
+              header: "Amount",
+              render: (row) => `${row.amount.toString()} ${row.currency}`,
+            },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

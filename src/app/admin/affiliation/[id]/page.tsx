@@ -16,11 +16,21 @@ import { transitionAffiliation } from "@/app/admin/affiliation/actions";
 
 export const metadata: Metadata = { title: "Affiliation" };
 
-export default async function AffiliationViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function AffiliationViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.affiliation.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
-  const affiliation = await prisma.affiliation.findUnique({ where: { id }, include: { program: true } });
+  const affiliation = await prisma.affiliation.findUnique({
+    where: { id },
+    include: { program: true },
+  });
   if (!affiliation) notFound();
 
   const canManage = hasPermission(user.permissions, MODULE_PERMISSIONS.affiliation.manage);
@@ -78,6 +88,7 @@ export default async function AffiliationViewPage({ params }: { params: Promise<
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionAffiliation}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/affiliation" className="text-sm text-brand hover:underline">

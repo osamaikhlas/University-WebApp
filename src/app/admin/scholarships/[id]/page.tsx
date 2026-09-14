@@ -16,9 +16,16 @@ import { transitionScholarship } from "@/app/admin/scholarships/actions";
 
 export const metadata: Metadata = { title: "Scholarship" };
 
-export default async function ScholarshipViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ScholarshipViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.scholarships.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const scholarship = await prisma.scholarship.findUnique({ where: { id } });
   if (!scholarship) notFound();
@@ -62,6 +69,7 @@ export default async function ScholarshipViewPage({ params }: { params: Promise<
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionScholarship}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/scholarships" className="text-sm text-brand hover:underline">

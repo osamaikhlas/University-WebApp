@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Scholarships" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function ScholarshipsListPage({
@@ -48,8 +49,13 @@ export default async function ScholarshipsListPage({
     <Container>
       <div className="flex flex-col gap-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <PageHeading title="Scholarships" description="Manage scholarship and financial assistance listings." />
-          {canManage ? <LinkButton href="/admin/scholarships/new">New scholarship</LinkButton> : null}
+          <PageHeading
+            title="Scholarships"
+            description="Manage scholarship and financial assistance listings."
+          />
+          {canManage ? (
+            <LinkButton href="/admin/scholarships/new">New scholarship</LinkButton>
+          ) : null}
         </div>
 
         <StatusFilter basePath="/admin/scholarships" active={statusFilter ?? "ALL"} />
@@ -67,12 +73,19 @@ export default async function ScholarshipsListPage({
               key: "name",
               header: "Name",
               render: (row) => (
-                <Link href={`/admin/scholarships/${row.id}`} className="font-medium text-brand hover:underline">
+                <Link
+                  href={`/admin/scholarships/${row.id}`}
+                  className="font-medium text-brand hover:underline"
+                >
                   {row.name}
                 </Link>
               ),
             },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

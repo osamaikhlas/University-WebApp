@@ -16,11 +16,21 @@ import { transitionTimetable } from "@/app/admin/timetables/actions";
 
 export const metadata: Metadata = { title: "Timetable" };
 
-export default async function TimetableViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function TimetableViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.timetables.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
-  const timetable = await prisma.timetable.findUnique({ where: { id }, include: { program: true } });
+  const timetable = await prisma.timetable.findUnique({
+    where: { id },
+    include: { program: true },
+  });
   if (!timetable) notFound();
 
   const canManage = hasPermission(user.permissions, MODULE_PERMISSIONS.timetables.manage);
@@ -74,6 +84,7 @@ export default async function TimetableViewPage({ params }: { params: Promise<{ 
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionTimetable}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/timetables" className="text-sm text-brand hover:underline">

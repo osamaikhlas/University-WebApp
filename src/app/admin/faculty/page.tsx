@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Faculty" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function FacultyListPage({
@@ -68,15 +69,26 @@ export default async function FacultyListPage({
               key: "name",
               header: "Name",
               render: (row) => (
-                <Link href={`/admin/faculty/${row.id}`} className="font-medium text-brand hover:underline">
+                <Link
+                  href={`/admin/faculty/${row.id}`}
+                  className="font-medium text-brand hover:underline"
+                >
                   {row.name}
                 </Link>
               ),
             },
             { key: "designation", header: "Designation", render: (row) => row.designation },
             { key: "department", header: "Department", render: (row) => row.department.name },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
-            { key: "updated", header: "Updated", render: (row) => row.updatedAt.toLocaleDateString() },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
+            {
+              key: "updated",
+              header: "Updated",
+              render: (row) => row.updatedAt.toLocaleDateString(),
+            },
           ]}
         />
       </div>

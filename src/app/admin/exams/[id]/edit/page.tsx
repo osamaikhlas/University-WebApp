@@ -19,11 +19,11 @@ export default async function EditExaminationPage({ params }: { params: Promise<
 
   const [programs, notices] = await Promise.all([
     prisma.program.findMany({
-      where: { collegeId: examination.collegeId, status: { not: "ARCHIVED" } },
+      where: { collegeId: examination.collegeId },
       orderBy: { name: "asc" },
     }),
     prisma.notice.findMany({
-      where: { collegeId: examination.collegeId, status: { not: "ARCHIVED" } },
+      where: { collegeId: examination.collegeId },
       orderBy: { createdAt: "desc" },
     }),
   ]);
@@ -33,7 +33,12 @@ export default async function EditExaminationPage({ params }: { params: Promise<
       <div className="flex flex-col gap-6 py-10">
         <PageHeading title={`Edit ${examination.examType}`} description="Examination" />
         <Card>
-          <ExaminationForm mode="edit" examination={examination} programs={programs} notices={notices} />
+          <ExaminationForm
+            mode="edit"
+            examination={examination}
+            programs={programs}
+            notices={notices}
+          />
         </Card>
       </div>
     </Container>

@@ -5,10 +5,11 @@ import type { ContentStatusValue } from "@/lib/content-workflow";
 const FILTERS: { value: ContentStatusValue | "ALL"; label: string }[] = [
   { value: "ALL", label: "All" },
   { value: "DRAFT", label: "Draft" },
-  { value: "PENDING_REVIEW", label: "Pending review" },
+  { value: "SUBMITTED", label: "Submitted" },
+  { value: "UNDER_REVIEW", label: "Under review" },
   { value: "APPROVED", label: "Approved" },
   { value: "PUBLISHED", label: "Published" },
-  { value: "ARCHIVED", label: "Archived" },
+  { value: "UPDATE_REQUIRED", label: "Update required" },
 ];
 
 /** Status-filter tabs for a module's list page, driven by a `?status=` query param. */

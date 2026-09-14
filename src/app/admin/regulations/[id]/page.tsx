@@ -16,9 +16,16 @@ import { transitionRegulation } from "@/app/admin/regulations/actions";
 
 export const metadata: Metadata = { title: "Regulation" };
 
-export default async function RegulationViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function RegulationViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.regulations.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const regulation = await prisma.regulation.findUnique({ where: { id } });
   if (!regulation) notFound();
@@ -66,6 +73,7 @@ export default async function RegulationViewPage({ params }: { params: Promise<{
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionRegulation}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/regulations" className="text-sm text-brand hover:underline">

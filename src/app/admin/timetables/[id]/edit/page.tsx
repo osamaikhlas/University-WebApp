@@ -18,7 +18,7 @@ export default async function EditTimetablePage({ params }: { params: Promise<{ 
   if (!timetable) notFound();
 
   const programs = await prisma.program.findMany({
-    where: { collegeId: timetable.collegeId, status: { not: "ARCHIVED" } },
+    where: { collegeId: timetable.collegeId },
     orderBy: { name: "asc" },
   });
 

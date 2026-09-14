@@ -19,11 +19,11 @@ export default async function EditResultPage({ params }: { params: Promise<{ id:
 
   const [programs, examinations] = await Promise.all([
     prisma.program.findMany({
-      where: { collegeId: result.collegeId, status: { not: "ARCHIVED" } },
+      where: { collegeId: result.collegeId },
       orderBy: { name: "asc" },
     }),
     prisma.examination.findMany({
-      where: { collegeId: result.collegeId, status: { not: "ARCHIVED" } },
+      where: { collegeId: result.collegeId },
       orderBy: { createdAt: "desc" },
     }),
   ]);

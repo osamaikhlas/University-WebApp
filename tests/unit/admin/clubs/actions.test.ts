@@ -58,7 +58,11 @@ describe("createClub", () => {
     );
 
     expect(prisma.club.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ name: "Debate Society", facultyAdvisorId: null, status: "DRAFT" }),
+      data: expect.objectContaining({
+        name: "Debate Society",
+        facultyAdvisorId: null,
+        status: "DRAFT",
+      }),
     });
   });
 
@@ -76,7 +80,10 @@ describe("createClub", () => {
   });
 
   it("accepts a valid faculty advisor", async () => {
-    vi.mocked(prisma.faculty.findUnique).mockResolvedValue({ id: "fac-1", collegeId: "college-1" } as never);
+    vi.mocked(prisma.faculty.findUnique).mockResolvedValue({
+      id: "fac-1",
+      collegeId: "college-1",
+    } as never);
     vi.mocked(prisma.club.create).mockResolvedValue({ id: "club-1" } as never);
 
     await expect(
@@ -101,7 +108,7 @@ describe("transitionClub", () => {
   it("requires content_faculty:publish for approve", async () => {
     vi.mocked(prisma.club.findUniqueOrThrow).mockResolvedValue({
       id: "club-1",
-      status: "PENDING_REVIEW",
+      status: "UNDER_REVIEW",
     } as never);
     vi.mocked(prisma.club.update).mockResolvedValue({} as never);
 

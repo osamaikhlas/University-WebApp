@@ -18,11 +18,14 @@ async function loginAs(page: Page, roleSlug: string): Promise<void> {
   await page.waitForURL(/\/admin$/);
 }
 
-test.describe.serial("Results CMS module (content_examinations domain, double publish gate)", () => {
+test.describe
+  .serial("Results CMS module (content_examinations domain, double publish gate)", () => {
   const externalLink = `https://example.invalid/e2e-result-${Date.now()}`;
   let resultUrl = "";
 
-  test("EXAMINATION_OFFICER can create a result, not publicly visible by default", async ({ page }) => {
+  test("EXAMINATION_OFFICER can create a result, not publicly visible by default", async ({
+    page,
+  }) => {
     await loginAs(page, "examination-officer");
     await page.goto("/admin/results/new");
 
@@ -45,12 +48,15 @@ test.describe.serial("Results CMS module (content_examinations domain, double pu
     await loginAs(page, "examination-officer");
     await page.goto(resultUrl);
     await page.getByRole("button", { name: /submit for review/i }).click();
-    await expect(page.getByText("Pending review")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Submitted")).toBeVisible({ timeout: 15_000 });
   });
 
-  test("REVIEWER approves and publishes", async ({ page }) => {
+  test("REVIEWER starts review, approves, and publishes", async ({ page }) => {
     await loginAs(page, "reviewer");
     await page.goto(resultUrl);
+    await page.getByRole("button", { name: /start review/i }).click();
+    await expect(page.getByText("Under review")).toBeVisible({ timeout: 15_000 });
+
     await page.getByRole("button", { name: /^approve$/i }).click();
     await expect(page.getByText("Approved")).toBeVisible({ timeout: 15_000 });
 
@@ -58,7 +64,9 @@ test.describe.serial("Results CMS module (content_examinations domain, double pu
     await expect(page.getByText("Published")).toBeVisible({ timeout: 15_000 });
   });
 
-  test("PUBLISHED but not marked public: still absent from the public Results page", async ({ page }) => {
+  test("PUBLISHED but not marked public: still absent from the public Results page", async ({
+    page,
+  }) => {
     await page.goto("/results");
     await expect(page.locator(`a[href="${externalLink}"]`)).toHaveCount(0);
   });

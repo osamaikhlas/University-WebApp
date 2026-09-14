@@ -98,13 +98,13 @@ describe("transitionEvent", () => {
     } as never);
     vi.mocked(prisma.event.update).mockResolvedValue({} as never);
 
-    await expect(
-      transitionEvent("event-1", "submit_for_review", new FormData()),
-    ).rejects.toThrow("REDIRECT:/admin/events/event-1");
+    await expect(transitionEvent("event-1", "submit_for_review", new FormData())).rejects.toThrow(
+      "REDIRECT:/admin/events/event-1",
+    );
     expect(requirePermission).toHaveBeenCalledWith("content_general:manage");
     expect(prisma.event.update).toHaveBeenCalledWith({
       where: { id: "event-1" },
-      data: expect.objectContaining({ status: "PENDING_REVIEW" }),
+      data: expect.objectContaining({ status: "SUBMITTED" }),
     });
   });
 });

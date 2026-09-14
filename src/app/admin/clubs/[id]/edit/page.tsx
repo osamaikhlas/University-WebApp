@@ -18,7 +18,7 @@ export default async function EditClubPage({ params }: { params: Promise<{ id: s
   if (!club) notFound();
 
   const facultyMembers = await prisma.faculty.findMany({
-    where: { collegeId: club.collegeId, status: { not: "ARCHIVED" } },
+    where: { collegeId: club.collegeId },
     orderBy: { name: "asc" },
   });
 

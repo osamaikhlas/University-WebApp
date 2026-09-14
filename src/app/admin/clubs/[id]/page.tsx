@@ -16,9 +16,16 @@ import { transitionClub } from "@/app/admin/clubs/actions";
 
 export const metadata: Metadata = { title: "Club" };
 
-export default async function ClubViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ClubViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.clubs.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const club = await prisma.club.findUnique({ where: { id }, include: { facultyAdvisor: true } });
   if (!club) notFound();
@@ -62,6 +69,7 @@ export default async function ClubViewPage({ params }: { params: Promise<{ id: s
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionClub}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/clubs" className="text-sm text-brand hover:underline">

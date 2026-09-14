@@ -45,7 +45,10 @@ describe("createWorkshop", () => {
   it("requires content_general:manage", async () => {
     vi.mocked(prisma.workshop.create).mockResolvedValue({ id: "wk-1" } as never);
     await expect(
-      createWorkshop({ error: null }, formData({ title: "Resume Writing", startDate: "2026-10-01" })),
+      createWorkshop(
+        { error: null },
+        formData({ title: "Resume Writing", startDate: "2026-10-01" }),
+      ),
     ).rejects.toThrow("REDIRECT:/admin/workshops/wk-1");
     expect(requirePermission).toHaveBeenCalledWith("content_general:manage");
   });
@@ -56,7 +59,11 @@ describe("createWorkshop", () => {
     await expect(
       createWorkshop(
         { error: null },
-        formData({ title: "Resume Writing", startDate: "2026-10-01", facilitator: "Career Office" }),
+        formData({
+          title: "Resume Writing",
+          startDate: "2026-10-01",
+          facilitator: "Career Office",
+        }),
       ),
     ).rejects.toThrow("REDIRECT:/admin/workshops/wk-1");
 
@@ -88,7 +95,7 @@ describe("transitionWorkshop", () => {
   it("does not throw an unhandled error on an illegal transition", async () => {
     vi.mocked(prisma.workshop.findUniqueOrThrow).mockResolvedValue({
       id: "wk-1",
-      status: "ARCHIVED",
+      status: "DRAFT",
     } as never);
 
     await expect(transitionWorkshop("wk-1", "publish", new FormData())).rejects.toThrow(

@@ -16,11 +16,21 @@ import { transitionWorkshop } from "@/app/admin/workshops/actions";
 
 export const metadata: Metadata = { title: "Workshop" };
 
-export default async function WorkshopViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function WorkshopViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.workshops.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
-  const workshop = await prisma.workshop.findUnique({ where: { id }, include: { department: true } });
+  const workshop = await prisma.workshop.findUnique({
+    where: { id },
+    include: { department: true },
+  });
   if (!workshop) notFound();
 
   const canManage = hasPermission(user.permissions, MODULE_PERMISSIONS.workshops.manage);
@@ -80,6 +90,7 @@ export default async function WorkshopViewPage({ params }: { params: Promise<{ i
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionWorkshop}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/workshops" className="text-sm text-brand hover:underline">

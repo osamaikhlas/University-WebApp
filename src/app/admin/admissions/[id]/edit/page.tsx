@@ -18,7 +18,7 @@ export default async function EditAdmissionPage({ params }: { params: Promise<{ 
   if (!admission) notFound();
 
   const programs = await prisma.program.findMany({
-    where: { collegeId: admission.collegeId, status: { not: "ARCHIVED" } },
+    where: { collegeId: admission.collegeId },
     orderBy: { name: "asc" },
   });
 

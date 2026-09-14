@@ -76,7 +76,9 @@ describe("createResult", () => {
     vi.mocked(prisma.result.create).mockResolvedValue({ id: "res-1" } as never);
     const data = formData({ ...validFields, isPublic: "on" });
 
-    await expect(createResult({ error: null }, data)).rejects.toThrow("REDIRECT:/admin/results/res-1");
+    await expect(createResult({ error: null }, data)).rejects.toThrow(
+      "REDIRECT:/admin/results/res-1",
+    );
 
     expect(prisma.result.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ isPublic: true }),
@@ -112,14 +114,14 @@ describe("updateResult", () => {
 });
 
 describe("transitionResult", () => {
-  it("requires content_examinations:publish for archive", async () => {
+  it("requires content_examinations:publish for request_update", async () => {
     vi.mocked(prisma.result.findUniqueOrThrow).mockResolvedValue({
       id: "res-1",
       status: "PUBLISHED",
     } as never);
     vi.mocked(prisma.result.update).mockResolvedValue({} as never);
 
-    await expect(transitionResult("res-1", "archive", new FormData())).rejects.toThrow(
+    await expect(transitionResult("res-1", "request_update", new FormData())).rejects.toThrow(
       "REDIRECT:/admin/results/res-1",
     );
     expect(requirePermission).toHaveBeenCalledWith("content_examinations:publish");

@@ -17,10 +17,11 @@ export const metadata: Metadata = { title: "Documents" };
 
 const VALID_STATUSES: ContentStatusValue[] = [
   "DRAFT",
-  "PENDING_REVIEW",
+  "SUBMITTED",
+  "UNDER_REVIEW",
   "APPROVED",
   "PUBLISHED",
-  "ARCHIVED",
+  "UPDATE_REQUIRED",
 ];
 
 export default async function DocumentsListPage({
@@ -48,7 +49,10 @@ export default async function DocumentsListPage({
     <Container>
       <div className="flex flex-col gap-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <PageHeading title="Documents" description="Manage downloadable documents (forms, circulars, policies)." />
+          <PageHeading
+            title="Documents"
+            description="Manage downloadable documents (forms, circulars, policies)."
+          />
           {canManage ? <LinkButton href="/admin/documents/new">New document</LinkButton> : null}
         </div>
 
@@ -67,7 +71,10 @@ export default async function DocumentsListPage({
               key: "title",
               header: "Title",
               render: (row) => (
-                <Link href={`/admin/documents/${row.id}`} className="font-medium text-brand hover:underline">
+                <Link
+                  href={`/admin/documents/${row.id}`}
+                  className="font-medium text-brand hover:underline"
+                >
                   {row.title}
                 </Link>
               ),
@@ -78,7 +85,11 @@ export default async function DocumentsListPage({
               header: "Uploaded",
               render: (row) => row.uploadedAt.toLocaleDateString(),
             },
-            { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            {
+              key: "status",
+              header: "Status",
+              render: (row) => <StatusBadge status={row.status} />,
+            },
           ]}
         />
       </div>

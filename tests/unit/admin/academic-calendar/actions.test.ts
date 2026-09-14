@@ -99,7 +99,7 @@ describe("transitionAcademicCalendarEntry", () => {
   it("requires content_general:publish for approve", async () => {
     vi.mocked(prisma.academicCalendar.findUniqueOrThrow).mockResolvedValue({
       id: "cal-1",
-      status: "PENDING_REVIEW",
+      status: "UNDER_REVIEW",
     } as never);
     vi.mocked(prisma.academicCalendar.update).mockResolvedValue({} as never);
 

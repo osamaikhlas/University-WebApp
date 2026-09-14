@@ -16,9 +16,16 @@ import { transitionStaff } from "@/app/admin/staff/actions";
 
 export const metadata: Metadata = { title: "Staff record" };
 
-export default async function StaffViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function StaffViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.staff.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const staff = await prisma.staff.findUnique({ where: { id } });
   if (!staff) notFound();
@@ -62,6 +69,7 @@ export default async function StaffViewPage({ params }: { params: Promise<{ id: 
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionStaff}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/staff" className="text-sm text-brand hover:underline">

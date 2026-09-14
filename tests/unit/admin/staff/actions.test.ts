@@ -50,7 +50,10 @@ describe("createStaff", () => {
   });
 
   it("rejects a missing designation", async () => {
-    const result = await createStaff({ error: null }, formData({ name: "Jane Doe", designation: "" }));
+    const result = await createStaff(
+      { error: null },
+      formData({ name: "Jane Doe", designation: "" }),
+    );
     expect(result.error).toBeTruthy();
     expect(prisma.staff.create).not.toHaveBeenCalled();
   });
@@ -90,7 +93,7 @@ describe("transitionStaff", () => {
   it("rejects an illegal transition without throwing an unhandled error", async () => {
     vi.mocked(prisma.staff.findUniqueOrThrow).mockResolvedValue({
       id: "staff-1",
-      status: "ARCHIVED",
+      status: "DRAFT",
     } as never);
 
     await expect(transitionStaff("staff-1", "publish", new FormData())).rejects.toThrow(

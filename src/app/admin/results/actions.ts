@@ -6,7 +6,12 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
 import { MODULE_PERMISSIONS } from "@/lib/admin/module-permissions";
 import { optionalDateField } from "@/lib/admin/zod-helpers";
-import { applyWorkflowTransition, WorkflowError, type WorkflowActionName } from "@/lib/content-workflow";
+import {
+  applyWorkflowTransition,
+  WorkflowError,
+  MANAGE_PERMISSION_ACTIONS,
+  type WorkflowActionName,
+} from "@/lib/content-workflow";
 import { logAudit } from "@/lib/audit";
 import { getPrimaryCollege } from "@/lib/content";
 
@@ -17,13 +22,7 @@ const resultSchema = z.object({
   programId: z.string().trim().min(1, "Program is required"),
   examinationId: z.string().trim().min(1, "Examination is required"),
   publishDate: optionalDateField,
-  externalLink: z
-    .string()
-    .trim()
-    .url("Enter a valid URL")
-    .max(500)
-    .optional()
-    .or(z.literal("")),
+  externalLink: z.string().trim().url("Enter a valid URL").max(500).optional().or(z.literal("")),
   isPublic: z.boolean(),
 });
 
@@ -159,11 +158,12 @@ export async function updateResult(
 export async function transitionResult(
   id: string,
   action: WorkflowActionName,
-  _formData: FormData,
+  formData: FormData,
 ): Promise<void> {
   const user = await requirePermission(
-    action === "submit_for_review" ? PERMISSIONS.manage : PERMISSIONS.publish,
+    MANAGE_PERMISSION_ACTIONS.has(action) ? PERMISSIONS.manage : PERMISSIONS.publish,
   );
+  const comment = formData.get("comment")?.toString();
 
   const result = await prisma.result.findUniqueOrThrow({ where: { id } });
 
@@ -174,10 +174,12 @@ export async function transitionResult(
       currentStatus: result.status,
       action,
       actorId: user.id,
+      comment,
       update: (data) => prisma.result.update({ where: { id }, data }),
     });
   } catch (error) {
     if (!(error instanceof WorkflowError)) throw error;
+    redirect(`/admin/results/${id}?workflowError=${encodeURIComponent(error.message)}`);
   }
 
   redirect(`/admin/results/${id}`);

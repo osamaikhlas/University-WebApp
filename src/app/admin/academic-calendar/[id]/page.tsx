@@ -18,11 +18,14 @@ export const metadata: Metadata = { title: "Calendar entry" };
 
 export default async function AcademicCalendarEntryViewPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
 }) {
   const user = await requirePermission(MODULE_PERMISSIONS.academicCalendar.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const entry = await prisma.academicCalendar.findUnique({ where: { id } });
   if (!entry) notFound();
@@ -82,6 +85,7 @@ export default async function AcademicCalendarEntryViewPage({
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionAcademicCalendarEntry}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/academic-calendar" className="text-sm text-brand hover:underline">

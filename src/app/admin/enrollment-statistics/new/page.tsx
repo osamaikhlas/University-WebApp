@@ -17,7 +17,7 @@ export default async function NewEnrollmentStatisticPage() {
   const college = await getPrimaryCollege();
   const programs = college
     ? await prisma.program.findMany({
-        where: { collegeId: college.id, status: { not: "ARCHIVED" } },
+        where: { collegeId: college.id },
         orderBy: { name: "asc" },
       })
     : [];
@@ -28,7 +28,8 @@ export default async function NewEnrollmentStatisticPage() {
         <PageHeading title="New enrollment statistic" description="It starts as a draft." />
         {programs.length === 0 ? (
           <Alert tone="warning">
-            No programs exist yet. Create a program first before adding an enrollment statistic for it.
+            No programs exist yet. Create a program first before adding an enrollment statistic for
+            it.
           </Alert>
         ) : (
           <Card>

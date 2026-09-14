@@ -43,18 +43,18 @@ beforeEach(() => {
 describe("createActivity", () => {
   it("requires content_general:manage", async () => {
     vi.mocked(prisma.activity.create).mockResolvedValue({ id: "act-1" } as never);
-    await expect(createActivity({ error: null }, formData({ title: "Blood Drive" }))).rejects.toThrow(
-      "REDIRECT:/admin/activities/act-1",
-    );
+    await expect(
+      createActivity({ error: null }, formData({ title: "Blood Drive" })),
+    ).rejects.toThrow("REDIRECT:/admin/activities/act-1");
     expect(requirePermission).toHaveBeenCalledWith("content_general:manage");
   });
 
   it("creates a DRAFT activity with no category by default", async () => {
     vi.mocked(prisma.activity.create).mockResolvedValue({ id: "act-1" } as never);
 
-    await expect(createActivity({ error: null }, formData({ title: "Blood Drive" }))).rejects.toThrow(
-      "REDIRECT:/admin/activities/act-1",
-    );
+    await expect(
+      createActivity({ error: null }, formData({ title: "Blood Drive" })),
+    ).rejects.toThrow("REDIRECT:/admin/activities/act-1");
 
     expect(prisma.activity.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ title: "Blood Drive", category: null, status: "DRAFT" }),
@@ -74,7 +74,7 @@ describe("transitionActivity", () => {
   it("does not throw an unhandled error on an illegal transition", async () => {
     vi.mocked(prisma.activity.findUniqueOrThrow).mockResolvedValue({
       id: "act-1",
-      status: "ARCHIVED",
+      status: "DRAFT",
     } as never);
 
     await expect(transitionActivity("act-1", "publish", new FormData())).rejects.toThrow(

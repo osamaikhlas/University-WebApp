@@ -6,7 +6,12 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
 import { MODULE_PERMISSIONS } from "@/lib/admin/module-permissions";
 import { optionalDateField, requiredDateField } from "@/lib/admin/zod-helpers";
-import { applyWorkflowTransition, WorkflowError, type WorkflowActionName } from "@/lib/content-workflow";
+import {
+  applyWorkflowTransition,
+  WorkflowError,
+  MANAGE_PERMISSION_ACTIONS,
+  type WorkflowActionName,
+} from "@/lib/content-workflow";
 import { logAudit } from "@/lib/audit";
 import { getPrimaryCollege } from "@/lib/content";
 
@@ -145,11 +150,12 @@ export async function updateSeminar(
 export async function transitionSeminar(
   id: string,
   action: WorkflowActionName,
-  _formData: FormData,
+  formData: FormData,
 ): Promise<void> {
   const user = await requirePermission(
-    action === "submit_for_review" ? PERMISSIONS.manage : PERMISSIONS.publish,
+    MANAGE_PERMISSION_ACTIONS.has(action) ? PERMISSIONS.manage : PERMISSIONS.publish,
   );
+  const comment = formData.get("comment")?.toString();
 
   const seminar = await prisma.seminar.findUniqueOrThrow({ where: { id } });
 
@@ -160,10 +166,12 @@ export async function transitionSeminar(
       currentStatus: seminar.status,
       action,
       actorId: user.id,
+      comment,
       update: (data) => prisma.seminar.update({ where: { id }, data }),
     });
   } catch (error) {
     if (!(error instanceof WorkflowError)) throw error;
+    redirect(`/admin/seminars/${id}?workflowError=${encodeURIComponent(error.message)}`);
   }
 
   redirect(`/admin/seminars/${id}`);

@@ -24,7 +24,11 @@ vi.mock("next/navigation", () => ({
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
 import { getPrimaryCollege } from "@/lib/content";
-import { createTimetable, transitionTimetable, updateTimetable } from "@/app/admin/timetables/actions";
+import {
+  createTimetable,
+  transitionTimetable,
+  updateTimetable,
+} from "@/app/admin/timetables/actions";
 
 const fakeUser = { id: "user-1", collegeId: "college-1", permissions: new Set() } as never;
 const college = { id: "college-1" } as never;
@@ -115,16 +119,32 @@ describe("updateTimetable", () => {
 });
 
 describe("transitionTimetable", () => {
-  it("requires content_general:publish for reject", async () => {
+  it("rejecting without a reason is refused and does not update the record", async () => {
     vi.mocked(prisma.timetable.findUniqueOrThrow).mockResolvedValue({
       id: "tt-1",
-      status: "PENDING_REVIEW",
+      status: "UNDER_REVIEW",
+    } as never);
+
+    await expect(transitionTimetable("tt-1", "reject", new FormData())).rejects.toThrow(
+      "REDIRECT:/admin/timetables/tt-1?workflowError=",
+    );
+    expect(prisma.timetable.update).not.toHaveBeenCalled();
+  });
+
+  it("requires content_general:publish for reject and stores the reason", async () => {
+    vi.mocked(prisma.timetable.findUniqueOrThrow).mockResolvedValue({
+      id: "tt-1",
+      status: "UNDER_REVIEW",
     } as never);
     vi.mocked(prisma.timetable.update).mockResolvedValue({} as never);
 
-    await expect(transitionTimetable("tt-1", "reject", new FormData())).rejects.toThrow(
-      "REDIRECT:/admin/timetables/tt-1",
-    );
+    await expect(
+      transitionTimetable(
+        "tt-1",
+        "reject",
+        formData({ comment: "Schedule has overlapping slots." }),
+      ),
+    ).rejects.toThrow("REDIRECT:/admin/timetables/tt-1");
     expect(requirePermission).toHaveBeenCalledWith("content_general:publish");
     expect(prisma.timetable.update).toHaveBeenCalledWith({
       where: { id: "tt-1" },

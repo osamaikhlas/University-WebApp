@@ -16,9 +16,16 @@ import { transitionProgram } from "@/app/admin/programs/actions";
 
 export const metadata: Metadata = { title: "Program" };
 
-export default async function ProgramViewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProgramViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ workflowError?: string }>;
+}) {
   const user = await requirePermission(MODULE_PERMISSIONS.programs.view);
   const { id } = await params;
+  const { workflowError } = await searchParams;
 
   const program = await prisma.program.findUnique({ where: { id }, include: { department: true } });
   if (!program) notFound();
@@ -72,6 +79,7 @@ export default async function ProgramViewPage({ params }: { params: Promise<{ id
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionProgram}
+          workflowError={workflowError}
         />
 
         <Link href="/admin/programs" className="text-sm text-brand hover:underline">
