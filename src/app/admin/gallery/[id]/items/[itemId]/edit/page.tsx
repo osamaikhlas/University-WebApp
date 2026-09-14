@@ -1,0 +1,34 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/auth/guard";
+import { MODULE_PERMISSIONS } from "@/lib/admin/module-permissions";
+import { prisma } from "@/lib/prisma";
+import { Container } from "@/components/ui/Container";
+import { PageHeading } from "@/components/ui/PageHeading";
+import { Card } from "@/components/ui/Card";
+import { ItemForm } from "@/app/admin/gallery/ItemForm";
+
+export const metadata: Metadata = { title: "Edit gallery item" };
+
+export default async function EditItemPage({
+  params,
+}: {
+  params: Promise<{ id: string; itemId: string }>;
+}) {
+  await requirePermission(MODULE_PERMISSIONS.gallery.manage);
+  const { id: albumId, itemId } = await params;
+
+  const item = await prisma.galleryItem.findUnique({ where: { id: itemId }, include: { media: true } });
+  if (!item || item.albumId !== albumId) notFound();
+
+  return (
+    <Container>
+      <div className="flex flex-col gap-6 py-10">
+        <PageHeading title={`Edit ${item.caption || item.media.altText}`} description="Gallery item" />
+        <Card>
+          <ItemForm mode="edit" albumId={albumId} item={item} media={item.media} />
+        </Card>
+      </div>
+    </Container>
+  );
+}

@@ -121,6 +121,8 @@ enum AuditAction {
   APPROVE
   REJECT
   LOGIN
+  LOGIN_FAILED
+  LOGOUT
   ROLE_CHANGE
   OTHER
 }
@@ -180,19 +182,25 @@ model College {
 }
 
 model User {
-  id           String     @id @default(cuid())
-  collegeId    String
-  name         String
-  email        String     @unique
-  passwordHash String
-  mfaEnabled   Boolean    @default(false)
-  status       UserStatus @default(ACTIVE)
-  lastLoginAt  DateTime?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id                  String     @id @default(cuid())
+  collegeId           String
+  name                String
+  email               String     @unique
+  passwordHash        String
+  mfaEnabled          Boolean    @default(false)
+  status              UserStatus @default(ACTIVE)
+  lastLoginAt         DateTime?
+  // Login lockout (docs/architecture.md §3: "Account lockout/backoff on repeated failed
+  // logins"). Reset to 0 on any successful login. Never exposed to the client beyond a
+  // generic "account temporarily locked" message — never reveals the attempt count.
+  failedLoginAttempts Int        @default(0)
+  lockedUntil         DateTime?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 
-  college College    @relation(fields: [collegeId], references: [id])
-  roles   UserRole[]
+  college  College    @relation(fields: [collegeId], references: [id])
+  roles    UserRole[]
+  sessions Session[]  @relation("UserSessions")
 
   assignedGrievances          Grievance[]              @relation("GrievanceAssignee")
   uploadedDocuments           Document[]               @relation("DocumentUploader")
@@ -205,6 +213,28 @@ model User {
 
   @@index([collegeId])
   @@map("users")
+}
+
+// Server-side session store (not JWT): the cookie only carries a high-entropy random
+// token, never a role/permission claim — every request re-checks role/permission data
+// straight from the database (CLAUDE.md rule 5, "never trust only client-side checks").
+// Only a hash of the token is stored, mirroring how passwordHash never stores the raw
+// password, so a leaked database dump cannot be replayed as a live cookie.
+model Session {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  userAgent  String?
+  ipAddress  String?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  user User @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
 }
 
 // Baseline role set is generic system taxonomy (docs/database-design.md §1), not
@@ -723,6 +753,8 @@ model FeeStructure {
   currency      String        @default("PKR")
   status        ContentStatus @default(DRAFT)
   isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
   createdBy     String?
   updatedBy     String?
   createdAt     DateTime      @default(now())
@@ -748,6 +780,8 @@ model EnrollmentStatistic {
   femaleCount   Int?
   status        ContentStatus @default(DRAFT)
   isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
   createdBy     String?
   updatedBy     String?
   createdAt     DateTime      @default(now())
@@ -803,6 +837,8 @@ model Result {
   isPublic      Boolean       @default(false)
   status        ContentStatus @default(DRAFT)
   isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
   createdBy     String?
   updatedBy     String?
   createdAt     DateTime      @default(now())
@@ -829,6 +865,8 @@ model Contact {
   label         String?
   status        ContentStatus @default(DRAFT)
   isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
   createdBy     String?
   updatedBy     String?
   createdAt     DateTime      @default(now())
@@ -849,6 +887,8 @@ model Location {
   mapEmbedUrl   String?
   status        ContentStatus @default(DRAFT)
   isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
   createdBy     String?
   updatedBy     String?
   createdAt     DateTime      @default(now())
@@ -1063,7 +1103,7 @@ model GrievanceNote {
 // ---------------------------------------------------------------------------------------
 
 model Document {
-  id            String   @id @default(cuid())
+  id            String        @id @default(cuid())
   collegeId     String
   entityType    String
   entityId      String
@@ -1072,12 +1112,16 @@ model Document {
   fileUrl       String
   mimeType      String?
   sizeBytes     Int?
-  version       Int      @default(1)
+  version       Int           @default(1)
   uploadedById  String
-  uploadedAt    DateTime @default(now())
-  isPlaceholder Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  uploadedAt    DateTime      @default(now())
+  status        ContentStatus @default(DRAFT)
+  isPlaceholder Boolean       @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  updatedBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   college    College @relation(fields: [collegeId], references: [id])
   uploadedBy User    @relation("DocumentUploader", fields: [uploadedById], references: [id])

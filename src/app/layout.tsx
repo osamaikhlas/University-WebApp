@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
+import { SkipLink } from "@/components/SkipLink";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,7 +29,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {/* Visually hidden until focused — lets keyboard/screen-reader users jump past the
+            header/nav straight to the page's main content. Targets #main-content, set on
+            each layout's <main> below. */}
+        <SkipLink />
+        {children}
+      </body>
     </html>
   );
 }

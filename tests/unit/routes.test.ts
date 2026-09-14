@@ -18,8 +18,8 @@ function pagePathFor(href: string): string {
 }
 
 describe("public route structure", () => {
-  it("matches the scope documented in CLAUDE.md (29 sections including Home)", () => {
-    expect(PUBLIC_NAV_LINKS).toHaveLength(29);
+  it("matches the Phase 4 consolidated route list (20 sections including Home)", () => {
+    expect(PUBLIC_NAV_LINKS).toHaveLength(20);
   });
 
   it("has a page.tsx for every public nav link", () => {
@@ -36,8 +36,8 @@ describe("public route structure", () => {
 });
 
 describe("admin route structure", () => {
-  it("matches the scope documented in CLAUDE.md (23 sections including Dashboard)", () => {
-    expect(ADMIN_NAV_LINKS).toHaveLength(23);
+  it("matches the scope documented in CLAUDE.md, plus College Profile/Departments/Seminars/Workshops/Fee Structures/Enrollment Statistics/Activities/Clubs/Infrastructure/Policies/Regulations/Affiliation/Contact/Location CMS modules (37 sections including Dashboard)", () => {
+    expect(ADMIN_NAV_LINKS).toHaveLength(37);
   });
 
   it("has a page.tsx for every admin nav link", () => {

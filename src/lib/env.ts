@@ -23,6 +23,21 @@ export const envSchema = z.object({
     .string()
     .min(1)
     .default("[PLACEHOLDER] Affiliated College Portal"),
+  // Absolute origin (no trailing slash) used to build absolute URLs for SEO metadata that
+  // requires them — sitemap.xml, robots.txt, and Open Graph/canonical tags (src/app/sitemap.ts,
+  // src/app/robots.ts). Defaults to localhost so dev/test never need to set it.
+  NEXT_PUBLIC_SITE_URL: z
+    .string()
+    .url("NEXT_PUBLIC_SITE_URL must be a valid absolute URL")
+    .default("http://localhost:3000"),
+  // 32-byte AES-256-GCM key, hex-encoded (64 hex characters). Encrypts Grievance.submitterContact
+  // at rest (CLAUDE.md rule 6). Optional here (presence/format only, like every other var in
+  // this file) so the app still boots without it — src/lib/security/crypto.ts throws its own
+  // clear error only when a grievance submission actually needs to encrypt something.
+  GRIEVANCE_ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/i, "GRIEVANCE_ENCRYPTION_KEY must be 64 hex characters (32 bytes)")
+    .optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

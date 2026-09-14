@@ -1,6 +1,6 @@
 {
   "$schema": "Test coverage manifest for the affiliated-college website and administration system. Update alongside any test work. Never remove or weaken an entry to make coverage look better than it is (CLAUDE.md rule 10) — change its status honestly instead.",
-  "lastUpdated": "2026-09-13",
+  "lastUpdated": "2026-09-14T18:00:00Z",
   "statusValues": ["not_started", "planned", "in_progress", "passing", "failing", "skipped"],
   "foundation": {
     "description": "Phase 1 (project foundation) infrastructure tests — not tied to a specific circular requirement, unlike the per-feature entries below which stay not_started until their real (non-placeholder) behavior is built.",
@@ -10,18 +10,18 @@
         "feature": "Environment variable validation (src/lib/env.ts)",
         "status": "passing",
         "type": "unit",
-        "notes": "tests/unit/env.test.ts — 6 cases (valid input, defaults, missing/invalid DATABASE_URL, invalid NODE_ENV). Run via `npm test`."
+        "notes": "tests/unit/env.test.ts — 6 cases (valid input, defaults, missing/invalid DATABASE_URL, invalid NODE_ENV), plus GRIEVANCE_ENCRYPTION_KEY and NEXT_PUBLIC_SITE_URL format/default cases added in later phases. Run via `npm test`."
       },
       {
         "id": "fnd-route-structure-public",
-        "feature": "Public route structure matches CLAUDE.md scope (29 sections)",
+        "feature": "Public route structure (20 consolidated Phase 4 sections)",
         "status": "passing",
         "type": "unit",
-        "notes": "tests/unit/routes.test.ts — asserts link count, a page.tsx exists for every link, no duplicate hrefs."
+        "notes": "tests/unit/routes.test.ts — asserts link count, a page.tsx exists for every link, no duplicate hrefs. Phase 4 consolidated the original 29 one-per-circular-item routes into 20 broader sections (see progress.md's decisions log for the mapping)."
       },
       {
         "id": "fnd-route-structure-admin",
-        "feature": "Admin route structure matches CLAUDE.md scope (23 sections)",
+        "feature": "Admin route structure matches CLAUDE.md scope (37 sections, including College Profile/Departments/Seminars/Workshops/Fee Structures/Enrollment Statistics/Activities/Clubs/Infrastructure/Policies/Regulations/Affiliation/Contact/Location CMS modules added after the original 23)",
         "status": "passing",
         "type": "unit",
         "notes": "tests/unit/routes.test.ts — same checks as public route structure."
@@ -36,16 +36,16 @@
       {
         "id": "fnd-public-site-e2e",
         "feature": "Public site loads end-to-end (home, all nav links, 404 handling)",
-        "status": "planned",
+        "status": "passing",
         "type": "e2e",
-        "notes": "tests/e2e/public-site.spec.ts — written and validated via `npx playwright test --list` (parses correctly, 3 tests found). Not executed: Playwright's Chromium binary is not installed in this environment. Run `npx playwright install` then `npm run test:e2e`."
+        "notes": "tests/e2e/public-site.spec.ts. Playwright's Chromium browser is now installed in this environment (`npx playwright install chromium`) and the full suite has been run for real via `npx playwright test`, not just listed."
       },
       {
         "id": "fnd-admin-site-e2e",
-        "feature": "Admin site loads end-to-end (dashboard, no-auth banner, all nav links)",
-        "status": "planned",
+        "feature": "Admin site loads end-to-end (auth-gated dashboard, all nav links redirect correctly when unauthenticated)",
+        "status": "passing",
         "type": "e2e",
-        "notes": "tests/e2e/admin.spec.ts — written and validated via `npx playwright test --list`. Not executed here for the same reason as fnd-public-site-e2e."
+        "notes": "tests/e2e/admin.spec.ts — updated in Phase 3 to assert the real redirect-to-/login behavior (the old \"no-auth banner\" it originally checked no longer exists). Executed and passing."
       },
       {
         "id": "fnd-health-check",
@@ -71,14 +71,14 @@
         "feature": "Migration applies to a real PostgreSQL database with zero drift",
         "status": "passing",
         "type": "manual",
-        "notes": "PostgreSQL 16 installed locally (Homebrew) since none was available in this environment. Migration SQL generated statically via `prisma migrate diff --from-empty --to-schema=prisma/schema.prisma --script` (prisma/migrations/20260913114324_init_content_modules/), then applied for real with `prisma migrate deploy` — succeeded. `prisma migrate diff --from-config-datasource --to-schema=prisma/schema.prisma --exit-code` confirms zero drift afterward."
+        "notes": "PostgreSQL 16 installed locally (Homebrew) since none was available in this environment. Migration SQL generated statically via `prisma migrate diff --from-empty --to-schema=prisma/schema.prisma --script` (prisma/migrations/20260913114324_init_content_modules/), then applied for real with `prisma migrate deploy` — succeeded. `prisma migrate diff --from-config-datasource --to-schema=prisma/schema.prisma --exit-code` confirms zero drift afterward. A second migration (prisma/migrations/20260913121742_add_auth_sessions/) added the Session table and User lockout fields in Phase 3."
       },
       {
         "id": "db-seed-idempotent",
         "feature": "Seed script populates one demo record per module and is idempotent",
         "status": "passing",
         "type": "manual",
-        "notes": "`npx prisma db seed` run twice against the real database; row counts unchanged on the second run (all upserts). Seeds baseline roles, one placeholder college, one [DEV SEED] admin user, one [PLACEHOLDER] demo record per content module, and all 20 ComplianceRequirement rows transcribed from docs/compliance-matrix.md."
+        "notes": "`npx prisma db seed` run repeatedly against the real database; row counts unchanged on repeat runs (all upserts). Seeds baseline roles, one placeholder college, one [DEV SEED] admin user, one [PLACEHOLDER] demo record per content module, and all 20 ComplianceRequirement rows transcribed from docs/compliance-matrix.md. Phase 4/homepage work found and fixed a real idempotency bug: several upserts' `update` branches were missing fields (status, startDate) that only `create` set, so re-seeding an already-existing row silently never published it or kept its date current — both are now mirrored into `update` too."
       },
       {
         "id": "db-compliance-verification-flow",
@@ -92,64 +92,530 @@
         "feature": "Existing app code still typechecks/lints/passes tests against the new generated Prisma Client",
         "status": "passing",
         "type": "cli",
-        "notes": "`npm run typecheck`, `npm run lint`, `npm test` all clean after the schema change (15/15 unit tests)."
+        "notes": "`npm run typecheck`, `npm run lint`, `npm test` all clean after every schema change across phases."
+      }
+    ]
+  },
+  "auth": {
+    "description": "Phase 3 (authentication & authorization) — login/logout, session handling, server-side permission checks, and the permission matrix (docs/permission-matrix.md). Source of truth for the matrix is src/lib/auth/permissions.ts.",
+    "items": [
+      {
+        "id": "auth-permission-matrix",
+        "feature": "Permission matrix is internally consistent (every role covered, separation of duties, governance/system-admin scoping)",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/auth/permissions.test.ts."
+      },
+      {
+        "id": "auth-password-hashing",
+        "feature": "Password hashing/verification (bcryptjs, cost 12, unique salt per hash)",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/auth/password.test.ts."
+      },
+      {
+        "id": "auth-session-handling",
+        "feature": "Server-side session store: token hashing, cookie flags (httpOnly/sameSite/secure-in-prod), expiry, revocation on logout",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/auth/session.test.ts — mocks Prisma and next/headers."
+      },
+      {
+        "id": "auth-login-logout-actions",
+        "feature": "Login/logout Server Actions: generic invalid-credentials error (no user enumeration), account lockout after repeated failures, audit logging (LOGIN/LOGIN_FAILED/LOGOUT)",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/auth/actions.test.ts."
+      },
+      {
+        "id": "auth-unauthenticated-access",
+        "feature": "Unauthenticated access to /admin/* redirects to /login, server-side",
+        "status": "passing",
+        "type": "unit + e2e",
+        "notes": "tests/unit/auth/guard.test.ts + tests/e2e/auth.spec.ts (both run and pass; e2e verified against the real dev server and seeded database)."
+      },
+      {
+        "id": "auth-authorized-access",
+        "feature": "Authenticated user with the required permission reaches the page",
+        "status": "passing",
+        "type": "unit + e2e",
+        "notes": "tests/unit/auth/guard.test.ts, tests/unit/auth/actions.test.ts + tests/e2e/auth.spec.ts."
+      },
+      {
+        "id": "auth-unauthorized-access",
+        "feature": "Authenticated user lacking the required permission is redirected to /admin/unauthorized, server-side",
+        "status": "passing",
+        "type": "unit + e2e",
+        "notes": "tests/unit/auth/guard.test.ts + tests/e2e/auth.spec.ts."
+      },
+      {
+        "id": "auth-role-specific-access",
+        "feature": "Each of the 8 required roles (SUPER_ADMIN, PRINCIPAL, ADMINISTRATOR, EDITOR, REVIEWER, ADMISSION_OFFICER, EXAMINATION_OFFICER, FACULTY_EDITOR) gets exactly the routes its permission grants allow",
+        "status": "passing",
+        "type": "unit + e2e",
+        "notes": "tests/unit/auth/role-access.test.ts (matrix-level) + tests/e2e/auth.spec.ts (logs in as each seeded [DEV SEED] role account and checks real route access)."
+      },
+      {
+        "id": "auth-route-permission-coverage",
+        "feature": "Every ADMIN_NAV_LINKS route has a declared required permission, and every admin page.tsx actually calls requirePermission() for it",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/auth/route-permissions.test.ts checks the declared mapping; the mapping matches what each page.tsx calls (verified by code inspection, all 23 admin pages patched in the same change)."
+      }
+    ]
+  },
+  "public_shell": {
+    "description": "Phase 4 (public website shell) — shared layout/UI components (header, nav, mobile nav, footer, breadcrumbs, page container, buttons, cards, tables, alerts, empty states, loading states) and the src/lib/content.ts query layer they're built on. Per-section content depth is tracked in `public_website` below.",
+    "items": [
+      {
+        "id": "shell-ui-primitives",
+        "feature": "Shared UI primitives: Alert, EmptyState, DataTable, Breadcrumbs",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/ui/{Alert,EmptyState,Table,Breadcrumbs}.test.tsx."
+      },
+      {
+        "id": "shell-content-queries",
+        "feature": "src/lib/content.ts query layer only ever returns PUBLISHED rows (CLAUDE.md rule 4)",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/content/queries.test.ts — mocks Prisma and asserts every checked query filters on status: \"PUBLISHED\" (plus isPublic: true for Results, and non-expired for the homepage's important-announcement query), and that a missing college short-circuits to an empty result without querying content tables. The former known gap (Document had no publish-state field, so /downloads listed every document for the college unconditionally) was closed in the Admissions/Examinations/Documents CMS session: Document now carries status/publishedAt/publishedBy like every other content model, and getDocuments() filters on status: \"PUBLISHED\"."
+      },
+      {
+        "id": "shell-demo-data-publish-flow",
+        "feature": "Seeded demo content is marked PUBLISHED (not bypassing the gate) and rendered with a visible DemoDataNotice",
+        "status": "passing",
+        "type": "manual + e2e",
+        "notes": "prisma/seed.ts sets status: \"PUBLISHED\" + isPlaceholder: true on every content row it creates (mirrored into each upsert's `update` branch too, so re-seeding doesn't silently leave stale DRAFT rows or stale dates — see db-seed-idempotent). tests/e2e/public-content.spec.ts confirms both the content and the \"Demo content\" notice actually render."
+      },
+      {
+        "id": "shell-responsive-no-horizontal-scroll",
+        "feature": "No page-level horizontal scroll at mobile width; desktop header nav scrolls within its own bounded box instead of overflowing",
+        "status": "passing",
+        "type": "manual",
+        "notes": "Found and fixed during Phase 4: the desktop nav's overflow-x-auto had no min-w-0/flex-1 boundary, so it silently pushed the whole header (and page) wider than the viewport instead of scrolling. Verified via Playwright screenshots at 1280px and 390px widths, plus `document.documentElement.scrollWidth <= clientWidth` at both — re-verified for the homepage's 15 sections."
+      },
+      {
+        "id": "shell-grievance-encryption",
+        "feature": "Grievance submission encrypts submitterContact before it reaches the database (CLAUDE.md rule 6)",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/security/crypto.test.ts (AES-256-GCM round-trip, tamper detection, missing-key error) + tests/unit/grievance/actions.test.ts (routes the raw contact string through encryptSecret rather than writing it directly)."
+      }
+    ]
+  },
+  "homepage": {
+    "description": "Homepage implementation — 15 required sections (src/components/home/*.tsx), each independently streamed and database-backed, plus the mobile/accessibility/performance/SEO optimizations that came with it.",
+    "items": [
+      {
+        "id": "home-15-sections",
+        "feature": "All 15 required sections render, each reading from src/lib/content.ts (no hard-coded institutional content)",
+        "status": "passing",
+        "type": "e2e",
+        "notes": "tests/e2e/homepage.spec.ts's \"renders all 15 required sections\" test."
+      },
+      {
+        "id": "home-announcement-filtering",
+        "feature": "Important announcement banner shows the latest non-expired notice and excludes expired ones",
+        "status": "passing",
+        "type": "unit + e2e",
+        "notes": "getImportantAnnouncement in tests/unit/content/queries.test.ts + tests/e2e/homepage.spec.ts (seed includes one still-current and one deliberately-expired demo notice to prove the filter actually excludes something)."
+      },
+      {
+        "id": "home-upcoming-events-filtering",
+        "feature": "Upcoming events only shows events that haven't happened yet, soonest first",
+        "status": "passing",
+        "type": "unit + e2e",
+        "notes": "getUpcomingEvents in tests/unit/content/queries.test.ts + tests/e2e/homepage.spec.ts (seed's demo event is deliberately 30 days out, re-set on every seed run so it can't drift into the past)."
+      },
+      {
+        "id": "home-suspense-streaming",
+        "feature": "Every section below the hero streams independently via <Suspense>, so one slow query can't block the rest of the page (performance)",
+        "status": "passing",
+        "type": "manual",
+        "notes": "src/app/(public)/page.tsx wraps each of the 14 non-hero sections in its own <Suspense fallback={<SectionSkeleton />}>; Hero itself is awaited directly (fast, above-the-fold, wants to be in the initial HTML for LCP/SEO) rather than streamed."
+      },
+      {
+        "id": "home-accessibility-skip-link",
+        "feature": "A skip link is the first focusable element and actually moves keyboard focus to #main-content",
+        "status": "passing",
+        "type": "e2e",
+        "notes": "src/components/SkipLink.tsx. Found during e2e testing: Chromium scrolls to a same-page hash target but does not reliably move focus there for a tabindex=-1 element — a client-side onClick handler explicitly calls .focus() to close that gap. tests/e2e/homepage.spec.ts."
+      },
+      {
+        "id": "home-seo-metadata",
+        "feature": "Homepage has a database-driven (non-generic) <title>/description, canonical URL, and Open Graph/Twitter tags, without double-applying the site-wide title template",
+        "status": "passing",
+        "type": "e2e",
+        "notes": "src/app/(public)/page.tsx's generateMetadata. Found and fixed during this phase: returning a plain string title let the root layout's `template: \"%s | <site>\"` apply a second time, producing \"<site> | <site>\" — fixed with `title: { absolute: title }`. tests/e2e/homepage.spec.ts."
+      },
+      {
+        "id": "home-seo-structured-data",
+        "feature": "Organization JSON-LD is only published once real (non-placeholder) college data exists — never presents demo data as fact to a crawler",
+        "status": "passing",
+        "type": "unit + e2e",
+        "notes": "src/lib/seo.ts's buildCollegeJsonLd, tested in tests/unit/seo.test.ts (field-by-field placeholder filtering) and tests/e2e/homepage.spec.ts (confirms zero JSON-LD script tags while the seeded college is still isPlaceholder)."
+      },
+      {
+        "id": "home-seo-sitemap-robots",
+        "feature": "sitemap.xml and robots.txt are generated from the same PUBLIC_NAV_LINKS table the nav uses, and exclude /admin and /login",
+        "status": "passing",
+        "type": "unit + e2e",
+        "notes": "src/app/sitemap.ts, src/app/robots.ts, tested in tests/unit/sitemap-robots.test.ts and reachability-checked in tests/e2e/homepage.spec.ts."
+      },
+      {
+        "id": "home-mobile-no-overflow",
+        "feature": "No page-level horizontal scroll at mobile width (375px) across all 15 sections",
+        "status": "passing",
+        "type": "e2e + manual",
+        "notes": "tests/e2e/homepage.spec.ts's responsiveness check (document.documentElement.scrollWidth) plus manual Playwright screenshots at 390px and 1280px."
+      }
+    ]
+  },
+  "cms_modules": {
+    "description": "CMS modules for College Profile, Departments, Programs, Faculty, Staff, Notices, Events, Seminars, Workshops, Academic Calendar, Timetables, Admissions, Fee Structures, Enrollment Statistics, Examinations, Results, Documents, Infrastructure, Activities, Clubs, Gallery, Scholarships, Student Support, Policies, Regulations, Affiliation, Contact, and Location — the first real admin-side content authoring in the project (everything before this was PagePlaceholder). Each module has list/view/create/edit pages plus the full draft -> pending_review -> approved -> published -> archived workflow, sharing one generic engine (src/lib/content-workflow.ts) and one audit-log writer (src/lib/audit.ts) rather than reimplementing either 28 times. Notices/Events/Seminars/Workshops/Academic Calendar/Timetables/Admissions/Examinations/Results/Affiliation also share src/lib/admin/zod-helpers.ts for date-field validation/conversion. Admissions/Fee Structures/Enrollment Statistics are the first modules in the `content_admissions` domain and Examinations/Results the first in `content_examinations`; Clubs is the third `content_faculty` module (alongside Faculty/Staff). Documents closed the long-tracked Document publish-gate gap; this batch similarly added `publishedAt`/`publishedBy` to `Contact` and `Location`, which (like `FeeStructure`/`EnrollmentStatistic`/`Result` before them) had `status` but not the publish-timestamp columns the shared workflow engine needs. Gallery is the first nested-resource module (GalleryAlbum -> GalleryItem, where adding an item also creates a fresh Media asset in the same action) and Location is the second true singleton module (after College Profile), using `findFirst` rather than `findUnique` since `Location.collegeId` has no `@unique` constraint.",
+    "items": [
+      {
+        "id": "cms-workflow-engine",
+        "feature": "Shared draft/review/publish/archive state machine: only legal transitions succeed, PUBLISHED sets publishedAt/publishedBy, every transition writes an audit log entry with before/after status snapshots",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/content-workflow.test.ts — 13 tests covering every transition, illegal-transition rejection (WorkflowError), and getAvailableActions' permission filtering."
+      },
+      {
+        "id": "cms-audit-logging",
+        "feature": "Every CREATE/UPDATE mutation (and every workflow transition) writes a CLAUDE.md rule 8 audit trail entry, with Date fields serialized to plain JSON",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/audit.test.ts. This is the first real (non-login/logout) writer of AuditLog in the project."
+      },
+      {
+        "id": "cms-module-permission-mapping",
+        "feature": "Each module maps to the correct permission domain (College Profile/Departments/Programs -> content_general; Faculty/Staff -> content_faculty), and no role except SUPER_ADMIN can both manage and publish the same module (structural no-self-approval)",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/module-permissions.test.ts — cross-checks src/lib/admin/module-permissions.ts against the live ROLE_PERMISSIONS matrix from Phase 3, so the two can never silently drift apart."
+      },
+      {
+        "id": "cms-departments-full-lifecycle-e2e",
+        "feature": "End-to-end cross-role lifecycle: EDITOR creates+submits, REVIEWER approves+publishes+archives, ADMINISTRATOR is view-only, FACULTY_EDITOR is blocked (wrong domain), and the published department appears on the public /academics page",
+        "status": "passing",
+        "type": "e2e",
+        "notes": "tests/e2e/cms-departments.spec.ts (10 tests) — the strongest evidence 'apply role permissions' holds against the real dev server + seeded database, not just mocked unit tests. Found and fixed two real e2e bugs while writing this: (1) a `waitForURL` regex that also matched the literal \"/new\" route segment, capturing a stale URL; (2) `waitForURL(sameUrl)` is a no-op whenever a Server Action redirects back to the page it started from, so it never actually waited for the mutation — replaced with content-based waits (a generously-timed assertion on the resulting status text)."
+      },
+      {
+        "id": "cms-faculty-domain-e2e",
+        "feature": "Faculty module exercises the content_faculty domain distinctly from Departments' content_general domain, plus the department-FK select and subjectsTaught array field",
+        "status": "passing",
+        "type": "e2e",
+        "notes": "tests/e2e/cms-faculty.spec.ts (5 tests): FACULTY_EDITOR creates, PRINCIPAL (not REVIEWER, to also prove PRINCIPAL's content_faculty:publish grant) approves+publishes, EDITOR is blocked (wrong domain)."
+      },
+      {
+        "id": "cms-departments-actions-unit",
+        "feature": "Departments create/update/transition Server Actions: correct permission per action, validation, audit logging, race-condition safety",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/departments/actions.test.ts (11 tests) — the template the other 4 modules' tests follow."
+      },
+      {
+        "id": "cms-programs-actions-unit",
+        "feature": "Programs create/update/transition: department-FK validation (including cross-college rejection) and ProgramLevel enum validation",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/programs/actions.test.ts."
+      },
+      {
+        "id": "cms-faculty-actions-unit",
+        "feature": "Faculty create/update/transition: comma-separated subjectsTaught parsed to an array, email format validation, content_faculty (not content_general) permission checks",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/faculty/actions.test.ts."
+      },
+      {
+        "id": "cms-staff-actions-unit",
+        "feature": "Staff create/update/transition: simplest module (no FK), optional plain-string department field",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/staff/actions.test.ts."
+      },
+      {
+        "id": "cms-college-profile-actions-unit",
+        "feature": "College Profile create/update/transition: singleton behavior (create redirects to edit if a profile already exists; update looks the row up by collegeId, not a submitted id)",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/college-profile/actions.test.ts."
+      },
+      {
+        "id": "cms-date-helpers-unit",
+        "feature": "Shared requiredDateField/optionalDateField Zod validators and toDateInputValue formatter (src/lib/admin/zod-helpers.ts) used by every date-bearing module below",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/zod-helpers.test.ts (8 tests) — valid/invalid/missing dates for both required and optional variants, plus the date->HTML-input-value round trip."
+      },
+      {
+        "id": "cms-notices-full-lifecycle-e2e",
+        "feature": "Notices: end-to-end cross-role lifecycle including date fields (publishDate/expiryDate) — EDITOR creates+submits, REVIEWER approves+publishes+archives, ADMINISTRATOR is view-only, FACULTY_EDITOR is blocked (wrong domain), and the published notice appears on the public /notices page",
+        "status": "passing",
+        "type": "e2e",
+        "notes": "tests/e2e/cms-notices.spec.ts (10 tests, all passing) — first CMS e2e spec with date-field inputs."
+      },
+      {
+        "id": "cms-timetables-full-lifecycle-e2e",
+        "feature": "Timetables: end-to-end lifecycle exercising a required Program FK, an optional JSON structuredSchedule field (with malformed-JSON rejection on edit), workflow through publish, and public visibility on /academics; also confirms a wrong-domain role (ADMISSION_OFFICER) cannot create one",
+        "status": "passing",
+        "type": "e2e",
+        "notes": "tests/e2e/cms-timetables.spec.ts (6 tests, all passing; verified stable across 3 consecutive full-suite runs). Found and fixed two real e2e bugs while writing this: (1) ambiguous `getByLabel` matchers (e.g. \"Program\" also matching the sidebar's \"Programs\" nav link) silently targeted the wrong element — replaced with direct `#id` locators; (2) capturing `page.url()` right after a content-based `expect(...).toBeVisible()` could still read the stale `/new` URL, because during a Next.js client-side transition the new page's DOM can attach a tick before the address bar/history commits — fixed with `page.waitForURL((url) => !url.pathname.endsWith(\"/new\"))` before reading `page.url()`. Also found a distinct bug in the test itself (not the app): logging in as a second role (`loginAs(page, \"reviewer\")`) on the same page/context right after a prior `loginAs(page, \"editor\")` call hung, because the app redirects an already-authenticated session away from /login before the login form ever renders — fixed by splitting the editor and reviewer steps into separate `test()` blocks (each gets a fresh context), matching the pattern already used in cms-notices.spec.ts and cms-departments.spec.ts."
+      },
+      {
+        "id": "cms-notices-actions-unit",
+        "feature": "Notices create/update/transition: required title/body, optional category/publishDate/expiryDate, invalid-date rejection",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/notices/actions.test.ts."
+      },
+      {
+        "id": "cms-events-actions-unit",
+        "feature": "Events create/update/transition: required startDate vs. optional endDate",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/events/actions.test.ts."
+      },
+      {
+        "id": "cms-seminars-actions-unit",
+        "feature": "Seminars create/update/transition: optional Department FK (omitted, valid, and cross-college-rejected cases)",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/seminars/actions.test.ts."
+      },
+      {
+        "id": "cms-workshops-actions-unit",
+        "feature": "Workshops create/update/transition: same optional-Department-FK shape as Seminars, with facilitator instead of speaker",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/workshops/actions.test.ts."
+      },
+      {
+        "id": "cms-academic-calendar-actions-unit",
+        "feature": "Academic Calendar create/update/transition: no FK, plain category/academicYear string fields",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/academic-calendar/actions.test.ts."
+      },
+      {
+        "id": "cms-timetables-actions-unit",
+        "feature": "Timetables create/update/transition: required Program FK (including cross-college rejection), structuredSchedule JSON validation (malformed JSON rejected, valid JSON parsed and stored, omitted schedule left undefined rather than invented)",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/timetables/actions.test.ts."
+      },
+      {
+        "id": "cms-admissions-full-lifecycle-e2e",
+        "feature": "Admissions: first e2e coverage of the content_admissions domain — ADMISSION_OFFICER creates+submits, REVIEWER approves+publishes, ADMINISTRATOR is view-only, EXAMINATION_OFFICER (wrong domain) is blocked, and the published admission cycle appears on the public /admissions page",
+        "status": "passing",
+        "type": "e2e",
+        "notes": "tests/e2e/cms-admissions.spec.ts (6 tests, all passing; verified stable across 3 consecutive full-suite runs)."
+      },
+      {
+        "id": "cms-results-double-gate-e2e",
+        "feature": "Results: first e2e coverage of the content_examinations domain, and a direct demonstration of Result's double publish gate — a result reaches the public /results page only once it is BOTH status: PUBLISHED AND isPublic: true, neither flag implying the other",
+        "status": "passing",
+        "type": "e2e",
+        "notes": "tests/e2e/cms-results.spec.ts (7 tests, all passing) — creates a result with a unique externalLink, publishes it while isPublic stays false and confirms it is still absent from /results, then (as the EXAMINATION_OFFICER who authored it, proving 'editing doesn't revert status' from the 2026-09-14 decisions log) edits it to set isPublic: true and confirms it now appears. Also confirms ADMISSION_OFFICER (wrong domain) cannot create a result."
+      },
+      {
+        "id": "cms-admissions-actions-unit",
+        "feature": "Admissions create/update/transition: required Program FK (including cross-college rejection), optional eligibilityCriteria/applicationStartDate/applicationEndDate",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/admissions/actions.test.ts."
+      },
+      {
+        "id": "cms-fee-structures-actions-unit",
+        "feature": "Fee Structures create/update/transition: required Program FK, optional Admission FK (omitted, valid, and cross-college-rejected cases), Decimal amount validation (rejects non-positive and non-numeric amounts), currency defaults to PKR when omitted",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/fee-structures/actions.test.ts. Prisma's Decimal type can't cross the Server Component -> Client Component boundary as-is (it's a class instance, not a plain serializable value) — FeeStructureForm.tsx accepts a pre-serialized `amount: string` and the edit page converts it with `.toString()` before passing it down; found and fixed while building this module, generalizable to any future Decimal-bearing form."
+      },
+      {
+        "id": "cms-enrollment-statistics-actions-unit",
+        "feature": "Enrollment Statistics create/update/transition: required Program FK, required totalEnrolled, optional maleCount/femaleCount left null (not invented as zero) when blank",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/enrollment-statistics/actions.test.ts. Found a real Zod pitfall while building this: `z.coerce.number().min(0).optional().or(z.literal(\"\"))` silently turns a blank field into 0 rather than falling through to the empty-string branch, because `Number(\"\") === 0` already satisfies `min(0)` before the literal(\"\") alternative is ever tried (unlike the pre-existing establishedYear precedent, whose min(1800) bound reliably fails for a coerced-to-0 blank value) — fixed by passing `formData.get(x) || undefined` into a plain `.optional()` schema instead of routing a literal empty string through the number coercion at all. This is a CLAUDE.md rule 1 correctness fix (never invent data), not just a style choice."
+      },
+      {
+        "id": "cms-examinations-actions-unit",
+        "feature": "Examinations create/update/transition: required Program FK, optional Notice FK (omitted, valid, and cross-college-rejected cases), optional academicYear/scheduleStartDate/scheduleEndDate",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/exams/actions.test.ts."
+      },
+      {
+        "id": "cms-results-actions-unit",
+        "feature": "Results create/update/transition: required Program + Examination FKs (cross-college rejection for both), isPublic checkbox (present as \"on\" when checked, absent when unchecked, never invented), externalLink URL validation",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/results/actions.test.ts."
+      },
+      {
+        "id": "cms-documents-actions-unit",
+        "feature": "Documents create/update/transition: required title/fileUrl (URL-validated), optional category/mimeType/sizeBytes (left null, not invented as 0, when blank), stamps a `(\"College\", collegeId)` entityType/entityId sentinel for these general (not-attached-to-another-record) downloads and records the creator as uploadedBy",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/documents/actions.test.ts. This is the first module built on Document, which previously had no status/publishedAt/publishedBy fields at all — added via prisma/migrations/20260914090529_add_workflow_fields_admissions_documents (applied with zero drift), closing the shell-content-queries known gap. prisma/seed.ts's dev-seed-document was updated to set status: \"PUBLISHED\" to match every other seeded content row, so it doesn't silently vanish from /downloads under the new gate."
+      },
+      {
+        "id": "cms-gallery-full-lifecycle-e2e",
+        "feature": "Gallery: the first e2e coverage of a nested-resource CMS module — EDITOR creates an album, adds an item (which creates a fresh Media asset attached to the album in the same action), submits both for review, REVIEWER approves+publishes both, and both appear on the public /gallery page; also confirms FACULTY_EDITOR (wrong domain) cannot create an album",
+        "status": "passing",
+        "type": "e2e",
+        "notes": "tests/e2e/cms-gallery.spec.ts (6 tests, all passing; verified stable across 3 consecutive full-suite runs) — passed cleanly on the first run, no new e2e bugs found."
+      },
+      {
+        "id": "cms-location-singleton-e2e",
+        "feature": "Location: the second singleton-module e2e coverage (after College Profile), run against the already-PUBLISHED seeded location rather than a from-scratch create — confirms the /new page redirects away (proving the findFirst-based singleton guard), that editing a PUBLISHED location doesn't revert its status, and that the edit is reflected on the public /campus page; also confirms FACULTY_EDITOR (wrong domain) is blocked",
+        "status": "passing",
+        "type": "e2e",
+        "notes": "tests/e2e/cms-location.spec.ts (4 tests, all passing). One test-authoring bug found and fixed while writing this: the test initially expected `/admin/location/new` to redirect to `/admin/location/edit`, but the established College Profile convention (confirmed by re-reading its `new/page.tsx`) redirects a page-load \"already exists\" guard to the plain *view* page, not the edit page — only the create Server Action itself (invoked with stale form state) redirects to edit. The application code was already correct and consistent with that convention; only the test's expectation was wrong."
+      },
+      {
+        "id": "cms-infrastructure-actions-unit",
+        "feature": "Infrastructure create/update/transition: required InfrastructureCategory enum (rejects an invalid category), no FK",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/infrastructure/actions.test.ts."
+      },
+      {
+        "id": "cms-activities-actions-unit",
+        "feature": "Activities create/update/transition: no FK, plain optional category field",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/activities/actions.test.ts."
+      },
+      {
+        "id": "cms-clubs-actions-unit",
+        "feature": "Clubs create/update/transition: optional Faculty FK as advisor (omitted, valid, and cross-college-rejected cases), content_faculty domain (the third module in this domain, alongside Faculty/Staff)",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/clubs/actions.test.ts."
+      },
+      {
+        "id": "cms-gallery-actions-unit",
+        "feature": "Gallery album create/update/transition (no FK) and item create/update/transition (required accessibility alt text, creates/updates a Media asset alongside the GalleryItem row in one action)",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/gallery/actions.test.ts — covers both the album and nested item Server Actions."
+      },
+      {
+        "id": "cms-scholarships-actions-unit",
+        "feature": "Scholarships create/update/transition: no FK, plain optional eligibility field",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/scholarships/actions.test.ts."
+      },
+      {
+        "id": "cms-student-support-actions-unit",
+        "feature": "Student Support create/update/transition: no FK, plain optional contactInfo field",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/student-support/actions.test.ts."
+      },
+      {
+        "id": "cms-policies-actions-unit",
+        "feature": "Policies create/update/transition: no FK, plain optional category/body fields",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/policies/actions.test.ts."
+      },
+      {
+        "id": "cms-regulations-actions-unit",
+        "feature": "Regulations create/update/transition: no FK, plain optional category/body/regulatingBody fields",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/regulations/actions.test.ts."
+      },
+      {
+        "id": "cms-affiliation-actions-unit",
+        "feature": "Affiliation create/update/transition: optional Program FK (omitted, valid, and cross-college-rejected cases), optional validFrom/validTo dates",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/affiliation/actions.test.ts."
+      },
+      {
+        "id": "cms-contact-actions-unit",
+        "feature": "Contact create/update/transition: required ContactType enum (rejects an invalid type), no FK — the first module exercising Contact's newly-added publishedAt/publishedBy columns",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/contact/actions.test.ts."
+      },
+      {
+        "id": "cms-location-actions-unit",
+        "feature": "Location create/update/transition: singleton behavior via findFirst (not findUnique, since Location.collegeId has no @unique constraint) — create redirects to the view page if a location already exists; update looks the row up by collegeId, not a submitted id; optional latitude/longitude left null (not invented as 0) when blank",
+        "status": "passing",
+        "type": "unit",
+        "notes": "tests/unit/admin/location/actions.test.ts."
       }
     ]
   },
   "public_website": [
-    { "id": "pub-home", "feature": "Home", "status": "not_started", "notes": "Placeholder route exists (src/app/(public)/page.tsx); no real content/data source yet." },
-    { "id": "pub-about", "feature": "About", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-college-profile", "feature": "College Profile", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-history", "feature": "History", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-vision-mission", "feature": "Vision/Mission", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-principals-message", "feature": "Principal's Message", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-departments", "feature": "Departments", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-programs", "feature": "Programs", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-faculty", "feature": "Faculty", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-non-teaching-staff", "feature": "Non-teaching Staff", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-infrastructure", "feature": "Infrastructure", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-admissions", "feature": "Admissions", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-academic-calendar", "feature": "Academic Calendar", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-timetable", "feature": "Timetable", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-examinations", "feature": "Examinations", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-results", "feature": "Results", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-notices", "feature": "Notices", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-events", "feature": "Events", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-activities", "feature": "Activities", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-gallery", "feature": "Gallery", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-scholarships", "feature": "Scholarships", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-student-support", "feature": "Student Support", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-rules-regulations", "feature": "Rules and Regulations", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-affiliation", "feature": "Affiliation", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-grievance", "feature": "Grievance", "status": "not_started", "notes": "Placeholder route exists; Grievance table now exists (see `database` section) but no submission form/backend yet. Must verify private grievance data is never publicly exposed (CLAUDE.md rule 6)." },
-    { "id": "pub-contact", "feature": "Contact", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-location", "feature": "Location", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-downloads", "feature": "Downloads", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "pub-search", "feature": "Search", "status": "not_started", "notes": "Placeholder route exists; no index/search backend yet. Must verify only published content is searchable/returned (CLAUDE.md rule 4)." }
+    { "id": "pub-home", "feature": "Home (15 sections: Hero, Important announcement, Quick links, Latest notices, Upcoming events, College introduction, Academic programs, Departments, Facilities, Latest activities, Scholarships/Student support, Important documents, Grievance link, Location, Contact)", "status": "passing", "notes": "src/app/(public)/page.tsx + src/components/home/*.tsx — every section reads live, publish-gated content from src/lib/content.ts; each is independently streamed via <Suspense> so a slow query never blocks the rest of the page. Covered by tests/e2e/homepage.spec.ts (11 tests), tests/e2e/public-site.spec.ts, and tests/unit/content/queries.test.ts." },
+    { "id": "pub-about", "feature": "About (College Profile, History, Vision/Mission, Principal's Message)", "status": "passing", "notes": "src/app/(public)/about/page.tsx — one CollegeProfile row rendered as 4 labeled sections (consolidates 4 of the original 29 routes into clearly-headed sections on one page, per progress.md's decisions log). Covered by tests/e2e/public-content.spec.ts (breadcrumb check)." },
+    { "id": "pub-academics", "feature": "Academics (Departments, Programs, Academic Calendar, Timetables)", "status": "passing", "notes": "src/app/(public)/academics/page.tsx — 4 DataTable sections from Department/Program/AcademicCalendar/Timetable (consolidates 4 of the original routes). Manually verified rendering via a Playwright screenshot at desktop and mobile width; no dedicated e2e assertion beyond that yet." },
+    { "id": "pub-admissions", "feature": "Admissions (cycles, fee structure, enrollment statistics)", "status": "passing", "notes": "src/app/(public)/admissions/page.tsx — 3 DataTable sections from Admission/FeeStructure/EnrollmentStatistic. tests/e2e/cms-admissions.spec.ts publishes a real admission cycle through the CMS and confirms it renders on this page by its academic year." },
+    { "id": "pub-faculty", "feature": "Faculty", "status": "passing", "notes": "src/app/(public)/faculty/page.tsx — DataTable from Faculty + Department. Covered by tests/e2e/public-content.spec.ts and shell-content-queries." },
+    { "id": "pub-staff", "feature": "Staff (non-teaching)", "status": "in_progress", "notes": "src/app/(public)/staff/page.tsx — DataTable from Staff. No page-specific e2e assertion yet." },
+    { "id": "pub-campus", "feature": "Campus (Infrastructure, Location)", "status": "passing", "notes": "src/app/(public)/campus/page.tsx — Infrastructure DataTable + Location address/map (consolidates 2 of the original routes). tests/e2e/cms-location.spec.ts confirms an edited Location address renders here; Infrastructure itself still has no page-specific e2e assertion beyond the generic no-500 check." },
+    { "id": "pub-notices", "feature": "Notices", "status": "passing", "notes": "src/app/(public)/notices/page.tsx — Notice list, newest first. Covered by tests/e2e/public-content.spec.ts." },
+    { "id": "pub-events", "feature": "Events (Events, Seminars, Workshops, Activities, Clubs)", "status": "in_progress", "notes": "src/app/(public)/events/page.tsx — 5 sections (consolidates Events + the former standalone Activities route plus Seminars/Workshops/Clubs, which had no route of their own before). Admin CMS modules now exist for all 5 underlying models (adm-activities, adm-clubs, plus the earlier adm-seminars/adm-workshops/adm-events), but no page-specific e2e assertion on this page itself yet beyond the generic no-500 check." },
+    { "id": "pub-gallery", "feature": "Gallery", "status": "passing", "notes": "src/app/(public)/gallery/page.tsx — GalleryAlbum -> GalleryItem -> Media, each image rendered with required alt text. tests/e2e/cms-gallery.spec.ts publishes a real album+item through the CMS and confirms both render here." },
+    { "id": "pub-examinations", "feature": "Examinations", "status": "in_progress", "notes": "src/app/(public)/examinations/page.tsx — DataTable from Examination + Program. The admin CMS module (adm-exams) can now publish real Examination rows; no page-specific e2e assertion on /examinations itself yet (only the generic no-500 check in public-site.spec.ts and the cms-results.spec.ts fixture examination, which isn't asserted against this page)." },
+    { "id": "pub-results", "feature": "Results", "status": "passing", "notes": "src/app/(public)/results/page.tsx — DataTable from Result, gated on status: PUBLISHED AND isPublic: true (rule 4's strictest case: two independent flags both have to allow it). tests/e2e/cms-results.spec.ts directly proves the double gate: a PUBLISHED-but-not-public result is confirmed absent from this page, then confirmed to appear once isPublic is also set." },
+    { "id": "pub-scholarships", "feature": "Scholarships", "status": "in_progress", "notes": "src/app/(public)/scholarships/page.tsx — card list from Scholarship. Admin CMS module now exists (adm-scholarships); no page-specific e2e assertion yet." },
+    { "id": "pub-student-support", "feature": "Student Support", "status": "in_progress", "notes": "src/app/(public)/student-support/page.tsx — card list from StudentSupport. Admin CMS module now exists (adm-student-support); no page-specific e2e assertion yet." },
+    { "id": "pub-rules", "feature": "Rules & Regulations (Policies, Regulations)", "status": "in_progress", "notes": "src/app/(public)/rules/page.tsx — 2 sections (consolidates the former rules-regulations route's scope, now split by underlying model). Admin CMS modules now exist for both (adm-policies, adm-regulations); no page-specific e2e assertion yet." },
+    { "id": "pub-affiliation", "feature": "Affiliation", "status": "in_progress", "notes": "src/app/(public)/affiliation/page.tsx — DataTable from Affiliation + Program. Admin CMS module now exists (adm-affiliation); no page-specific e2e assertion yet." },
+    { "id": "pub-grievance", "feature": "Grievance", "status": "passing", "notes": "src/app/(public)/grievance/page.tsx + actions.ts — real submission form (Server Action) writing to Grievance with submitterContact encrypted at rest (rule 6); no listing of past submissions is ever rendered publicly. Covered by tests/unit/grievance/actions.test.ts + tests/e2e/public-content.spec.ts + tests/e2e/homepage.spec.ts (grievance callout link)." },
+    { "id": "pub-contact", "feature": "Contact", "status": "in_progress", "notes": "src/app/(public)/contact/page.tsx — Contact list + Location address (folds the former standalone Location route's address display in here too; Campus owns the map). Admin CMS module now exists (adm-contact); no page-specific e2e assertion yet." },
+    { "id": "pub-downloads", "feature": "Downloads", "status": "in_progress", "notes": "src/app/(public)/downloads/page.tsx — DataTable from Document. The former known gap (Document had no status/publish field, so every document for the college was listed regardless of publish state) is now closed — see shell-content-queries and adm-documents — but there is still no page-specific e2e assertion on /downloads itself beyond the generic no-500 check in public-site.spec.ts and the homepage's 'Important documents' section heading check." },
+    { "id": "pub-search", "feature": "Search", "status": "passing", "notes": "src/app/(public)/search/page.tsx + searchSite() in src/lib/content.ts — plain GET form (works without JS), searches Notice/Event/Program/Faculty/Scholarship/Policy titles, PUBLISHED only. Covered by tests/unit/content/queries.test.ts + tests/e2e/public-content.spec.ts." }
   ],
   "admin_system": [
-    { "id": "adm-dashboard", "feature": "Dashboard", "status": "not_started", "notes": "Placeholder route exists (src/app/admin/page.tsx) with a module link grid; no real data." },
-    { "id": "adm-cms", "feature": "CMS", "status": "not_started", "notes": "Placeholder route exists. Must verify draft vs. published state separation (CLAUDE.md rule 4)." },
-    { "id": "adm-users", "feature": "Users", "status": "not_started", "notes": "Placeholder route exists; User/Role/Permission/RolePermission/UserRole tables now exist in prisma/schema.prisma (not yet wired to any UI/API)." },
-    { "id": "adm-roles", "feature": "Roles", "status": "not_started", "notes": "Placeholder route exists; Role table + baseline seed data (prisma/seed.ts) exist, not yet wired to any UI/API." },
-    { "id": "adm-permissions", "feature": "Permissions", "status": "not_started", "notes": "Placeholder route exists. Must verify server-side authorization, not just UI hiding (CLAUDE.md rule 5). No auth exists yet — see AdminNoAuthBanner." },
-    { "id": "adm-notices", "feature": "Notices", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "adm-events", "feature": "Events", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "adm-faculty", "feature": "Faculty", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "adm-staff", "feature": "Staff", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "adm-programs", "feature": "Programs", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "adm-admissions", "feature": "Admissions", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "adm-timetables", "feature": "Timetables", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "adm-academic-calendar", "feature": "Academic Calendar", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "adm-exams", "feature": "Exams", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "adm-results", "feature": "Results", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "adm-documents", "feature": "Documents", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "adm-gallery", "feature": "Gallery", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "adm-scholarships", "feature": "Scholarships", "status": "not_started", "notes": "Placeholder route exists." },
-    { "id": "adm-student-support", "feature": "Student Support", "status": "not_started", "notes": "Placeholder route exists." },
+    { "id": "adm-dashboard", "feature": "Dashboard", "status": "in_progress", "notes": "Placeholder content, but now behind requireUser()/requirePermission(\"dashboard:view\") (src/app/admin/page.tsx) and shows the signed-in user's identity/roles; module link grid filtered to what the signed-in user can access. No real data yet." },
+    { "id": "adm-cms", "feature": "CMS", "status": "in_progress", "notes": "Placeholder content, gated behind requirePermission(\"content_general:view\"). Draft vs. published state separation (CLAUDE.md rule 4) still to be implemented when the real CMS is built." },
+    { "id": "adm-users", "feature": "Users", "status": "in_progress", "notes": "Placeholder content, gated behind requirePermission(\"users:manage\"). User/Role/Permission/RolePermission/UserRole tables exist and are actively used by the auth system (prisma/schema.prisma); no CRUD UI/API yet." },
+    { "id": "adm-roles", "feature": "Roles", "status": "in_progress", "notes": "Placeholder content, gated behind requirePermission(\"roles:manage\"). Role table now seeded with the 8 required roles + full permission matrix (prisma/seed.ts, docs/permission-matrix.md); no CRUD UI/API yet." },
+    { "id": "adm-permissions", "feature": "Permissions", "status": "in_progress", "notes": "Placeholder content, gated behind requirePermission(\"permissions:manage\"). Server-side authorization is now implemented and enforced on every admin route (CLAUDE.md rule 5) — see the `auth` section above for the test suite. No CRUD UI/API for editing the matrix yet; it's defined in code (src/lib/auth/permissions.ts)." },
+    { "id": "adm-college-profile", "feature": "College Profile", "status": "passing", "notes": "Full CMS module: singleton view/create/edit + draft/review/publish/archive workflow (src/app/admin/college-profile/). Gated on content_general:*. Covered by tests/unit/admin/college-profile/actions.test.ts." },
+    { "id": "adm-departments", "feature": "Departments", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/departments/). Gated on content_general:*. Covered by tests/unit/admin/departments/actions.test.ts + tests/e2e/cms-departments.spec.ts (full cross-role lifecycle e2e)." },
+    { "id": "adm-notices", "feature": "Notices", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/notices/), including publishDate/expiryDate fields. Gated on content_general:*. Covered by tests/unit/admin/notices/actions.test.ts + tests/e2e/cms-notices.spec.ts (full cross-role lifecycle e2e, 10 tests)." },
+    { "id": "adm-events", "feature": "Events", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/events/), including required startDate and optional endDate/location. Gated on content_general:*. Covered by tests/unit/admin/events/actions.test.ts." },
+    { "id": "adm-seminars", "feature": "Seminars", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/seminars/), with an optional Department FK (college-wide when omitted) and speaker field. Not a distinct top-level circular section (folded into the public site's consolidated Events page alongside Workshops/Activities/Clubs — see pub-events), but given its own dedicated admin CMS module. Gated on content_general:*. Covered by tests/unit/admin/seminars/actions.test.ts." },
+    { "id": "adm-workshops", "feature": "Workshops", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/workshops/), near-identical to Seminars but with a facilitator field instead of speaker. Gated on content_general:*. Covered by tests/unit/admin/workshops/actions.test.ts." },
+    { "id": "adm-faculty", "feature": "Faculty", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/faculty/), including department FK select and subjectsTaught array field. Gated on content_faculty:*. Covered by tests/unit/admin/faculty/actions.test.ts + tests/e2e/cms-faculty.spec.ts." },
+    { "id": "adm-staff", "feature": "Staff", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/staff/). Gated on content_faculty:* (shares Faculty's domain). Covered by tests/unit/admin/staff/actions.test.ts." },
+    { "id": "adm-activities", "feature": "Activities", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/activities/), no FK. Gated on content_general:*. Covered by tests/unit/admin/activities/actions.test.ts." },
+    { "id": "adm-clubs", "feature": "Clubs", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/clubs/), with an optional Faculty FK as advisor. Gated on content_faculty:* (the third module in this domain, alongside Faculty/Staff). Covered by tests/unit/admin/clubs/actions.test.ts." },
+    { "id": "adm-infrastructure", "feature": "Infrastructure", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/infrastructure/), with a required InfrastructureCategory enum select. Gated on content_general:*. Covered by tests/unit/admin/infrastructure/actions.test.ts." },
+    { "id": "adm-programs", "feature": "Programs", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/programs/), including department FK select and level enum. Gated on content_general:*. Covered by tests/unit/admin/programs/actions.test.ts." },
+    { "id": "adm-admissions", "feature": "Admissions", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/admissions/), with a required Program FK. Gated on content_admissions:* (the first module built on this domain). Covered by tests/unit/admin/admissions/actions.test.ts + tests/e2e/cms-admissions.spec.ts (full cross-role lifecycle e2e, 6 tests)." },
+    { "id": "adm-fee-structures", "feature": "Fee Structures", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/fee-structures/), with a required Program FK, an optional Admission FK, and a Decimal amount field. Not its own top-level circular section — folds into the public Admissions page's fee-structure table (see pub-admissions) — but given its own dedicated admin CMS module, same as Seminars/Workshops under Events. Gated on content_admissions:*. Covered by tests/unit/admin/fee-structures/actions.test.ts." },
+    { "id": "adm-enrollment-statistics", "feature": "Enrollment Statistics", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/enrollment-statistics/), with a required Program FK and required/optional integer count fields. Folds into the public Admissions page's enrollment-statistics table (see pub-admissions). Gated on content_admissions:*. Covered by tests/unit/admin/enrollment-statistics/actions.test.ts." },
+    { "id": "adm-timetables", "feature": "Timetables", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/timetables/), with a required Program FK and an optional JSON structuredSchedule field (rejects malformed JSON on both create and edit). Gated on content_general:*. Covered by tests/unit/admin/timetables/actions.test.ts + tests/e2e/cms-timetables.spec.ts (full lifecycle e2e, 6 tests)." },
+    { "id": "adm-academic-calendar", "feature": "Academic Calendar", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/academic-calendar/), including required startDate/optional endDate and plain category/academicYear fields. Gated on content_general:*. Covered by tests/unit/admin/academic-calendar/actions.test.ts." },
+    { "id": "adm-exams", "feature": "Exams", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/exams/), with a required Program FK and an optional Notice FK. Gated on content_examinations:* (the first module built on this domain). Covered by tests/unit/admin/exams/actions.test.ts." },
+    { "id": "adm-results", "feature": "Results", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/results/), with required Program + Examination FKs and an isPublic checkbox implementing the double publish gate (see pub-results). Gated on content_examinations:*. Covered by tests/unit/admin/results/actions.test.ts + tests/e2e/cms-results.spec.ts (full cross-role lifecycle + double-gate e2e, 7 tests)." },
+    { "id": "adm-documents", "feature": "Documents", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/documents/), authoring the general (not-attached-to-another-record) documents shown on the public Downloads page. Gated on content_general:*. Required adding status/publishedAt/publishedBy to the Document model for the first time (prisma/migrations/20260914090529_add_workflow_fields_admissions_documents), closing the shell-content-queries known gap. Covered by tests/unit/admin/documents/actions.test.ts." },
+    { "id": "adm-gallery", "feature": "Gallery", "status": "passing", "notes": "Full CMS module: album list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/gallery/), plus a nested item resource (GalleryAlbum -> GalleryItem) where adding an item also creates a fresh Media asset (accessibility-required alt text, media type) in the same Server Action. Gated on content_general:*. Covered by tests/unit/admin/gallery/actions.test.ts + tests/e2e/cms-gallery.spec.ts (full nested-resource lifecycle e2e, 6 tests)." },
+    { "id": "adm-scholarships", "feature": "Scholarships", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/scholarships/), no FK. Gated on content_general:*. Covered by tests/unit/admin/scholarships/actions.test.ts." },
+    { "id": "adm-student-support", "feature": "Student Support", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/student-support/), no FK. Gated on content_general:*. Covered by tests/unit/admin/student-support/actions.test.ts." },
+    { "id": "adm-policies", "feature": "Policies", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/policies/), no FK. Gated on content_general:*. Covered by tests/unit/admin/policies/actions.test.ts." },
+    { "id": "adm-regulations", "feature": "Regulations", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/regulations/), no FK. Gated on content_general:*. Covered by tests/unit/admin/regulations/actions.test.ts." },
+    { "id": "adm-affiliation", "feature": "Affiliation", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/affiliation/), with an optional Program FK (college-wide when omitted). Gated on content_general:*. Covered by tests/unit/admin/affiliation/actions.test.ts." },
+    { "id": "adm-contact", "feature": "Contact", "status": "passing", "notes": "Full CMS module: list/view/create/edit + draft/review/publish/archive workflow (src/app/admin/contact/), with a required ContactType enum select. Required adding publishedAt/publishedBy to Contact for the first time (prisma/migrations/20260914093028_add_workflow_fields_contact_location). Gated on content_general:*. Covered by tests/unit/admin/contact/actions.test.ts." },
+    { "id": "adm-location", "feature": "Location", "status": "passing", "notes": "Full CMS module: singleton view/create/edit + draft/review/publish/archive workflow (src/app/admin/location/), the second true singleton after College Profile — uses findFirst rather than findUnique since Location.collegeId has no @unique constraint. Also required adding publishedAt/publishedBy to Location for the first time (same migration as Contact). Gated on content_general:*. Covered by tests/unit/admin/location/actions.test.ts + tests/e2e/cms-location.spec.ts (singleton-guard + editing-doesn't-revert-status e2e, 4 tests)." },
     { "id": "adm-grievances", "feature": "Grievances", "status": "not_started", "notes": "Placeholder route exists; Grievance/GrievanceNote tables now exist in prisma/schema.prisma (see `database` section), not yet wired to any UI/API. Must verify grievance data access is restricted to authorized roles (CLAUDE.md rules 5, 6)." },
     { "id": "adm-compliance", "feature": "Compliance", "status": "not_started", "notes": "Placeholder route exists; ComplianceRequirement/ComplianceEvidence/ComplianceVerification tables now exist and are seeded with the 20 circular items (see `database` section), not yet wired to any UI/API. Must verify compliance verification requires authorized human approval, not automated approval (CLAUDE.md rule 7)." },
-    { "id": "adm-audit-logs", "feature": "Audit logs", "status": "not_started", "notes": "Placeholder route exists; AuditLog table now exists in prisma/schema.prisma (see `database` section), but no application code writes to it yet on any mutation." },
+    { "id": "adm-audit-logs", "feature": "Audit logs", "status": "in_progress", "notes": "Placeholder content, gated behind requirePermission(\"audit_logs:view\"). AuditLog rows are now actually written on every login/failed-login/logout (src/lib/auth/actions.ts) — the first real (non-seed) writer of this table. Still no writes from content mutations (none exist yet) and no UI to browse the log." },
     { "id": "adm-approval-workflow", "feature": "Approval workflow", "status": "not_started", "notes": "Placeholder route exists; no ApprovalRequest table/state machine yet. Must verify no content or compliance status can be auto-approved (CLAUDE.md rule 7)." }
   ]
 }

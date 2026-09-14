@@ -19,6 +19,24 @@
   --placeholder-bg: #fef9c3;
   --placeholder-border: #eab308;
   --placeholder-foreground: #713f12;
+
+  /* Alert/status tones — distinct from --placeholder-* (which always means "demo data",
+     never a message severity). */
+  --info-bg: #eff6ff;
+  --info-border: #93c5fd;
+  --info-foreground: #1e3a8a;
+
+  --success-bg: #f0fdf4;
+  --success-border: #86efac;
+  --success-foreground: #14532d;
+
+  --warning-bg: #fffbeb;
+  --warning-border: #fcd34d;
+  --warning-foreground: #78350f;
+
+  --danger-bg: #fef2f2;
+  --danger-border: #fca5a5;
+  --danger-foreground: #7f1d1d;
 }
 
 @theme inline {
@@ -32,6 +50,18 @@
   --color-placeholder-bg: var(--placeholder-bg);
   --color-placeholder-border: var(--placeholder-border);
   --color-placeholder-foreground: var(--placeholder-foreground);
+  --color-info-bg: var(--info-bg);
+  --color-info-border: var(--info-border);
+  --color-info-foreground: var(--info-foreground);
+  --color-success-bg: var(--success-bg);
+  --color-success-border: var(--success-border);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-border: var(--warning-border);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-border: var(--danger-border);
+  --color-danger-foreground: var(--danger-foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -48,6 +78,22 @@
     --placeholder-bg: #3f2d03;
     --placeholder-border: #a16207;
     --placeholder-foreground: #fde68a;
+
+    --info-bg: #172554;
+    --info-border: #1d4ed8;
+    --info-foreground: #bfdbfe;
+
+    --success-bg: #052e16;
+    --success-border: #15803d;
+    --success-foreground: #bbf7d0;
+
+    --warning-bg: #451a03;
+    --warning-border: #b45309;
+    --warning-foreground: #fde68a;
+
+    --danger-bg: #450a0a;
+    --danger-border: #b91c1c;
+    --danger-foreground: #fecaca;
   }
 }
 

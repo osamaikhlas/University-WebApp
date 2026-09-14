@@ -1,29 +1,48 @@
 import Link from "next/link";
 import { PUBLIC_NAV_LINKS } from "@/lib/navigation";
+import { getPrimaryCollege } from "@/lib/content";
+import { MobileNav } from "@/components/layout/MobileNav";
 
-export function PublicHeader() {
+const FALLBACK_SITE_NAME = "[PLACEHOLDER] Affiliated College Portal";
+
+export async function PublicHeader() {
+  const college = await getPrimaryCollege();
+  // Never show a placeholder college's name as if it were real (CLAUDE.md rules 1, 14).
+  const siteName = college && !college.isPlaceholder ? college.name : FALLBACK_SITE_NAME;
+
   return (
-    <header className="border-b border-border-subtle bg-surface">
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" className="text-sm font-semibold tracking-tight sm:text-base">
-          [PLACEHOLDER] Affiliated College Portal
+    <header className="relative border-b border-border-subtle bg-surface">
+      <div className="mx-auto flex w-full max-w-6xl items-center gap-4 px-4 py-4 sm:px-6 lg:px-8">
+        <Link href="/" className="shrink-0 text-sm font-semibold tracking-tight sm:text-base">
+          {siteName}
         </Link>
-        <nav aria-label="Primary" className="hidden overflow-x-auto lg:block">
-          <ul className="flex items-center gap-4 text-sm text-foreground/70">
-            {PUBLIC_NAV_LINKS.slice(0, 8).map((link) => (
-              <li key={link.href}>
-                <Link href={link.href} className="hover:text-foreground">
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-            <li>
-              <Link href="/search" className="font-medium text-brand hover:underline">
-                Search
-              </Link>
-            </li>
+
+        {/* min-w-0 lets this flex item actually shrink below its content's natural width,
+            which is what allows overflow-x-auto below to scroll instead of forcing the
+            whole header (and page) to overflow horizontally. */}
+        <nav aria-label="Primary" className="hidden min-w-0 flex-1 lg:block">
+          <ul className="flex items-center gap-4 overflow-x-auto text-sm whitespace-nowrap text-foreground/70">
+            {PUBLIC_NAV_LINKS.filter((link) => link.href !== "/" && link.href !== "/search").map(
+              (link) => (
+                <li key={link.href} className="shrink-0">
+                  <Link href={link.href} className="hover:text-foreground">
+                    {link.label}
+                  </Link>
+                </li>
+              ),
+            )}
           </ul>
         </nav>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href="/search"
+            className="hidden text-sm font-medium text-brand hover:underline lg:inline"
+          >
+            Search
+          </Link>
+          <MobileNav links={PUBLIC_NAV_LINKS} />
+        </div>
       </div>
     </header>
   );

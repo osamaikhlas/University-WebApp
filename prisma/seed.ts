@@ -1,5 +1,12 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+import { hashPassword } from "../src/lib/auth/password";
+import {
+  PERMISSIONS,
+  ROLE_DESCRIPTIONS,
+  ROLE_NAMES,
+  ROLE_PERMISSIONS,
+} from "../src/lib/auth/permissions";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -20,37 +27,10 @@ const PLACEHOLDER_COLLEGE_ID = "placeholder-college";
 const DEV_SEED_USER_ID = "dev-seed-admin";
 const CIRCULAR_REFERENCE = "I.C/SALU/KHP/-662, 04.09.2026";
 
-const ROLES = [
-  {
-    name: "super_admin",
-    description: "Full system access across all modules.",
-  },
-  {
-    name: "principal",
-    description:
-      "Personally accountable for the college website; can verify compliance items.",
-  },
-  {
-    name: "content_editor",
-    description: "Can create and edit draft content across content modules.",
-  },
-  {
-    name: "approver",
-    description: "Can approve or reject content submitted for review.",
-  },
-  {
-    name: "compliance_officer",
-    description: "Can verify compliance items against the circular requirements.",
-  },
-  {
-    name: "grievance_officer",
-    description: "Can view and manage grievance submissions.",
-  },
-  {
-    name: "auditor",
-    description: "Read-only access to audit logs.",
-  },
-];
+// A dev-only login password for the 8 per-role test accounts seeded below (never a real
+// college user's credential — CLAUDE.md rules 13/14). Overridable via env for CI, but
+// gated so it can never be seeded into a production database (see `main()` below).
+const DEV_LOGIN_PASSWORD = process.env.DEV_LOGIN_PASSWORD ?? "DevSeed!Passw0rd1";
 
 // Transcribed verbatim (paraphrased for brevity) from docs/compliance-matrix.md §1, which
 // itself transcribes the circular's 20 required content categories. This is the fixed
@@ -61,41 +41,134 @@ const COMPLIANCE_REQUIREMENTS: Array<{
   title: string;
   description: string;
 }> = [
-  { itemNumber: 1, title: "College profile", description: "College Profile, history, vision/mission, objectives." },
-  { itemNumber: 2, title: "Day-to-day activities", description: "Day-to-day academic/admin activities (notices, events, seminars, workshops)." },
-  { itemNumber: 3, title: "Physical infrastructure", description: "Physical infrastructure of the college." },
+  {
+    itemNumber: 1,
+    title: "College profile",
+    description: "College Profile, history, vision/mission, objectives.",
+  },
+  {
+    itemNumber: 2,
+    title: "Day-to-day activities",
+    description: "Day-to-day academic/admin activities (notices, events, seminars, workshops).",
+  },
+  {
+    itemNumber: 3,
+    title: "Physical infrastructure",
+    description: "Physical infrastructure of the college.",
+  },
   { itemNumber: 4, title: "Faculty details", description: "Faculty details, per department." },
-  { itemNumber: 5, title: "Non-teaching staff details", description: "Non-teaching staff details." },
-  { itemNumber: 6, title: "Programs and affiliation", description: "Programs/degrees offered plus affiliation/approval status." },
-  { itemNumber: 7, title: "Timetable and academic calendar", description: "Class/program-wise timetable and academic calendar." },
-  { itemNumber: 8, title: "Admission information", description: "Admission info: notices, eligibility, fees, schedule." },
-  { itemNumber: 9, title: "Enrollment statistics", description: "Total enrollment/admissions, program- and session-wise." },
-  { itemNumber: 10, title: "Examination and results info", description: "Examination/academic info: notices, results, announcements." },
+  {
+    itemNumber: 5,
+    title: "Non-teaching staff details",
+    description: "Non-teaching staff details.",
+  },
+  {
+    itemNumber: 6,
+    title: "Programs and affiliation",
+    description: "Programs/degrees offered plus affiliation/approval status.",
+  },
+  {
+    itemNumber: 7,
+    title: "Timetable and academic calendar",
+    description: "Class/program-wise timetable and academic calendar.",
+  },
+  {
+    itemNumber: 8,
+    title: "Admission information",
+    description: "Admission info: notices, eligibility, fees, schedule.",
+  },
+  {
+    itemNumber: 9,
+    title: "Enrollment statistics",
+    description: "Total enrollment/admissions, program- and session-wise.",
+  },
+  {
+    itemNumber: 10,
+    title: "Examination and results info",
+    description: "Examination/academic info: notices, results, announcements.",
+  },
   { itemNumber: 11, title: "Contact details", description: "Contact details for the college." },
   { itemNumber: 12, title: "Location", description: "Complete location and a map link." },
-  { itemNumber: 13, title: "Regulatory/affiliation status", description: "Regulatory/affiliation status of the college and its programs." },
-  { itemNumber: 14, title: "Co-curricular activities", description: "Co-curricular/extra-curricular activities." },
-  { itemNumber: 15, title: "Notifications and announcements", description: "General notifications and announcements." },
+  {
+    itemNumber: 13,
+    title: "Regulatory/affiliation status",
+    description: "Regulatory/affiliation status of the college and its programs.",
+  },
+  {
+    itemNumber: 14,
+    title: "Co-curricular activities",
+    description: "Co-curricular/extra-curricular activities.",
+  },
+  {
+    itemNumber: 15,
+    title: "Notifications and announcements",
+    description: "General notifications and announcements.",
+  },
   { itemNumber: 16, title: "Photo gallery", description: "Photo gallery of the college." },
-  { itemNumber: 17, title: "Scholarships and student support", description: "Scholarships, financial assistance, and student support services." },
-  { itemNumber: 18, title: "Rules, regulations, policies", description: "Rules, regulations, and policies governing the college." },
-  { itemNumber: 19, title: "Grievance mechanism", description: "A reachable, confidential grievance mechanism for students/stakeholders." },
-  { itemNumber: 20, title: "Other required information", description: "Any other information required by the affiliating university/regulator." },
+  {
+    itemNumber: 17,
+    title: "Scholarships and student support",
+    description: "Scholarships, financial assistance, and student support services.",
+  },
+  {
+    itemNumber: 18,
+    title: "Rules, regulations, policies",
+    description: "Rules, regulations, and policies governing the college.",
+  },
+  {
+    itemNumber: 19,
+    title: "Grievance mechanism",
+    description: "A reachable, confidential grievance mechanism for students/stakeholders.",
+  },
+  {
+    itemNumber: 20,
+    title: "Other required information",
+    description: "Any other information required by the affiliating university/regulator.",
+  },
 ];
 
 async function main() {
-  // --- Tenancy / RBAC (unchanged from Phase 1) -----------------------------------------
-  for (const role of ROLES) {
+  // --- Tenancy / RBAC (Phase 3: roles/permissions are seeded straight from
+  // src/lib/auth/permissions.ts, the single source of truth for the permission matrix, so
+  // the database can never drift from what the application enforces at runtime.) ---------
+  for (const roleName of ROLE_NAMES) {
     await prisma.role.upsert({
-      where: { name: role.name },
-      update: { description: role.description },
-      create: role,
+      where: { name: roleName },
+      update: { description: ROLE_DESCRIPTIONS[roleName] },
+      create: { name: roleName, description: ROLE_DESCRIPTIONS[roleName] },
+    });
+  }
+  // Drop any role from an earlier taxonomy (e.g. Phase 1's lowercase baseline set) that is
+  // no longer part of the required role list — this is generic system taxonomy, not real
+  // college data, so reseeding it away is safe (CLAUDE.md rule 1 does not apply).
+  await prisma.role.deleteMany({ where: { name: { notIn: [...ROLE_NAMES] } } });
+
+  for (const key of PERMISSIONS) {
+    await prisma.permission.upsert({ where: { key }, update: {}, create: { key } });
+  }
+  await prisma.permission.deleteMany({ where: { key: { notIn: [...PERMISSIONS] } } });
+
+  for (const roleName of ROLE_NAMES) {
+    const role = await prisma.role.findUniqueOrThrow({ where: { name: roleName } });
+    const permissionKeys = ROLE_PERMISSIONS[roleName];
+    const permissions = await prisma.permission.findMany({
+      where: { key: { in: [...permissionKeys] } },
+    });
+
+    // Replace this role's grants wholesale on every seed run, so removing a permission
+    // from the matrix actually revokes it in the database, not just adds new ones.
+    await prisma.rolePermission.deleteMany({ where: { roleId: role.id } });
+    await prisma.rolePermission.createMany({
+      data: permissions.map((permission) => ({ roleId: role.id, permissionId: permission.id })),
+      skipDuplicates: true,
     });
   }
 
   await prisma.college.upsert({
     where: { id: PLACEHOLDER_COLLEGE_ID },
-    update: {},
+    update: {
+      isPlaceholder: true,
+    },
     create: {
       id: PLACEHOLDER_COLLEGE_ID,
       name: "[PLACEHOLDER] Sample Affiliated College — replace with real college record",
@@ -119,7 +192,7 @@ async function main() {
     },
   });
 
-  const superAdminRole = await prisma.role.findUniqueOrThrow({ where: { name: "super_admin" } });
+  const superAdminRole = await prisma.role.findUniqueOrThrow({ where: { name: "SUPER_ADMIN" } });
   await prisma.userRole.upsert({
     where: {
       userId_roleId_collegeId: {
@@ -136,10 +209,57 @@ async function main() {
     },
   });
 
+  // One login-capable [DEV SEED] test account per role, gated to non-production
+  // environments only — these exist purely so auth can actually be logged into and
+  // e2e-tested (tests/e2e/auth.spec.ts) for every role in the matrix. `devUser` above is a
+  // separate, deliberately non-login-capable account used only as a FK filler for
+  // createdBy/uploadedBy-style stamps.
+  if (process.env.NODE_ENV !== "production") {
+    const devLoginPasswordHash = await hashPassword(DEV_LOGIN_PASSWORD);
+
+    for (const roleName of ROLE_NAMES) {
+      const role = await prisma.role.findUniqueOrThrow({ where: { name: roleName } });
+      const email = `${roleName.toLowerCase().replace(/_/g, "-")}@example.invalid`;
+
+      const roleUser = await prisma.user.upsert({
+        where: { email },
+        update: { passwordHash: devLoginPasswordHash },
+        create: {
+          collegeId: PLACEHOLDER_COLLEGE_ID,
+          name: `[DEV SEED] ${roleName} Test Account`,
+          email,
+          passwordHash: devLoginPasswordHash,
+        },
+      });
+
+      await prisma.userRole.upsert({
+        where: {
+          userId_roleId_collegeId: {
+            userId: roleUser.id,
+            roleId: role.id,
+            collegeId: PLACEHOLDER_COLLEGE_ID,
+          },
+        },
+        update: {},
+        create: { userId: roleUser.id, roleId: role.id, collegeId: PLACEHOLDER_COLLEGE_ID },
+      });
+    }
+
+    console.log(
+      `[DEV SEED] Login test accounts ready for all ${ROLE_NAMES.length} roles ` +
+        `(<role-slug>@example.invalid / "${DEV_LOGIN_PASSWORD}"). Never seeded when NODE_ENV=production.`,
+    );
+  }
+
   // --- College profile -------------------------------------------------------------------
   await prisma.collegeProfile.upsert({
     where: { collegeId: PLACEHOLDER_COLLEGE_ID },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       collegeId: PLACEHOLDER_COLLEGE_ID,
       overview: "[PLACEHOLDER] Sample overview text — replace with real college profile copy.",
@@ -148,22 +268,39 @@ async function main() {
       history: "[PLACEHOLDER] Sample history text.",
       principalName: "[PLACEHOLDER] Principal Name",
       principalMessage: "[PLACEHOLDER] Sample principal's message.",
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
   });
 
   // --- Academic structure ------------------------------------------------------------------
+  //
+  // Every content record below is seeded with `status: "PUBLISHED"` (plus `isPlaceholder:
+  // true`) so the Phase 4 public site has something to render through the same publish gate
+  // real content will go through (CLAUDE.md rule 4) — never bypassing it. `DemoDataNotice`
+  // (src/components/DemoDataNotice.tsx) is what keeps this from being mistaken for verified
+  // official content on the rendered page (rule 14).
   const department = await prisma.department.upsert({
     where: { id: "dev-seed-department" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-department",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       name: "[PLACEHOLDER] Department of Sample Studies",
       description: "[PLACEHOLDER] Sample department for local development only.",
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -171,7 +308,12 @@ async function main() {
 
   const program = await prisma.program.upsert({
     where: { id: "dev-seed-program" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-program",
       collegeId: PLACEHOLDER_COLLEGE_ID,
@@ -180,7 +322,10 @@ async function main() {
       level: "UNDERGRADUATE",
       durationYears: 4,
       description: "[PLACEHOLDER] Sample program for local development only.",
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -188,7 +333,10 @@ async function main() {
 
   await prisma.course.upsert({
     where: { programId_code: { programId: program.id, code: "SAMP-101" } },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+    },
     create: {
       collegeId: PLACEHOLDER_COLLEGE_ID,
       programId: program.id,
@@ -196,6 +344,7 @@ async function main() {
       title: "[PLACEHOLDER] Introduction to Sample Studies",
       creditHours: 3,
       semester: 1,
+      status: "PUBLISHED",
       isPlaceholder: true,
       createdBy: devUser.id,
       updatedBy: devUser.id,
@@ -204,7 +353,12 @@ async function main() {
 
   await prisma.affiliation.upsert({
     where: { id: "dev-seed-affiliation" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-affiliation",
       collegeId: PLACEHOLDER_COLLEGE_ID,
@@ -213,7 +367,10 @@ async function main() {
       affiliationNumber: "[PLACEHOLDER] AFF-0000",
       regulatoryBody: "[PLACEHOLDER] Sample Regulatory Body",
       validFrom: new Date("2026-01-01"),
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -222,7 +379,12 @@ async function main() {
   // --- People --------------------------------------------------------------------------
   const faculty = await prisma.faculty.upsert({
     where: { id: "dev-seed-faculty" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-faculty",
       collegeId: PLACEHOLDER_COLLEGE_ID,
@@ -230,7 +392,10 @@ async function main() {
       name: "[PLACEHOLDER] Dr. Sample Faculty",
       designation: "[PLACEHOLDER] Assistant Professor",
       subjectsTaught: ["[PLACEHOLDER] Sample Subject"],
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -238,13 +403,21 @@ async function main() {
 
   await prisma.staff.upsert({
     where: { id: "dev-seed-staff" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-staff",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       name: "[PLACEHOLDER] Sample Staff Member",
       designation: "[PLACEHOLDER] Office Assistant",
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -252,13 +425,21 @@ async function main() {
 
   await prisma.club.upsert({
     where: { id: "dev-seed-club" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-club",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       name: "[PLACEHOLDER] Sample Student Club",
       facultyAdvisorId: faculty.id,
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -267,14 +448,22 @@ async function main() {
   // --- Infrastructure --------------------------------------------------------------------
   await prisma.infrastructure.upsert({
     where: { id: "dev-seed-infrastructure" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-infrastructure",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       category: "LIBRARY",
       name: "[PLACEHOLDER] Sample Library",
       description: "[PLACEHOLDER] Sample infrastructure record.",
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -283,7 +472,12 @@ async function main() {
   // --- Communications ---------------------------------------------------------------------
   const notice = await prisma.notice.upsert({
     where: { id: "dev-seed-notice" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-notice",
       collegeId: PLACEHOLDER_COLLEGE_ID,
@@ -291,7 +485,38 @@ async function main() {
       body: "[PLACEHOLDER] Sample notice body text.",
       category: "general",
       publishDate: new Date(),
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+      createdBy: devUser.id,
+      updatedBy: devUser.id,
+    },
+  });
+
+  // A second notice, already expired, purely to demonstrate that the homepage's "Important
+  // announcement" banner (getImportantAnnouncement) actually excludes expired notices rather
+  // than just showing whatever is newest regardless of validity.
+  await prisma.notice.upsert({
+    where: { id: "dev-seed-notice-expired" },
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date("2026-01-02"),
+      publishedBy: devUser.id,
+    },
+    create: {
+      id: "dev-seed-notice-expired",
+      collegeId: PLACEHOLDER_COLLEGE_ID,
+      title: "[PLACEHOLDER] Expired Sample Notice",
+      body: "[PLACEHOLDER] Sample notice body text for an already-expired notice.",
+      category: "general",
+      publishDate: new Date("2026-01-01"),
+      expiryDate: new Date("2026-01-15"),
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date("2026-01-02"),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -299,13 +524,29 @@ async function main() {
 
   await prisma.event.upsert({
     where: { id: "dev-seed-event" },
-    update: {},
+    update: {
+      // Also re-set on every seed run (not just at creation) — otherwise this row's
+      // startDate freezes at whatever it was the first time this seed ever ran, and
+      // eventually drifts into the past, silently breaking getUpcomingEvents()'s
+      // `startDate >= now` filter.
+      startDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-event",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       title: "[PLACEHOLDER] Sample Event",
-      startDate: new Date(),
+      // 30 days out (not `new Date()`) so this row reliably satisfies
+      // getUpcomingEvents()'s `startDate >= now` filter regardless of when the seed runs
+      // relative to when the homepage is later viewed.
+      startDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -313,7 +554,12 @@ async function main() {
 
   await prisma.seminar.upsert({
     where: { id: "dev-seed-seminar" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-seminar",
       collegeId: PLACEHOLDER_COLLEGE_ID,
@@ -321,7 +567,10 @@ async function main() {
       title: "[PLACEHOLDER] Sample Seminar",
       speaker: "[PLACEHOLDER] Sample Speaker",
       startDate: new Date(),
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -329,7 +578,12 @@ async function main() {
 
   await prisma.workshop.upsert({
     where: { id: "dev-seed-workshop" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-workshop",
       collegeId: PLACEHOLDER_COLLEGE_ID,
@@ -337,7 +591,10 @@ async function main() {
       title: "[PLACEHOLDER] Sample Workshop",
       facilitator: "[PLACEHOLDER] Sample Facilitator",
       startDate: new Date(),
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -345,13 +602,21 @@ async function main() {
 
   await prisma.activity.upsert({
     where: { id: "dev-seed-activity" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-activity",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       title: "[PLACEHOLDER] Sample Co-curricular Activity",
       category: "co-curricular",
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -360,14 +625,22 @@ async function main() {
   // --- Calendar & scheduling ---------------------------------------------------------------
   await prisma.academicCalendar.upsert({
     where: { id: "dev-seed-calendar-entry" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-calendar-entry",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       title: "[PLACEHOLDER] Sample Semester Start",
       startDate: new Date("2026-09-01"),
       academicYear: "2026-2027",
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -375,14 +648,22 @@ async function main() {
 
   await prisma.timetable.upsert({
     where: { id: "dev-seed-timetable" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-timetable",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       programId: program.id,
       classGroup: "[PLACEHOLDER] Semester 1 - Section A",
       effectiveFrom: new Date("2026-09-01"),
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -391,14 +672,22 @@ async function main() {
   // --- Admissions & enrollment -------------------------------------------------------------
   const admission = await prisma.admission.upsert({
     where: { id: "dev-seed-admission" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-admission",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       programId: program.id,
       academicYear: "2026-2027",
       eligibilityCriteria: "[PLACEHOLDER] Sample eligibility criteria.",
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -406,7 +695,10 @@ async function main() {
 
   await prisma.feeStructure.upsert({
     where: { id: "dev-seed-fee-structure" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+    },
     create: {
       id: "dev-seed-fee-structure",
       collegeId: PLACEHOLDER_COLLEGE_ID,
@@ -415,6 +707,7 @@ async function main() {
       academicYear: "2026-2027",
       feeType: "tuition",
       amount: "0.00",
+      status: "PUBLISHED",
       isPlaceholder: true,
       createdBy: devUser.id,
       updatedBy: devUser.id,
@@ -423,7 +716,10 @@ async function main() {
 
   await prisma.enrollmentStatistic.upsert({
     where: { id: "dev-seed-enrollment-stat" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+    },
     create: {
       id: "dev-seed-enrollment-stat",
       collegeId: PLACEHOLDER_COLLEGE_ID,
@@ -431,6 +727,7 @@ async function main() {
       academicYear: "2026-2027",
       sessionType: "morning",
       totalEnrolled: 0,
+      status: "PUBLISHED",
       isPlaceholder: true,
       createdBy: devUser.id,
       updatedBy: devUser.id,
@@ -440,7 +737,12 @@ async function main() {
   // --- Examinations & results --------------------------------------------------------------
   const examination = await prisma.examination.upsert({
     where: { id: "dev-seed-examination" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-examination",
       collegeId: PLACEHOLDER_COLLEGE_ID,
@@ -448,7 +750,10 @@ async function main() {
       examType: "[PLACEHOLDER] Mid-term",
       academicYear: "2026-2027",
       noticeId: notice.id,
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -456,13 +761,21 @@ async function main() {
 
   await prisma.result.upsert({
     where: { id: "dev-seed-result" },
-    update: {},
+    update: {
+      isPublic: true,
+      status: "PUBLISHED",
+      isPlaceholder: true,
+    },
     create: {
       id: "dev-seed-result",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       programId: program.id,
       examinationId: examination.id,
-      isPublic: false,
+      // Demonstrates the rule-4 gate for real: this row is deliberately public (isPublic +
+      // PUBLISHED) so /results can show it, while every other seeded content row keeps its
+      // own independent publish state — nothing here is auto-derived.
+      isPublic: true,
+      status: "PUBLISHED",
       isPlaceholder: true,
       createdBy: devUser.id,
       updatedBy: devUser.id,
@@ -472,13 +785,17 @@ async function main() {
   // --- Contact & location ------------------------------------------------------------------
   await prisma.contact.upsert({
     where: { id: "dev-seed-contact" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+    },
     create: {
       id: "dev-seed-contact",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       type: "EMAIL",
       value: "info@example.invalid",
       label: "[PLACEHOLDER] General Enquiries",
+      status: "PUBLISHED",
       isPlaceholder: true,
       createdBy: devUser.id,
       updatedBy: devUser.id,
@@ -487,11 +804,15 @@ async function main() {
 
   await prisma.location.upsert({
     where: { id: "dev-seed-location" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+    },
     create: {
       id: "dev-seed-location",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       address: "[PLACEHOLDER] Sample Address, Sample City",
+      status: "PUBLISHED",
       isPlaceholder: true,
       createdBy: devUser.id,
       updatedBy: devUser.id,
@@ -501,7 +822,9 @@ async function main() {
   // --- Gallery -------------------------------------------------------------------------
   const media = await prisma.media.upsert({
     where: { id: "dev-seed-media" },
-    update: {},
+    update: {
+      isPlaceholder: true,
+    },
     create: {
       id: "dev-seed-media",
       collegeId: PLACEHOLDER_COLLEGE_ID,
@@ -514,12 +837,20 @@ async function main() {
 
   const album = await prisma.galleryAlbum.upsert({
     where: { id: "dev-seed-gallery-album" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-gallery-album",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       title: "[PLACEHOLDER] Sample Gallery Album",
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -527,13 +858,21 @@ async function main() {
 
   await prisma.galleryItem.upsert({
     where: { id: "dev-seed-gallery-item" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-gallery-item",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       albumId: album.id,
       mediaId: media.id,
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -542,12 +881,20 @@ async function main() {
   // --- Student support ---------------------------------------------------------------------
   await prisma.scholarship.upsert({
     where: { id: "dev-seed-scholarship" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-scholarship",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       name: "[PLACEHOLDER] Sample Scholarship",
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -555,12 +902,20 @@ async function main() {
 
   await prisma.studentSupport.upsert({
     where: { id: "dev-seed-student-support" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-student-support",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       name: "[PLACEHOLDER] Sample Student Support Service",
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -569,12 +924,20 @@ async function main() {
   // --- Policies -------------------------------------------------------------------------
   await prisma.policy.upsert({
     where: { id: "dev-seed-policy" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-policy",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       title: "[PLACEHOLDER] Sample Policy",
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -582,12 +945,20 @@ async function main() {
 
   await prisma.regulation.upsert({
     where: { id: "dev-seed-regulation" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-regulation",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       title: "[PLACEHOLDER] Sample Regulation",
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
       createdBy: devUser.id,
       updatedBy: devUser.id,
     },
@@ -596,7 +967,10 @@ async function main() {
   // --- Grievance (dev/demo submission only — never real, never public) ---------------------
   const grievance = await prisma.grievance.upsert({
     where: { id: "dev-seed-grievance" },
-    update: {},
+    update: {
+      status: "NEW",
+      isPlaceholder: true,
+    },
     create: {
       id: "dev-seed-grievance",
       collegeId: PLACEHOLDER_COLLEGE_ID,
@@ -624,7 +998,12 @@ async function main() {
   // --- Documents -----------------------------------------------------------------------
   await prisma.document.upsert({
     where: { id: "dev-seed-document" },
-    update: {},
+    update: {
+      status: "PUBLISHED",
+      isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+    },
     create: {
       id: "dev-seed-document",
       collegeId: PLACEHOLDER_COLLEGE_ID,
@@ -635,7 +1014,11 @@ async function main() {
       fileUrl: "https://example.invalid/placeholder.pdf",
       mimeType: "application/pdf",
       uploadedById: devUser.id,
+      status: "PUBLISHED",
       isPlaceholder: true,
+      publishedAt: new Date(),
+      publishedBy: devUser.id,
+      updatedBy: devUser.id,
     },
   });
 
