@@ -21,15 +21,13 @@ export async function DocumentsSection() {
             {documents.map((document) => (
               <li key={document.id} className="p-4">
                 <a
-                  href={document.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href={`/api/files/documents/${document.id}`}
                   className="text-sm font-medium text-brand hover:underline"
                 >
                   {document.title}
                 </a>
                 {document.category ? (
-                  <span className="ml-2 text-xs text-foreground/50">{document.category}</span>
+                  <span className="ml-2 text-xs text-foreground/60">{document.category}</span>
                 ) : null}
               </li>
             ))}

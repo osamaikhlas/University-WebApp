@@ -13,6 +13,8 @@ import {
 } from "@/lib/content-workflow";
 import { logAudit } from "@/lib/audit";
 import { getPrimaryCollege } from "@/lib/content";
+import { optionalDateField } from "@/lib/admin/zod-helpers";
+import { saveUploadedFile, validateUpload, UploadValidationError } from "@/lib/security/upload-storage";
 
 const PERMISSIONS = MODULE_PERMISSIONS.gallery;
 const ALBUM_ENTITY_TYPE = "GalleryAlbum";
@@ -145,13 +147,11 @@ export async function transitionAlbum(
 
 // --- Gallery items (each wraps a freshly-created Media asset) -------------------------------
 
-const MEDIA_TYPES = ["IMAGE", "VIDEO", "DOCUMENT"] as const;
-
 const itemSchema = z.object({
-  url: z.string().trim().min(1, "File URL is required").url("Enter a valid URL").max(1000),
   altText: z.string().trim().min(1, "Alt text is required for accessibility").max(500),
-  mediaType: z.enum(MEDIA_TYPES, { error: "Select a valid media type" }),
   caption: z.string().trim().max(500).optional(),
+  category: z.string().trim().max(200).optional(),
+  mediaDate: optionalDateField,
   order: z.coerce.number().int().min(0, "Must be zero or greater").optional(),
 });
 
@@ -159,10 +159,10 @@ export type ItemFormState = { error: string | null };
 
 function parseItemForm(formData: FormData) {
   return itemSchema.safeParse({
-    url: formData.get("url"),
     altText: formData.get("altText"),
-    mediaType: formData.get("mediaType"),
     caption: formData.get("caption") || undefined,
+    category: formData.get("category") || undefined,
+    mediaDate: formData.get("mediaDate") || undefined,
     order: formData.get("order") || undefined,
   });
 }
@@ -179,6 +179,17 @@ export async function createItem(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
+  const image = formData.get("image");
+  if (!(image instanceof File) || image.size === 0) {
+    return { error: "Select an image to upload." };
+  }
+  try {
+    validateUpload("media", image);
+  } catch (error) {
+    if (!(error instanceof UploadValidationError)) throw error;
+    return { error: error.message };
+  }
+
   const album = await prisma.galleryAlbum.findUnique({ where: { id: albumId } });
   if (!album) {
     return { error: "Album not found." };
@@ -189,12 +200,19 @@ export async function createItem(
       collegeId: album.collegeId,
       entityType: ALBUM_ENTITY_TYPE,
       entityId: album.id,
-      url: parsed.data.url,
       altText: parsed.data.altText,
-      mediaType: parsed.data.mediaType,
+      category: parsed.data.category || null,
+      mediaDate: parsed.data.mediaDate ?? null,
+      mediaType: "IMAGE",
       uploadedById: user.id,
       isPlaceholder: false,
     },
+  });
+
+  const stored = await saveUploadedFile("media", media.id, image);
+  await prisma.media.update({
+    where: { id: media.id },
+    data: { storedPath: stored.storedPath, mimeType: stored.mimeType },
   });
 
   const item = await prisma.galleryItem.create({
@@ -240,12 +258,29 @@ export async function updateItem(
     return { error: "Item not found." };
   }
 
+  // Replacing the image is optional on the edit form — leave it blank to change only
+  // metadata (caption/category/date/alt text), consistent with Documents' edit-form
+  // replacement pattern.
+  const image = formData.get("image");
+  let mediaFileUpdate: { storedPath: string; mimeType: string } | null = null;
+  if (image instanceof File && image.size > 0) {
+    try {
+      validateUpload("media", image);
+    } catch (error) {
+      if (!(error instanceof UploadValidationError)) throw error;
+      return { error: error.message };
+    }
+    const stored = await saveUploadedFile("media", before.mediaId, image);
+    mediaFileUpdate = { storedPath: stored.storedPath, mimeType: stored.mimeType };
+  }
+
   await prisma.media.update({
     where: { id: before.mediaId },
     data: {
-      url: parsed.data.url,
       altText: parsed.data.altText,
-      mediaType: parsed.data.mediaType,
+      category: parsed.data.category || null,
+      mediaDate: parsed.data.mediaDate ?? null,
+      ...(mediaFileUpdate ?? {}),
     },
   });
 
@@ -260,7 +295,7 @@ export async function updateItem(
 
   await logAudit({
     actorId: user.id,
-    action: "UPDATE",
+    action: mediaFileUpdate ? "FILE_REPLACED" : "UPDATE",
     entityType: ITEM_ENTITY_TYPE,
     entityId: itemId,
     before,

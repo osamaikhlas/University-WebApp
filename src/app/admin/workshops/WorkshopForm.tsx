@@ -40,7 +40,7 @@ export function WorkshopForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="facilitator" className="text-sm font-medium text-foreground">
-            Facilitator <span className="font-normal text-foreground/50">(optional)</span>
+            Facilitator <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="facilitator"
@@ -54,7 +54,7 @@ export function WorkshopForm(props: Props) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="departmentId" className="text-sm font-medium text-foreground">
-          Department <span className="font-normal text-foreground/50">(optional)</span>
+          Department <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <select
           id="departmentId"
@@ -73,7 +73,7 @@ export function WorkshopForm(props: Props) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="description" className="text-sm font-medium text-foreground">
-          Description <span className="font-normal text-foreground/50">(optional)</span>
+          Description <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <textarea
           id="description"
@@ -101,7 +101,7 @@ export function WorkshopForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="endDate" className="text-sm font-medium text-foreground">
-            End date <span className="font-normal text-foreground/50">(optional)</span>
+            End date <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="endDate"
@@ -114,7 +114,7 @@ export function WorkshopForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="venue" className="text-sm font-medium text-foreground">
-            Venue <span className="font-normal text-foreground/50">(optional)</span>
+            Venue <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="venue"

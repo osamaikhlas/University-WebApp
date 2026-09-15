@@ -11,8 +11,10 @@ import { Card } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { WorkflowActions } from "@/components/admin/WorkflowActions";
+import { ReviewPanel } from "@/components/admin/ReviewPanel";
 import { DemoDataNotice } from "@/components/DemoDataNotice";
-import { transitionNotice } from "@/app/admin/notices/actions";
+import { getReviewDisplayData } from "@/lib/content-review";
+import { transitionNotice, markNoticeReviewed } from "@/app/admin/notices/actions";
 
 export const metadata: Metadata = { title: "Notice" };
 
@@ -32,6 +34,7 @@ export default async function NoticeViewPage({
 
   const canManage = hasPermission(user.permissions, MODULE_PERMISSIONS.notices.manage);
   const canPublish = hasPermission(user.permissions, MODULE_PERMISSIONS.notices.publish);
+  const review = await getReviewDisplayData("notices", notice);
 
   return (
     <Container>
@@ -60,26 +63,35 @@ export default async function NoticeViewPage({
               <dt className="font-medium text-foreground/70">Category</dt>
               <dd className="mt-1">{notice.category ?? "—"}</dd>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="font-medium text-foreground/70">Publish date</dt>
-                <dd className="mt-1">{notice.publishDate?.toLocaleDateString() ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Expiry date</dt>
-                <dd className="mt-1">{notice.expiryDate?.toLocaleDateString() ?? "—"}</dd>
-              </div>
+            <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-2">
+              <dt className="font-medium text-foreground/70">Publish date</dt>
+              <dd className="mt-1">{notice.publishDate?.toLocaleDateString() ?? "—"}</dd>
+              <dt className="font-medium text-foreground/70">Expiry date</dt>
+              <dd className="mt-1">{notice.expiryDate?.toLocaleDateString() ?? "—"}</dd>
             </div>
           </dl>
         </Card>
 
         <WorkflowActions
+                    entityType="Notice"
           entityId={notice.id}
           status={notice.status}
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionNotice}
           workflowError={workflowError}
+        />
+
+        <ReviewPanel
+          entityId={notice.id}
+          lastUpdated={review.lastUpdated}
+          lastReviewedAt={review.lastReviewedAt}
+          nextReviewDue={review.nextReviewDue}
+          reviewerName={review.reviewerName}
+          isOverdue={review.isOverdue}
+          periodDays={review.periodDays}
+          canMarkReviewed={canPublish}
+          markReviewed={markNoticeReviewed}
         />
 
         <Link href="/admin/notices" className="text-sm text-brand hover:underline">

@@ -67,6 +67,7 @@ export default async function StudentSupportViewPage({
         </Card>
 
         <WorkflowActions
+          entityType="StudentSupport"
           entityId={studentSupport.id}
           status={studentSupport.status}
           canManage={canManage}

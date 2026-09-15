@@ -64,6 +64,7 @@ export default async function ContactViewPage({
         </Card>
 
         <WorkflowActions
+                    entityType="Contact"
           entityId={contact.id}
           status={contact.status}
           canManage={canManage}

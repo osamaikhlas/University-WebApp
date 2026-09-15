@@ -83,7 +83,7 @@ export function TimetableForm(props: Props) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="structuredSchedule" className="text-sm font-medium text-foreground">
-          Schedule (JSON) <span className="font-normal text-foreground/50">(optional)</span>
+          Schedule (JSON) <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <textarea
           id="structuredSchedule"
@@ -93,7 +93,7 @@ export function TimetableForm(props: Props) {
           defaultValue={scheduleDefault}
           className={`${inputClass} font-mono text-xs`}
         />
-        <p className="text-xs text-foreground/50">
+        <p className="text-xs text-foreground/60">
           Optional structured schedule data, as JSON. Leave blank if not needed yet.
         </p>
       </div>

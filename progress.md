@@ -31,10 +31,69 @@ requirements, each showing its number/title/description/required information/res
 module/status/completeness/public page/last updated/last verified/verifier/evidence/reviewer
 notes, with an automatic completeness check computed live against real database content and
 a `verify`/`request_update` (reject-review)/`mark_not_applicable`/`reopen` workflow gated so
-`VERIFIED` can only ever be reached by an authorized human reviewer (CLAUDE.md rule 7). The
-other 4 admin modules (Grievances, Users/Roles/Permissions UI, Audit log viewer, Approval
-workflow queue) are still placeholder-gated, not built — see `tests.json`'s `admin_system`
-section.
+`VERIFIED` can only ever be reached by an authorized human reviewer (CLAUDE.md rule 7).
+**The full public + admin Grievance system is now built too** — a confidential public
+submission form (name/email/phone/category/subject/description/attachment) that generates a
+non-guessable reference number, rate-limited and honeypot-protected against abuse; an admin
+case-management module with its own NEW/ASSIGNED/UNDER_REVIEW/ACTION_REQUIRED/RESOLVED/CLOSED
+state machine, assignment, internal notes, recorded responses, encrypted-contact detail views
+restricted to authorized staff, permission-checked attachment downloads, full audit history,
+and search/filter/pagination. **Documents and Gallery (Media) now support real file
+upload/validation/preview/replacement/archive/publish-unpublish** — the former paste-a-URL
+placeholders are gone; uploaded files live outside `public/` and are served only through
+permission-checked routes that are public exactly when the owning record is actually live
+(status + publish/expiry-date window for Documents; "does any PUBLISHED GalleryItem wrap this
+Media" for images). This also added `ARCHIVED`/`archive`/`unarchive`/`unpublish` to the
+*shared* content workflow engine (`src/lib/content-workflow.ts`), so every one of the 28
+content-authoring modules — not just Documents/Gallery — now genuinely has the
+draft/review/publish/archive lifecycle `tests.json`'s notes had been (inaccurately) claiming
+since Phase 4. **`/search` is now a real global search** — 8 categories (pages, notices,
+events, programs, faculty, documents, policies, regulations), category filtering,
+relevance-ranked results, and pagination, still published-only. **The admin Dashboard
+(`/admin`) is now real too** — content status totals, compliance percentage, requirements
+needing attention, recent notices/events, content not recently reviewed, document expiry
+warnings, and recent audit activity, every number a live database query scoped to what the
+signed-in role can actually see. **Centralized audit logging is now real too** — a single
+writer (`src/lib/audit.ts`'s `logAudit()`) is the only code path that ever writes an
+`AuditLog` row, all 7 former direct-Prisma call sites (content/compliance/grievance
+workflows, grievance notes/responses, public grievance submission, login/logout, and the new
+role-assignment action) now funnel through it, a read-only `/admin/audit-logs` viewer exists
+with filtering/pagination/detail views, and immutability is enforced both by omission
+(no edit/delete Server Action exists) and by a database-level Postgres trigger that rejects
+any `UPDATE`/`DELETE` on the table outright. `/admin/users` now supports the one real
+"permission change" this app's data model has — assigning/revoking a user's roles, fully
+audited. **Content review/freshness tracking is now real too** — Notices, Faculty, Academic
+Calendar, Timetables, and Admissions (the 5 modules explicitly named for staleness warnings)
+now track a real last-reviewed date and reviewer per record, shown alongside last updated and
+a computed next-review-due date on each record's admin page, with a "Mark reviewed" action;
+the review period is configurable per module at `/admin/content-review-settings`, and the
+dashboard now has a real "Content review warnings" section (5 named stale-`<module>` counts
+plus a combined overdue-reviews table) driven by that real data instead of an `updatedAt`
+guess. Only 2 admin modules (the Roles/Permissions matrix editor and the cross-module Approval
+workflow queue) remain placeholder-gated, not built — see `tests.json`'s `admin_system`
+section. **A site-wide accessibility audit is now done too** — automated axe-core coverage
+(`tests/e2e/accessibility.spec.ts`) plus real fixes: a systemic contrast failure
+(`text-foreground/50`, ~90 files), missing current-page indication across every nav component,
+invalid `<dl>` markup on 17 admin detail pages, non-keyboard-focusable scrollable regions, and
+two missing landmarks (`/login`'s `<main>`, `AdminUserBar`'s `<header>`) — see `tests.json`'s
+`public_shell` section (`shell-accessibility-audit`). **A site-wide security review is now done
+too** — most categories (authorization coverage, SQL injection, XSS, CSRF, path traversal,
+secrets handling, private-grievance-data handling) checked out already solid; real fixes: a
+per-IP login rate limit (closing a credential-stuffing gap the existing per-account lockout
+didn't cover), magic-byte verification on every file upload (closing a MIME-type-spoofing gap),
+and a full set of security headers (CSP, `X-Content-Type-Options`, `X-Frame-Options`,
+`Referrer-Policy`, `Permissions-Policy`, HSTS) added to `next.config.ts`, which previously had
+none. One architectural gap (admin queries not scoped by `collegeId`, a live IDOR risk only if
+this app is ever deployed multi-tenant) was found and deliberately flagged rather than
+unilaterally fixed — see `tests.json`'s `public_shell` section (`shell-security-review`) and the
+Open Questions below. **A full-application browser-automation walkthrough is now done too** —
+the public site's 10 main sections plus the complete admin notice lifecycle (login through
+publish, public verification, edit, audit trail) and a compliance verification, at both desktop
+and mobile viewport, all driven with real browser interaction
+(`tests/e2e/full-walkthrough.spec.ts`). Found and fixed one real defect: the admin dashboard
+overflowed horizontally at 375px width (a `grid`/`flex` "won't shrink below content" bug, the
+second instance of this exact class of bug in this project) — see `tests.json`'s `public_shell`
+section (`shell-full-walkthrough`).
 
 ## Completed
 
@@ -910,55 +969,639 @@ section.
     missing-qualifications gap is visibly surfaced on the real page even though the
     requirement is `VERIFIED`).
 
+- 2026-09-14 — **Implemented the full public + admin grievance system** (per explicit
+  instruction), closing the last content-shaped gap called out in the prior session's "Next
+  steps" — deliberately its own state machine (`src/lib/grievance-workflow.ts`), not a reuse
+  of `content-workflow.ts`/`compliance-workflow.ts`, since a grievance must never become
+  public (CLAUDE.md rule 6):
+  - **Schema**: reshaped `Grievance` (migration
+    `20260914170000_grievance_case_management`, applied with zero drift) — added a unique,
+    non-sequential `referenceNumber` (`src/lib/grievance-reference.ts`,
+    `GRV-YYYYMMDD-<6 random chars>`, alphabet excludes `0/O/1/I`); split the old single
+    `submitterContact` into required `submitterEmail` + optional `submitterPhone` (both
+    still AES-256-GCM encrypted, same as before) plus required `submitterName`/`category`;
+    added required `subject`; added `submitterIpHash` (abuse-pattern review only, never the
+    raw IP) and `closedAt`. `GrievanceStatus` is now
+    `NEW`/`ASSIGNED`/`UNDER_REVIEW`/`ACTION_REQUIRED`/`RESOLVED`/`CLOSED` (was
+    `NEW`/`IN_REVIEW`/`RESOLVED`/`CLOSED`), matching the exact admin status list requested.
+    Added `GrievanceResponse` (recorded replies to the submitter — this system has no
+    outbound email/SMS integration, so a response is the record of what staff said, not
+    proof it was delivered), `GrievanceAttachment` (submitter-uploaded evidence — a separate
+    model from the generic `Document`/`Media` tables since those require a real `User`
+    uploader FK, and a public submitter isn't a `User`), and a generic `RateLimitEntry`
+    (fixed-window counter, reusable by any future unauthenticated write path). Added 4
+    `AuditAction` values (`GRIEVANCE_ASSIGN`/`GRIEVANCE_STATUS_CHANGE`/
+    `GRIEVANCE_NOTE_ADDED`/`GRIEVANCE_RESPONSE_SENT`).
+  - The local dev database had 29 pre-existing `grievances` rows (1 real dev-seed fixture +
+    28 leftover Playwright e2e artifacts from earlier sessions) that predated the new
+    required columns and blocked the migration; deleted them (confirmed with the user first
+    — see the decisions log) since they were test artifacts, not real submissions, then
+    re-ran `prisma/seed.ts` to restore the one dev fixture.
+  - **Public submission** (`src/app/(public)/grievance/`): form now collects name, email,
+    phone (optional), category (fixed list, `src/lib/grievance-categories.ts`, shared with
+    server-side Zod validation so they can never drift), subject, description, and an
+    optional attachment. On success, shows the generated reference number and tells the
+    submitter to keep it for follow-up. **Abuse protection**: a per-IP rate limit
+    (`src/lib/security/rate-limit.ts`, 3 submissions/hour, `RateLimitEntry`-backed) and a
+    honeypot field (`website`) hidden off-screen — a filled honeypot silently reports success
+    without writing anything, so a bot never learns to adapt. Attachments are validated
+    (type: PDF/JPEG/PNG/WEBP/DOC/DOCX; size: 10MB) and saved outside `public/`
+    (`src/lib/security/file-storage.ts`, `storage/grievance-attachments/`, gitignored) —
+    readable only through the new authenticated download route below, never a public URL.
+  - **Admin module** (`src/app/admin/grievances/`): list page with search (reference #,
+    subject, submitter name, description — email/phone are encrypted and can't be searched
+    at the DB level, a documented limitation) + status/category filters + pagination
+    (`src/lib/pagination.ts`, `src/components/ui/Pagination.tsx` — the first pagination
+    component in this codebase, generic enough for other modules to adopt later). Detail
+    page: decrypts `submitterEmail`/`submitterPhone` only for `grievances:view` holders;
+    lists attachments as download links to
+    `GET /api/admin/grievances/[id]/attachments/[attachmentId]` (permission-checked before
+    ever reading a file); assignment restricted to users actually holding
+    `grievances:manage` (`src/lib/admin/grievance-assignees.ts`, derived from the permission
+    matrix rather than a hard-coded role list, re-validated server-side against the
+    submitted `assigneeId`); the full status-transition set
+    (start_review/request_action/resume_review/resolve/close/reopen, with
+    request_action/resolve/reopen requiring a reason, mirroring the
+    `content-workflow.ts`/`compliance-workflow.ts` reason-required pattern); internal notes
+    (never shown to the submitter); recorded responses; and a full audit-history panel
+    reading `AuditLog` filtered to `entityType: "Grievance"`. Every mutating action requires
+    `grievances:manage`; `grievances:view` alone can see but not act — currently the same
+    role set (PRINCIPAL/ADMINISTRATOR/SUPER_ADMIN) holds both, but the code never assumes
+    that will always be true.
+  - Tests: `tests/unit/grievance/{workflow,reference-number,actions}.test.ts`,
+    `tests/unit/security/{rate-limit,file-storage}.test.ts`,
+    `tests/unit/admin/grievances/actions.test.ts`,
+    `tests/unit/admin/grievance-assignees.test.ts`, `tests/unit/pagination.test.ts` (95 new
+    unit tests, 508/508 passing project-wide). `tests/e2e/grievance.spec.ts` (17 tests
+    against the real dev server + seeded database: public submission with a real inline PNG
+    attachment, reference-number search, decrypted-contact visibility gated to authorized
+    staff, an unauthorized role refused even by direct navigation, the attachment route
+    refusing an unauthenticated fetch, the complete status lifecycle including the
+    reason-required and reopen-after-close paths, notes/responses, full audit history, and
+    filter correctness) — all passing, plus updated
+    `tests/e2e/public-content.spec.ts`'s older grievance-submission smoke test for the new
+    required fields. Ran the full suite for real: `npm run typecheck`/`npm run
+    lint`/`npm run build` all clean, `npm test` 508/508, `npx playwright test` 117/117 (full
+    suite, not just the new spec).
+  - Updated `tests.json`'s `pub-grievance` and `adm-grievances` entries (`adm-grievances`
+    flipped from `not_started` to `passing`).
+
+- 2026-09-15 — **Implemented real document and media management** (per explicit
+  instruction: upload/validation/preview/metadata/replacement/archive/publish-unpublish for
+  both Documents and Gallery/Media, with uploaded files never exposed without a permission
+  check):
+  - **Schema** (migration `20260915090000_document_media_management`, applied with zero
+    drift): `Document` gained `description`, `storedPath`/`fileName` (replacing the old
+    required `fileUrl` pasted-URL column, which is now gone entirely), `publishDate`/
+    `expiryDate` (an optional scheduling window, mirroring Notice's existing pattern — see
+    `isDocumentPubliclyVisible` below), and `approvedById`/`approvedAt` (set only by the
+    workflow's `approve` transition, cleared on reject/return-to-draft). `Media` gained
+    `storedPath`/`mimeType` (replacing the old required `url` column), `category`, and
+    `mediaDate` (the date the photo represents, distinct from the system `uploadedAt`
+    timestamp). Added `ARCHIVED` to the shared `ContentStatus` enum.
+  - **Shared workflow engine extended** (`src/lib/content-workflow.ts`) rather than adding
+    Documents/Gallery-specific one-offs: `archive` (legal from any non-archived status,
+    publish-tier — taking live content down is as significant as putting it up),
+    `unarchive` (ARCHIVED → DRAFT, manage-tier like `return_to_draft`), and `unpublish`
+    (PUBLISHED → APPROVED, publish-tier — takes something down without flagging it as
+    needing rework the way `request_update` does, and can be republished without
+    re-review). Because `WorkflowActions`/`getAvailableActions` are shared by all 28
+    content-authoring modules, this one change retroactively makes every module's
+    "draft/review/publish/archive workflow" claim in `tests.json` actually true, not just
+    Documents/Gallery's — verified by running the *entire* e2e suite (137 tests, not just
+    the new specs) and fixing the one assertion this changed the real behavior of (see
+    decisions log).
+  - **Upload storage** (`src/lib/security/upload-storage.ts`, deliberately separate from
+    `src/lib/security/file-storage.ts`'s grievance-attachment logic, which has different
+    validation rules and is never publicly reachable): validates type (Documents: PDF/
+    DOC(X)/XLS(X)/PPT(X)/TXT/JPEG/PNG; Media: JPEG/PNG/WEBP/GIF) and size (25MB/10MB) before
+    ever writing to disk, stores files under `storage/uploads/<kind>/<entityId>/` (gitignored,
+    outside `public/`), `validateUpload` exported separately from `saveUploadedFile` so
+    callers can reject a bad file before creating (or updating) the owning database row.
+  - **Permission-checked file serving**: `GET /api/files/documents/[id]` is public exactly
+    when `isDocumentPubliclyVisible` (status PUBLISHED *and* within the publish/expiry
+    window) — the same function `src/lib/content.ts`'s `getDocuments()` uses to decide what
+    appears on `/downloads`, reused rather than duplicated, so "is this listed" and "is this
+    downloadable" can never drift apart. `GET /api/files/media/[id]` is public exactly when
+    at least one `GalleryItem` wrapping that `Media` row is currently PUBLISHED (`Media`
+    itself carries no status). Anything else redirects through `requirePermission` like any
+    other admin page.
+  - **Documents module** (`src/app/admin/documents/`): upload requires a real file (client
+    preview via new `src/components/admin/FilePreviewInput.tsx`, reused by Gallery below);
+    the edit form's file input is optional — leaving it blank keeps the current file,
+    providing a new one replaces it (bumps `version`, logs `FILE_REPLACED`); `publish` is
+    refused with a clear error if no file has ever been uploaded; approving records
+    `approvedById`/`approvedAt` as a small Documents-specific follow-up mutation after the
+    shared transition (not a generic engine field, to avoid forcing it onto 27 other models
+    that don't have the columns).
+  - **Gallery/Media module** (`src/app/admin/gallery/`): item creation now uploads a real
+    image instead of pasting a URL, and dropped the `mediaType` select (VIDEO/DOCUMENT)
+    entirely — the user's field list (image/caption/album/date/category/alt text) is
+    image-only, so `mediaType` is now always hard-coded `"IMAGE"` at creation; replacing the
+    image on edit is optional (same pattern as Documents) and logs `FILE_REPLACED`.
+  - Updated the public Downloads and Gallery pages, and the homepage's "Important documents"
+    section, to link to the new `/api/files/*` routes instead of the removed `fileUrl`/`url`
+    columns. `prisma/seed.ts` now writes small real placeholder files to disk (a PNG for
+    Media, a text file for Document) during seeding, so the dev-seed rows work end-to-end
+    through the real file routes instead of pointing at fake `https://example.invalid/...`
+    URLs that were never actually fetchable.
+  - Tests: `tests/unit/security/upload-storage.test.ts`, updated
+    `tests/unit/content-workflow.test.ts` (archive/unarchive/unpublish coverage),
+    `tests/unit/content/queries.test.ts` (`getDocuments` date-window filter,
+    `isDocumentPubliclyVisible`), and rewritten `tests/unit/admin/documents/actions.test.ts`
+    / `tests/unit/admin/gallery/actions.test.ts` for the upload-based flow (546/546 unit
+    tests passing project-wide). `tests/e2e/cms-documents.spec.ts` (new, 12 tests: no-file
+    rejection, upload+preview+metadata, the full review→publish lifecycle, public
+    downloadability without a session, file replacement, publish-date scheduling, unpublish/
+    re-publish/archive/unarchive, and the wrong-domain permission check) and rewritten
+    `tests/e2e/cms-gallery.spec.ts` (now 14 tests, item creation/replacement using real image
+    uploads, plus new unpublish/archive/permission-gated-image-access coverage). **Ran the
+    full e2e suite repeatedly (137 tests) to check for regressions from the shared workflow
+    engine change** — found and fixed one real regression (`cms-departments.spec.ts`, see
+    decisions log) and two long-standing pre-existing test bugs unrelated to this feature
+    (also see decisions log) — final state: 137/137 e2e, 546/546 unit, `npm run typecheck`/
+    `npm run lint`/`npm run build` all clean.
+  - Updated `tests.json`'s `adm-documents`, `adm-gallery`, `pub-downloads` (flipped
+    `in_progress` → `passing`), and `pub-gallery` entries.
+
+- 2026-09-15 — **Implemented real global website search** (per explicit instruction: search
+  across pages/notices/events/programs/faculty/documents/policies/regulations, with keyword
+  search, category filtering, pagination, relevance, and an empty state, published-only):
+  - Rewrote `searchSite()` (`src/lib/content.ts`) from a fixed, unranked, unpaginated
+    6-module search (Notice/Event/Program/Faculty/Scholarship/Policy, title-only) into the 8
+    requested categories with a new signature (`{query, category?, page?, pageSize?}` →
+    `{results, totalCount, totalPages, page}`). Dropped Scholarship (not in the requested
+    category list) and added Documents and Regulations. Every database category now matches
+    on title *and* body/description (`OR`), not title alone. **"Pages" has no backing
+    table** — added a static `SEARCHABLE_PAGES` list (title/description/href) mirroring
+    `PUBLIC_NAV_LINKS`'s 19 real routes (excluding `/search` itself), matched the same way
+    as database rows; this is the only category that can never need a publish-state check,
+    since every listed page is already public by construction.
+  - **Category filtering**: an optional `category` narrows to exactly one of the 8 — when
+    set, every other category's database query is skipped entirely (not just filtered out
+    after fetching), so an irrelevant filter costs nothing extra.
+  - **Relevance**: no full-text-search index exists in this app (`contains` is the only
+    matching primitive available), so relevance is a deterministic in-memory score computed
+    over each `contains`-matched candidate: exact title match > title starts with the query >
+    whole-word match inside the title > any other substring match in the title, plus a small
+    bonus if the query also appears in the snippet/body; ties break alphabetically by title
+    (never by timestamp, which would make ordering — and any test asserting on it — flaky).
+    Candidates are capped at 50 rows per category before ranking, generous for this app's
+    realistic single-college content volume.
+  - **Pagination**: reused `src/lib/pagination.ts` + `src/components/ui/Pagination.tsx`
+    as-is (built generically for the admin Grievances module, not admin-specific) — paginates
+    the final combined, ranked list across *all* matching categories, not per-category, so
+    page 2 is genuinely "the next 10 most relevant results," not "whatever's left over in
+    each table."
+  - **Documents respect the same publish/expiry-date window as `/downloads`** — extracted a
+    shared `documentWindowWhere(now)` Prisma-where fragment used by both `getDocuments()` and
+    `searchSite()`, so a document's search-result visibility can never drift from its
+    `/downloads` visibility (the same "one source of truth for visibility" principle already
+    applied to `isDocumentPubliclyVisible`/the file-serving route in the previous session's
+    work).
+  - Rewrote `/search` (`src/app/(public)/search/page.tsx`): still a plain GET form (works
+    without JS, bookmarkable), now with a category `<select>` and the shared `Pagination`
+    component; kept the `?q=` param name and the "No published results found" empty-state
+    copy unchanged so the pre-existing e2e assertions in `public-content.spec.ts` and
+    `grievance.spec.ts` (which both `goto("/search?q=...")` and check for that exact phrase)
+    kept working without modification.
+  - Tests: rewrote `tests/unit/content/queries.test.ts`'s `searchSite` block (category
+    filtering, the document date-window fragment, static-page matching, relevance ordering,
+    pagination math with no cross-page overlap) and added `tests/unit/ui/Pagination.test.tsx`
+    (the `Pagination` component had no unit coverage yet, despite already being reused by two
+    features now) — 557/557 unit tests passing project-wide. New `tests/e2e/search.spec.ts`
+    (9 tests: every category represented for a broad query, static pages searchable,
+    category filter narrows results, a category filter's own empty state, a nonsense query's
+    empty state, a blank query shows neither, relevance ordering, pagination controls absent
+    when unnecessary, and — the core privacy guarantee — a freshly-created DRAFT notice is
+    never returned even when its exact title is searched). Re-ran the full e2e suite (146
+    tests, not just the new spec) since `searchSite`'s signature change was a real breaking
+    change to shared code — all passing, plus `npm run typecheck`/`npm run lint`/`npm run
+    build` all clean.
+  - Updated `tests.json`'s `pub-search` entry.
+
+- 2026-09-15 — **Implemented the real admin Dashboard** (per explicit instruction: total
+  published pages, drafts, pending reviews, recent notices, upcoming events, compliance
+  percentage, requirements needing attention, content not recently reviewed, document expiry
+  warnings, recent audit activity — "do not fabricate statistics, all numbers must come from
+  the database"):
+  - New `src/lib/admin/dashboard.ts`: a registry of all 28 content-authoring modules (the
+    same set `MODULE_PERMISSIONS` covers), each with a `groupBy`-by-status query (powers the
+    published/draft/pending-review totals) and, for the ~19 modules with an actual editorial
+    title field, a `listPublished` query (powers "content not recently reviewed" — the
+    9 purely tabular/structured modules like fee structures or enrollment statistics stay in
+    the totals but are deliberately left out of that table, since flagging them by a
+    synthetic label would be noise, not a useful review prompt).
+  - **Every section is permission-scoped to the viewer**, not a site-wide leak: content
+    totals and the stale-content table sum only across modules the caller holds `:view` on
+    (reusing `MODULE_PERMISSIONS`); recent notices/upcoming events/document expiry need
+    `content_general:view`; compliance needs `compliance:view`; audit activity needs
+    `audit_logs:view`. A narrowly-scoped role (e.g. ADMISSION_OFFICER) sees fewer sections
+    and smaller totals, never an error — the dashboard summarizes *their* admin surface.
+  - **Compliance percentage is defined as the share of the 20 circular requirements actually
+    VERIFIED by a human** (reusing the existing `getComplianceOverview()` from
+    `src/lib/compliance.ts` — no compliance logic duplicated), deliberately not average
+    completeness, which a machine can compute with nobody having signed off and would
+    overstate how "done" compliance really is (CLAUDE.md rule 7). "Requirements needing
+    attention" excludes VERIFIED/NOT_APPLICABLE, ordered worst-first: NEEDS_UPDATE (a
+    regression from a previously-verified state) before READY_FOR_REVIEW before IN_PROGRESS
+    before NOT_STARTED.
+  - **"Content not recently reviewed"** flags PUBLISHED content whose `updatedAt` predates a
+    180-day threshold — this app has no per-record "last reviewed" field or scheduled review
+    cadence yet (a known gap noted in earlier sessions' open questions), so `updatedAt` is
+    the only honest signal available; documented as a deliberate, named threshold constant
+    rather than an invented one.
+  - **Document expiry warnings**: published documents already past their `expiryDate` (still
+    live but quietly stale) or expiring within 30 days, reusing the `Document.expiryDate`
+    field built in an earlier session's Document/Media management work.
+  - **A real TypeScript/Prisma pitfall, worth remembering**: writing the 28 module `groupBy`
+    queries as inline arrow functions inside an array literal typed against a shared
+    interface broke Prisma's own generic inference for `.groupBy(...)` — contextually typing
+    the closure's expected return type up front corrupts the argument/return conditional
+    types Prisma resolves together, surfacing as a confusing "argument not assignable to
+    parameter" error with no mention of inference at all. Fixed by extracting each query
+    into a standalone top-level named function (no surrounding expected type while its own
+    body is checked) and referencing those functions from the registry array (typed via
+    `satisfies`, not a contextual `: T[]` annotation) — the array only ever checks each
+    function's *already-inferred* concrete return type for structural compatibility, which
+    works cleanly.
+  - New `src/components/admin/StatCard.tsx` (a labeled number, optionally linking to where
+    it came from, with a `data-stat-card` attribute added specifically so e2e tests can
+    target one card unambiguously — several stat labels/values otherwise collide with
+    identical text elsewhere on the page, e.g. a "Published" status badge).
+  - Rewrote `src/app/admin/page.tsx` entirely, replacing the Phase-1 placeholder (module
+    link grid only) with the real dashboard sections above the same permission-filtered
+    module grid, which was kept as useful secondary navigation.
+  - **Found and fixed a real regression while re-verifying the full e2e suite**: the new
+    dashboard description text happened to also start with "Signed in as ...", colliding
+    with `AdminUserBar`'s existing identity display in the admin layout header and breaking
+    a pre-existing `auth.spec.ts` assertion — removed the redundant phrase from the
+    dashboard's own description instead of loosening the pre-existing test.
+  - Tests: `tests/unit/admin/dashboard.test.ts` (permission filtering per section, status
+    aggregation across mocked modules, the 180-day staleness threshold, compliance
+    percent/priority-ordering math, expired-vs-expiring-soon classification, audit actor
+    name fallback for anonymous/system entries — 571/571 unit tests passing project-wide).
+    `tests/e2e/dashboard.spec.ts` (9 tests: SUPER_ADMIN sees every section, EDITOR/
+    ADMISSION_OFFICER see only their permitted sections, a freshly-created draft notice
+    increments the Drafts count and appears in Recent notices, creating a department writes
+    a visible audit entry, and the full upload→submit→review→publish path for a
+    document expiring tomorrow makes it appear as a document expiry warning). Ran the full
+    e2e suite (155 tests, not just the new spec) — all passing, plus `npm run typecheck`/
+    `npm run lint`/`npm run build` all clean.
+  - Updated `tests.json`'s `adm-dashboard` entry (flipped `in_progress` → `passing`).
+
+- 2026-09-14 — **Implemented centralized audit logging** (per explicit instruction: log
+  create/update/delete-archive/submit/approve/reject/publish/unpublish/login/permission
+  changes/compliance verification/grievance status changes, recording actor/timestamp/entity/
+  entity ID/action/previous values/new values/metadata; audit records must not be editable
+  from normal CMS interfaces):
+  - **Centralized the writer.** `src/lib/audit.ts`'s `logAudit()` already existed
+    (2026-09-14, CMS-modules session) but required a non-null `actorId`, so every
+    system/anonymous action (public grievance submission, automatic compliance status sync,
+    a failed login against a nonexistent account) had to bypass it and call
+    `prisma.auditLog.create()` directly — 7 call sites in total, each shaping the row
+    slightly differently. Widened `LogAuditParams.actorId` to `string | null` and migrated
+    all 7 sites (`content-workflow.ts`, `compliance-workflow.ts`, `grievance-workflow.ts`,
+    `admin/grievances/actions.ts`'s note/response actions, the public grievance submission
+    action, `auth/actions.ts`'s login/logout, and the new `admin/users/actions.ts` below)
+    onto the single function, so there is now exactly one place in the codebase that writes
+    an `AuditLog` row. Also added a `metadata Json?` column (free-form contextual detail
+    beyond before/after field values — e.g. a login's user agent, or which specific role a
+    permission change added/removed) and started actually recording `userAgent` on every
+    login/failed-login row, which `requestMeta()` had captured but never persisted before.
+  - **Built the one real "permission change" surface this app has**: `/admin/users`
+    (`src/app/admin/users/page.tsx` + new `src/app/admin/users/actions.ts`), replacing the
+    `adm-users` placeholder. Scoped deliberately to role assignment (`UserRole` rows) only —
+    a role's own permission grants (`ROLE_PERMISSIONS`) stay fixed in code/seed, not
+    runtime-editable, so assigning/revoking a role really is the one permission change a
+    human can make here. `assignRoleAction`/`removeRoleAction` (`requirePermission
+    ("users:manage")`) validate the role name, refuse assigning an already-held role, refuse
+    removing a user's last role (would silently lock them out of every permission-gated page
+    — `User.status` exists for deliberate suspension instead), and log `ROLE_CHANGE` with
+    real before/after role-name lists plus `metadata: {changeType, role, targetUserEmail}`.
+    Full account CRUD and the Roles/Permissions matrix editor remain separate, still-unbuilt
+    modules (`adm-roles`/`adm-permissions` stay `in_progress`).
+  - **Built the read-only audit log viewer**, replacing the `adm-audit-logs` placeholder:
+    `src/lib/admin/audit-logs.ts` (`AUDIT_ACTIONS`/`isAuditAction`/`humanizeAuditAction` —
+    Prisma doesn't export an enum's value list, so this is hand-maintained alongside
+    `AuditAction` in `schema.prisma`; `getAuditLogPage` with entityType/action/actor filters
+    + the existing `pagination.ts` helpers; `getAuditLogEntry` for the detail view),
+    `/admin/audit-logs` (list + filter form + `Pagination`) and `/admin/audit-logs/[id]`
+    (before/after snapshots + metadata rendered as formatted JSON, plus an explicit note that
+    the record is permanent), both gated behind `requirePermission("audit_logs:view")`. The
+    dashboard's "recent audit activity" table (built the prior session) now delegates to
+    `getAuditLogPage()` instead of its own separate query, so the two views can never
+    disagree.
+  - **Enforced immutability at the database layer, not just by omission.** The application
+    layer already guaranteed no edit/delete path exists (grepped the codebase: `logAudit()`
+    is the only writer, and it only ever `.create()`s); hardened this with a real database
+    constraint too, since CLAUDE.md rule 8 and this task's explicit "should not be editable"
+    both read as a guarantee worth defending in more than one layer. New migration
+    `20260916000000_audit_log_hardening` adds `BEFORE UPDATE`/`BEFORE DELETE` Postgres
+    triggers on `audit_logs` that unconditionally `RAISE EXCEPTION` — manually verified via
+    `psql` that both an `UPDATE` and a `DELETE` against a real row are rejected by the
+    database itself, regardless of what future code might try.
+  - **Found and fixed a real Playwright anti-pattern while writing the e2e spec**: the
+    role-assignment test clicked "Add", then called `page.waitForURL(/\/admin\/users$/)` —
+    but the page was already on `/admin/users` *before* the click (from an idempotent
+    pre-check step), so `waitForURL` resolved immediately against the pre-click URL instead
+    of waiting for the Server Action's redirect to actually land, and the very next
+    assertion (filtering the audit log for the new `ROLE_CHANGE` entry) ran before the write
+    had committed — a flaky, hard-to-diagnose failure that only showed up under
+    multi-worker parallel load, not in isolation. Fixed by waiting for a real DOM change (the
+    "Remove REVIEWER" button appearing/disappearing) instead of a URL that never actually
+    changes across the round trip. Generalizable lesson, joining the two `waitForURL`
+    lessons from earlier sessions: never treat a URL match as proof of completion when the
+    action's redirect target can equal the page's current URL.
+  - Also split two of the new e2e tests (department CREATE→PUBLISH, grievance status change)
+    into `test.describe.serial()` blocks with one `test()` per role, rather than one long
+    test calling `loginAs()` multiple times — the already-known "second `loginAs` in one
+    test hangs" pitfall from earlier sessions, re-encountered here because the audit-log
+    verification step naturally wanted a third `super-admin` login tacked onto the end of an
+    existing multi-role workflow test.
+  - Added `data-user-card={user.email}` to each user row on `/admin/users` (required
+    widening `src/components/ui/Card.tsx` from a fixed `{children, className}` prop shape to
+    `ComponentPropsWithoutRef<"div">` with prop spreading, a safe/backward-compatible change)
+    so the e2e spec can target one specific user's card reliably instead of a fragile
+    DOM-nesting-order `div` filter.
+  - Tests: extended `tests/unit/audit.test.ts` (7 cases — the `actorId: null` path, full
+    metadata/comment/ipAddress recording, metadata omission), new
+    `tests/unit/admin/users/actions.test.ts` (7 cases) and
+    `tests/unit/admin/audit-logs.test.ts` (filtering, pagination, actor fallback, detail
+    mapping) — 589/589 unit tests passing project-wide. New `tests/e2e/audit-logs.spec.ts`
+    (14 tests: access control, read-only guarantees on both list and detail pages, and real
+    CREATE/PUBLISH/GRIEVANCE_STATUS_CHANGE/LOGIN/ROLE_CHANGE entries produced by actually
+    performing those actions end to end). **Ran the full suite for real**: `npm run
+    typecheck`/`npm run lint`/`npm run build` all clean; `npx playwright test` (169/169 e2e,
+    including a clean re-run after fixing the `waitForURL` flake above).
+  - Updated `tests.json`'s `adm-users` and `adm-audit-logs` entries (both flipped
+    `in_progress` → `passing`).
+
+- 2026-09-14 — **Implemented content review/freshness tracking** (per explicit instruction:
+  show last updated/last reviewed/next review date/reviewer for relevant content; admin
+  warnings for overdue reviews, expired documents, stale admissions/timetable/academic
+  calendar/faculty records/notices; make the review period configurable):
+  - **Scoped to the 5 modules the warnings list explicitly names** — Notices, Timetables,
+    Academic Calendar, Admissions, Faculty — rather than all 28 content modules. Documents
+    already has its own, more precise freshness signal (`expiryDate`, built in an earlier
+    session) and is deliberately not part of this list; the engine itself
+    (`computeReviewFreshness`, `markContentReviewed`) is generic and not tied to this
+    specific 5, so extending review tracking to more modules later is additive (new schema
+    columns + a registry entry) rather than a redesign.
+  - Schema: added `lastReviewedAt DateTime?` / `lastReviewedById String?` to all 5 models
+    (plain id, not a relation — matching this schema's existing `createdBy`/`updatedBy`
+    audit-stamp convention), a new `ReviewPeriodSetting` model (one row per module with an
+    explicit admin-set override; not scoped to a College — review cadence is a system-wide
+    policy, like Role/Permission), and a new `MARK_REVIEWED` `AuditAction`
+    (`prisma/migrations/20260917000000_content_review_tracking`, zero-drift confirmed).
+  - **"Next review due" is always computed live, never stored**: `(lastReviewedAt ??
+    publishedAt ?? createdAt) + periodDays`, in `src/lib/content-review.ts`'s
+    `computeReviewFreshness`. This is what makes the review period genuinely configurable —
+    changing a module's period at `/admin/content-review-settings` immediately and
+    retroactively changes every record's overdue status, with no backfill migration ever
+    needed. A record never explicitly reviewed still gets a real due date, anchored to when
+    it was published (or created, if never published) — so newly published content becomes
+    due for its first review after one period, not immediately and not never.
+  - `src/lib/admin/review-settings.ts`: `REVIEWABLE_MODULES` (the 5-module registry),
+    `DEFAULT_REVIEW_PERIOD_DAYS` (180, matching the dashboard's pre-existing staleness
+    heuristic threshold so the default behavior isn't a surprising change), `getReviewPeriods`
+    (bulk, for the dashboard scan), `getReviewPeriodDays` (single-module), and
+    `setReviewPeriodDays` (validates 1–3650 days, upserts the override, writes an audit entry
+    — a review-period change is itself a traceable admin action, CLAUDE.md rule 8).
+  - Each of the 5 modules' `[id]/page.tsx` now renders a shared `ReviewPanel`
+    (`src/components/admin/ReviewPanel.tsx`: last updated, last reviewed, next review due,
+    reviewer, an overdue alert, and a "Mark reviewed" button) alongside the existing
+    `WorkflowActions` panel. "Mark reviewed" is a new `markXReviewed` Server Action per module
+    (`src/lib/content-review.ts`'s `markContentReviewed`, the single write path all 5 funnel
+    through), gated on the module's `:publish` permission rather than `:manage` — reviewing
+    for accuracy is a higher-trust check than authoring, the same tier as approve/publish, so
+    the same "no role holds both manage and publish for one domain" structural guarantee
+    that makes self-approval impossible also makes self-review impossible.
+  - New `/admin/content-review-settings` (list + edit form for each of the 5 modules' review
+    period), gated behind `compliance:verify` — reused rather than adding a new permission
+    for one settings screen, since review-cadence policy is institutional governance in the
+    same vein as compliance verification (PRINCIPAL/ADMINISTRATOR/SUPER_ADMIN).
+  - **Dashboard extended** (`src/lib/admin/dashboard.ts`): a new `getReviewWarnings` scans
+    the 5 modules' PUBLISHED records (draft content isn't a public-facing accuracy risk),
+    computing real overdue status per record and a per-module count that stays accurate even
+    when the combined "Overdue reviews" table is capped to `limit`. Notices/Faculty/Academic
+    Calendar were removed from the older `getStaleContent` `updatedAt`-heuristic registry
+    (now real-tracked instead, so the two signals could never quietly disagree); that older
+    table was renamed "Other content not recently reviewed" and still covers the remaining
+    ~15 modules with no per-record review date. The dashboard now shows 5 named
+    "Stale `<module>`" cards plus the combined table, exactly matching the requested warning
+    list (the 6th named warning, expired documents, was already built and is unchanged).
+  - **Found and fixed a real pre-existing bug while running the full e2e suite**:
+    `getNotices()`/`getImportantAnnouncement()` in `src/lib/content.ts` ordered by
+    `publishDate desc` with no explicit NULLS handling. Postgres's default for `DESC` is
+    NULLS FIRST, so any notice with no `publishDate` set always outranked every dated notice
+    as "most current" on both the public `/notices` list and the homepage's announcement
+    banner, regardless of actual recency — a real, previously-undetected correctness bug (not
+    introduced by this session's changes, just newly surfaced by a new e2e-created notice
+    that happened to have no `publishDate`). Fixed with explicit `nulls: "last"` on both
+    queries' `orderBy`, verified directly via `psql` before and after.
+  - Tests: new `tests/unit/content-review.test.ts` (freshness-math edge cases — anchors on
+    lastReviewedAt/publishedAt/createdAt in that order, strict `isOverdue` boundary —
+    mark-reviewed's write+audit shape, reviewer-name resolution),
+    `tests/unit/admin/review-settings.test.ts` (period get/set/validation, override detail),
+    `tests/unit/admin/content-review-settings/actions.test.ts`, a `markXReviewed` case added
+    to each of the 5 modules' existing `actions.test.ts` files, and a new `getReviewWarnings`
+    block in `tests/unit/admin/dashboard.test.ts` (overdue detection, period overrides,
+    reviewer resolution, count-vs-capped-list accuracy) — 625/625 unit tests passing
+    project-wide. New `tests/e2e/content-review.spec.ts` (9 tests: the full
+    create→submit→publish→mark-reviewed lifecycle with per-role "Mark reviewed" button
+    visibility, a resulting `MARK_REVIEWED` audit entry, settings-screen access control,
+    saving a custom period and seeing it persist, server-side rejection of an invalid period,
+    and the dashboard section rendering) — deliberately doesn't try to force a record into an
+    "overdue" state via e2e (nothing in the admin UI exposes backdating a publish timestamp,
+    and no other spec in this repo shells out to the database for setup); that exact date
+    arithmetic is what the unit tests above cover precisely instead. **Ran the full suite for
+    real**: `npm run typecheck`/`npm run lint`/`npm run build` all clean; `npx playwright
+    test` (178/178 e2e, including the NULLS-ordering fix's regression check).
+  - Updated `tests.json` with a new `adm-content-review` entry and extended `adm-dashboard`'s
+    notes to describe the new review-warnings section.
+
+- 2026-09-15 — **Site-wide accessibility audit** (explicit instruction): keyboard navigation, focus
+  management, semantic HTML, headings, labels, form errors, table accessibility, alt text, dialogs,
+  buttons/links, responsive behavior, and contrast, across both the public site and the admin system —
+  fixing real issues, not just cataloguing them. Set up automated checking first: installed
+  `@axe-core/playwright` and wrote `tests/e2e/accessibility.spec.ts` (34 tests) running axe-core against
+  one page of every "shape" (public content page, login, admin list/create/detail/dashboard) plus every
+  admin detail page a fix below touched, gated on WCAG 2.1 A/AA tags — all 34 passing. Findings and fixes:
+  - **Contrast (systemic)**: `text-foreground/50` — used for "(optional)" field hints, muted badges
+    (ARCHIVED/CLOSED/NOT_APPLICABLE), and helper text across ~90 files — measured **3.41:1** in light mode
+    against this app's actual `globals.css` tokens (computed relative luminance, not eyeballed), failing
+    WCAG AA's 4.5:1 minimum for normal-size text. Replaced with the already-used `text-foreground/60`
+    (4.67:1 light / 6.36:1 dark, both passing) everywhere, a mechanical `sed` across every occurrence.
+    Verified every other color-token pairing already in use (success/warning/danger/info/placeholder/brand
+    backgrounds with their paired foreground) at 6:1–12:1 — no other contrast issues found.
+  - **Current-page indication (keyboard nav / orientation)**: none of `AdminSidebar` (38 links),
+    the public header's desktop nav, or `MobileNav` ever marked which page a visitor was on — no
+    `aria-current`, no visual distinction. Converted all three to Client Components using `usePathname()`
+    (no `cacheComponents` flag is set, so no Suspense boundary was required) with `aria-current="page"`
+    plus a visual active state; extracted a new `DesktopNavLinks` component out of `PublicHeader` to do
+    it without making the whole header (which fetches the college name) a Client Component.
+  - **Invalid `<dl>` markup (semantic HTML)**: 17 of the 32 admin `[id]/page.tsx` detail pages had a
+    `<dl>` containing a `<div>` that itself wrapped further `<div>`s around `<dt>`/`<dd>` pairs — invalid
+    per the HTML definition-list content model (a `div` that's a direct child of `dl` must contain
+    `dt`/`dd` directly, not another `div`), flagged by axe's `definition-list`/`dlitem` rules (WCAG-tagged).
+    Fixed in academic-calendar, admissions, affiliation, audit-logs, college-profile, compliance,
+    documents, enrollment-statistics, events, exams, fee-structures, gallery item, location, notices,
+    results, seminars, and workshops by flattening each pair to `dt`/`dd` as direct grid children
+    (`grid sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-N`) — reproduces the exact original side-by-side
+    visual layout (column-major fill: label above value per column) without the invalid nesting. Verified
+    with a script that re-scanned all 32 `<dl>`-bearing files for the pattern (zero remaining) and with
+    axe directly against each fixed page.
+  - **Keyboard access to scrollable content**: `DataTable`'s horizontally-scrollable wrapper and two raw
+    JSON `<pre>` blocks (audit log detail, timetable schedule) were scrollable but had no way for a
+    keyboard-only user to reach the scrolled content (axe `scrollable-region-focusable`, serious impact) —
+    added `tabIndex={0}`. The first attempt also added `role="region" aria-label={caption}` to `DataTable`,
+    which then collided with an identically (or near-identically) named parent `<section>` landmark on
+    pages like `/academics` and `/admissions` (axe `landmark-unique`) — self-caught by re-running a
+    broader axe best-practice sweep immediately after the first fix, not by the user. Corrected by
+    dropping the redundant region role: a scrollable container only needs to be keyboard-operable, not
+    its own named landmark.
+  - **Missing landmarks**: `/login` (its own top-level route, outside both the `(public)` and `/admin`
+    layouts that normally each provide one) had no `<main>` at all — which also meant the site's skip
+    link (`#main-content`, in the root layout) pointed at a target that didn't exist on that specific
+    page. Added `<main id="main-content">`. `AdminUserBar` (the "Signed in as … / Sign out" bar) rendered
+    as a bare `<div>` outside any landmark; changed to `<header>`.
+  - **Verified already correct, left unchanged**: alt text on every raw `<img>` (all real/non-empty, not
+    just present); no clickable-`<div>`/`<span>` anti-patterns anywhere; `Alert`'s `role="alert"`
+    (danger/warning) vs `role="status"` (info/success) split; `Breadcrumbs`/`Pagination`'s existing
+    `aria-current="page"`; `MobileNav`'s existing Escape-to-close and `aria-expanded`/`aria-controls`; no
+    true modal dialogs exist anywhere in the app (only `MobileNav`'s non-modal disclosure panel), so there
+    was no focus-trap to audit; the default Next.js viewport meta (no zoom lockout); `DataTable`'s
+    already-real `<table>` with `scope="col"` headers and a `<caption>`.
+  - `tsc`/`eslint` clean; full `npm run test` (625/625) and full `npx playwright test` re-run after every
+    fix, both clean except one pre-existing e2e flake unrelated to this work (see decisions log below).
+  - Updated `tests.json` with a new `shell-accessibility-audit` entry under `public_shell`.
+
+- 2026-09-15 — **Site-wide security review** (explicit instruction): authentication, authorization, role
+  escalation, server-side permissions, input validation, XSS, SQL injection, CSRF, file uploads, path
+  traversal, session handling, secrets, API endpoints, private grievance data, admin routes, security
+  headers, and rate limiting — fixing real issues, not just producing a report, with tests run after every
+  fix. Most categories checked out already solid (see `tests.json`'s `shell-security-review` entry for the
+  full verification list — authorization coverage across every admin page/action, SQL-injection safety,
+  XSS, CSRF, path traversal, secrets handling, private-grievance-data handling). Real gaps found and fixed:
+  - **Login had no per-IP rate limit**, only the existing per-account lockout (`failedLoginAttempts`/
+    `lockedUntil`) — an attacker spreading guesses across many different known/leaked accounts from one
+    source could never trip any single account's 5-attempt lockout. Added the same per-IP `RateLimitEntry`
+    limiter the public grievance form already used. The threshold is environment-aware (10/15min in
+    production; much higher outside it) because this repo's own e2e suite opens nearly every spec with a
+    real login — a production-sized limit made the suite itself look like a credential-stuffing attack
+    from one IP the first time it was tried, which is how this constraint was actually discovered.
+  - **File uploads (Documents, Media, grievance attachments) validated only the client-asserted
+    `File.type`**, never the file's actual bytes — a scripted client can set any `Content-Type` on a
+    multipart part regardless of the real content, so a disguised HTML/script file could be uploaded under
+    an allow-listed MIME type. Combined with the Media route serving images inline (`Content-Disposition:
+    inline`), this was a real (if browser-dependent) content-sniffing stored-XSS risk. Added
+    `src/lib/security/file-signature.ts` — magic-byte verification for every allow-listed type with a real
+    signature (PDF, JPEG/PNG/GIF/WEBP, the legacy OLE2 Office formats, the ZIP-based OOXML formats) — wired
+    into both `saveUploadedFile` and `saveGrievanceAttachment`, rejecting a mismatch before anything
+    touches disk. This also meant strengthening the existing upload unit tests, which had been using
+    placeholder text (`"content"`) for every fixture regardless of claimed type — upgraded those fixtures
+    to genuine magic-byte content and added dedicated signature-mismatch tests plus a standalone test file
+    for the new function itself.
+  - **`next.config.ts` had zero security headers.** Added a `Content-Security-Policy` (no external script/
+    style/font/image origins — this app loads none — `object-src`/`frame-ancestors 'none'`), `X-Content-
+    Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, a locked-down `Permissions-Policy`,
+    `Strict-Transport-Security` (production only), and `poweredByHeader: false`. No nonce-based CSP (would
+    require a Proxy file generating a fresh nonce per request and forcing every route to dynamic rendering
+    — a much larger structural change than this app's actual XSS exposure justifies, given React's default
+    escaping and exactly one `dangerouslySetInnerHTML` call, already `<`-escaped). Verified the headers
+    actually land on a real `npm run start` response via `curl`, not just trusted from the config file.
+  - **Known gap, deliberately flagged rather than fixed**: nearly every admin query filters by `id` alone,
+    not also by the signed-in user's `collegeId` — a real IDOR/horizontal-authorization gap *if* this app
+    ever became genuinely multi-tenant. Not fixed because there is currently no code path anywhere that
+    creates a second `College` row (verified directly — no `prisma.college.create` call exists in the
+    codebase, and the live dev database holds exactly one college), so there is no other tenant's data to
+    leak today, and whether this app is single-tenant or a multi-tenant template is an explicit, still-open
+    question this session didn't have standing to resolve unilaterally by retrofitting ~30 modules' queries
+    for a requirement that hasn't been decided. See the decisions log and Open questions.
+  - `tsc`/`eslint` clean; full `npm run test` (637/637) and full `npx playwright test` (211/212 — the one
+    failure is the same pre-existing, already-documented test-data-accumulation flake from the prior
+    session's accessibility audit, unrelated to this work) re-run after every fix; a real production build
+    (`npm run build` + `npm run start`) verified clean and its response headers confirmed directly.
+  - Updated `tests.json` with a new `auth-login-rate-limit` entry and a new `shell-security-review` entry.
+
+- 2026-09-15 — **Full-application browser-automation walkthrough** (explicit instruction): ran the real dev
+  server and drove a real browser (Playwright/Chromium) through the public site's 10 main entry points and
+  the complete admin notice lifecycle (login → dashboard → create → draft → submit → review → approve →
+  publish → verify publicly → edit → audit trail) plus a compliance-dashboard verification, at both desktop
+  and a real 375×812 mobile viewport — genuine UI interaction throughout (typing into the real search box
+  and clicking Search, following the real Edit link), not just URL navigation. New
+  `tests/e2e/full-walkthrough.spec.ts` (21 tests). Found and fixed one real defect:
+  - **The admin dashboard (`/admin`) overflowed horizontally at 375px width.** Root-caused by measuring
+    computed widths up the DOM ancestor chain from the overflowing content (rather than guessing) until the
+    exact point the constraint broke: the "Recent notices"/"Upcoming events" cards sit in a
+    `grid gap-6 lg:grid-cols-2` (a single implicit column below `lg:`), and a CSS Grid item's default
+    `min-width: auto` means it won't shrink below its content's intrinsic width unless told otherwise — so a
+    long notice/event title inside a `flex items-center justify-between` row, despite already carrying a
+    `truncate` class the original author clearly intended to engage, never actually got the chance to
+    truncate, because the *grid item* (the Card), not just the text link inside it, needed `min-w-0` to be
+    allowed to shrink at all. This is a second, independent instance of the same flexbox/grid "intrinsic
+    minimum size" trap already documented once in this project, for the public header's nav (see the
+    2026-09-13 `shell-responsive-no-horizontal-scroll` decision below) — the underlying CSS gotcha recurs
+    because it's per-container, not something fixed once globally. Fixed with `min-w-0` on both `<Card>`s
+    (`src/app/admin/page.tsx`) plus `min-w-0 flex-1` on the two notice/event title `<Link>`s inside them —
+    the Link-only fix alone was *not* sufficient (verified empirically by re-measuring after applying it
+    alone before finding the Card also needed it), a useful reminder that this class of bug can require a
+    fix at more than one level of the ancestor chain, not just the innermost element that looks broken.
+  - `tsc`/`eslint` clean; full `npm run test` (637/637) and full `npx playwright test` (232/233 — the one
+    failure is the same pre-existing, already-documented test-data-accumulation flake, unrelated) re-run
+    after the fix; a real production build (`npm run build`) verified clean.
+  - Updated `tests.json` with a new `shell-full-walkthrough` entry under `public_shell`.
+
 ## In progress
 
 - Nothing in progress. Phase 1 (project foundation), Phase 2 (database), Phase 3
-  (authentication & authorization), Phase 4 (public website shell), the homepage, and CMS
-  modules for College Profile/Departments/Programs/Faculty/Staff/Notices/Events/Seminars/
-  Workshops/Academic Calendar/Timetables/Admissions/Fee Structures/Enrollment Statistics/
-  Examinations/Results/Documents/Infrastructure/Activities/Clubs/Gallery/Scholarships/
-  Student Support/Policies/Regulations/Affiliation/Contact/Location are complete — every
-  `content_general` and `content_faculty` module is now built, alongside all of
-  `content_admissions`/`content_examinations` from the prior session. The Compliance
-  Dashboard is now built too (see Completed above), with its own state machine rather than
-  the generic content workflow reused as-is. Only Grievances remains a content-shaped module
-  without a CMS module, and needs its own design pass (see Next steps) — CLAUDE.md rule 6
-  (private-by-default) means it can't reuse either workflow as-is, since neither assumes
-  "must never reach a public view at all."
+  (authentication & authorization), Phase 4 (public website shell), the homepage, every CMS
+  module for the circular's required content types, the Compliance Dashboard, the Grievance
+  system (public + admin), real Document/Media upload management, global search, the real
+  admin Dashboard, centralized audit logging, role-assignment (`/admin/users`), and content
+  review/freshness tracking (for Notices/Timetables/Academic Calendar/Admissions/Faculty) are
+  all complete. Every module listed in `CLAUDE.md`'s required scope now has real, tested
+  behavior except the Roles/Permissions matrix editor and the cross-module Approval workflow
+  queue — see Next steps.
 - **Reminder to self**: commit this work to git at the next natural checkpoint (with the
   user's go-ahead) — everything since `b9099b1` is still uncommitted working-tree state,
-  which is what made the `tests.json` mishap above possible in the first place.
+  which is what made the `tests.json` mishap noted earlier in this file possible in the
+  first place.
 
 ## Next steps
 
-1. Design (don't just reuse either existing workflow for) Grievances — CLAUDE.md rule 6
-   (private-by-default) doesn't map cleanly onto either `content-workflow.ts` (assumes
-   content becomes *public* once published) or `compliance-workflow.ts` (built around a
-   fixed 20-item checklist, not a growing list of submissions); Grievances must never reach a
-   public view at all and needs its own state machine (new/assigned/in-progress/resolved,
-   per `GrievanceStatus`). Compliance is now built (see Completed above) — this is genuinely
-   the last content-authoring gap in CLAUDE.md's required scope.
-2. Build the generic `ApprovalRequest`/notification layer on top of the workflow engine
+1. Build the generic `ApprovalRequest`/notification layer on top of the workflow engine
    (`docs/implementation-plan.md` Phase 2's other half) — right now a REVIEWER discovers
    pending work only by manually filtering a module's list to `?status=SUBMITTED` or
    `?status=UNDER_REVIEW`;
    `/admin/approval-workflow` (still a placeholder) should become a cross-module "things
    waiting on me" queue, and an EDITOR should get notified when their submission is
    approved/rejected.
-3. Build real Users/Roles/Permissions admin screens on top of the existing `requirePermission`
-   gates, so role assignment no longer requires editing `prisma/seed.ts` by hand.
-4. `Document` and Gallery's `Media` assets both still take a plain URL text field rather than
-   a real file upload — there is no file-storage integration in this system yet. Revisit once
-   real uploads (not externally-hosted links) are required.
-5. Gather real college data for the highest-priority sections (College Profile, Programs, Faculty,
+2. Build a real Roles/Permissions matrix editor (`/admin/roles`, `/admin/permissions`, both
+   still placeholders) — `/admin/users` now covers *assigning* a user's roles, but each
+   role's own permission grants (`ROLE_PERMISSIONS`) are still fixed in code/seed, not
+   editable at runtime.
+3. The grievance list's search can't reach `submitterEmail`/`submitterPhone` (encrypted
+   columns aren't queryable by `contains`) — acceptable for now (reference number/subject/
+   name/description cover the common case), but worth a searchable-hash-index approach if
+   staff report needing to look up a case by contact info alone.
+4. Gather real college data for the highest-priority sections (College Profile, Programs, Faculty,
    Contact, Location, Affiliation) — placeholders only until this is supplied.
-6. Resolve remaining open questions below (single college vs. template, languages, review-frequency
-   cadence) — none of these block further engineering work right now, but they do shape how the
-   already-built content schema gets populated with real data.
-7. `Course` (a `Program` sub-resource) has no CMS module yet and, per the 2026-09-14 audit,
+5. Resolve remaining open questions below (single college vs. template, languages) — neither
+   blocks further engineering work right now, but they shape how the already-built content
+   schema gets populated with real data.
+6. `Course` (a `Program` sub-resource) has no CMS module yet and, per the 2026-09-14 audit,
    is missing `publishedAt`/`publishedBy` like `FeeStructure`/`Contact`/etc. were before this
    session — add both columns in the same migration that builds its CMS module, rather than
    discovering the gap mid-implementation again.
+7. Content review/freshness tracking (see the 2026-09-14 decisions log entries below) is
+   scoped to the 5 modules the warnings list named — Departments, Programs, Staff, and the
+   ~20 other content modules still have no per-record review date, only the older `updatedAt`
+   heuristic. Worth extending if staff need "is this still accurate" tracking on more than
+   Notices/Timetables/Academic Calendar/Admissions/Faculty; the engine itself
+   (`src/lib/content-review.ts`) is already generic enough that doing so is additive schema
+   + registry work, not a redesign.
 
 ## Decisions log
 
@@ -1019,61 +1662,57 @@ section.
 | 2026-09-14 | Item 20's (any other information) completeness check is a hard-coded "always 0%, no fixed data source" rather than being derived from its `ComplianceEvidence` count — `docs/compliance-matrix.md` describes it as "extensible... reviewed case by case," and evidence existing isn't the same claim as "the underlying data is actually complete," which every other item's check makes. This is a deliberate exception to the completeness engine's premise, not a placeholder. |
 | 2026-09-14 | **"Required documents" is checked via `ComplianceEvidence` pointing at a published `Document`** (`hasPublishedDocumentEvidence`), not via `Document.category` keyword matching, and applies only to items 8/10/13/18 rather than universally — chosen because every `Document` row created through the existing admin Documents module already shares one fixed `entityType: "College"` sentinel (a prior-session decision), so there is no reliable structural signal in `Document` itself for "this is the admission prospectus" vs. "this is a random circular." A reviewer explicitly attaching evidence to the specific requirement is the one place that link is unambiguous, and it reuses `ComplianceEvidence`'s already-built generic pointer shape rather than adding a new field or convention. |
 | 2026-09-14 | **`everyRecordHasFields` checks every matching published record, not "at least one."** A requirement with 10 faculty records where only 1 has qualifications filled in is not actually compliant with "faculty details, including qualifications" — the stricter reading was chosen deliberately, even though it means realistic seed/placeholder data now reports partial completeness almost everywhere instead of misleadingly reaching 100% off one fully-filled-in demo record. |
+| 2026-09-14 | **Deleted 29 pre-existing `grievances`/`grievance_notes` rows from the local dev database** to apply the grievance-system migration (new required `referenceNumber`/`subject`/`submitterEmail` columns can't be added NOT NULL onto existing rows). Confirmed with the user first (`AskUserQuestion`) rather than deleting unilaterally, since it's a destructive operation on existing data even though all 29 rows were identifiable as Playwright e2e artifacts (test-pattern names/emails, not real citizen submissions) from earlier sessions' repeated `tests/e2e/public-content.spec.ts` runs — this app has no production users yet. Re-ran `prisma/seed.ts` afterward to restore the one dev fixture. |
+| 2026-09-14 | **Grievance case-management is its own workflow engine (`src/lib/grievance-workflow.ts`), not a reuse of `content-workflow.ts` or `compliance-workflow.ts`** — resolving the open design question from the prior session. Neither existing engine fit: content-workflow assumes the record becomes *public* once it reaches a terminal state (a grievance never does — rule 6); compliance-workflow is built around a fixed 20-item checklist, not an open-ended, growing list of confidential case records. `assignGrievance` is deliberately a separate function from the plain status-transition machinery, since assignment carries an extra field (`assigneeId`) a status flip doesn't. |
+| 2026-09-14 | **Grievance responses have no outbound delivery mechanism** — recording a response (`GrievanceResponse`) is the authoritative record of what staff decided to communicate back, not proof an email/SMS/letter actually reached the submitter. This project has no email/SMS provider integrated anywhere yet (a broader gap noted in `docs/architecture.md`'s "Notifications" section, still unbuilt — see Next steps item 1). Flagged directly in the admin UI's copy so staff don't mistake "recorded" for "sent." |
+| 2026-09-14 | **`submitterEmail`/`submitterPhone` stay encrypted, so the grievance list's search can't query them** — search covers reference number, subject, submitter name, and description (all plaintext columns) instead. Accepted as a known limitation (see Next steps) rather than either leaving contact info unencrypted (violates rule 6) or building a separate searchable-hash-index column, which wasn't asked for and adds a new pattern for a need not yet demonstrated. |
+| 2026-09-15 | **`archive`/`unarchive`/`unpublish` were added to the *shared* `content-workflow.ts` engine, not implemented as Documents/Gallery-only one-offs** — the alternative (a parallel workflow module, like Grievance's) would have been wrong here, unlike the grievance case, because Documents/Gallery *do* fit the existing draft→review→publish shape exactly; they were only ever missing the archive/unpublish actions, which every other module using the same engine was also silently missing despite `tests.json` claiming otherwise since Phase 4. Fixing it once in the shared engine closes that gap everywhere for free, at the cost of needing to re-verify the *entire* e2e suite (not just the two modules asked about) for behavior changes — done: 137/137 passing, one real assertion fixed (see below). |
+| 2026-09-15 | **Removed `Document.fileUrl` and `Media.url` entirely** (replaced by internal `storedPath` + a route-computed public URL) rather than keeping them alongside the new upload fields — the columns held a pasted external URL, a capability real file upload fully replaces; keeping both would mean two different, driftable ways to answer "where is this file," and the task was explicitly to implement real upload, not to keep the placeholder path as a fallback. |
+| 2026-09-15 | **Document's `approvedById`/`approvedAt` are set by a small follow-up mutation inside `transitionDocument`, not a field on the shared `WorkflowUpdateData` type** — making "approver" generic across all 28 modules would mean adding two columns to every one of their Prisma models for a field only Documents was asked to track; keeping it module-local costs one small `if` in one Server Action instead. |
+| 2026-09-15 | **Running the full e2e suite after the shared-engine change surfaced one real regression and two pre-existing, unrelated test bugs — all fixed rather than left as "known flaky":** (1) `cms-departments.spec.ts` asserted zero workflow actions were available to a REVIEWER on `UPDATE_REQUIRED` content; `archive` is now legal there too (REVIEWER holds publish-tier), so the assertion was narrowed to specifically check `return_to_draft`'s absence instead of the whole action panel's. (2) `grievance.spec.ts`'s assign-step assertion used a plain (substring) `getByText("Assigned")`, which also matches the unrelated "Unassigned" fallback text shown before any assignment exists — silently masking a real assignment failure as a pass; changed to `exact: true`. (3) The grievance form's honeypot field was hidden only via its *wrapper* `div`'s zero-size/overflow-hidden styling, not the `<input>` itself, so an automated visibility check of the input's own bounding box could (rarely, under heavy concurrent load) still see it as non-empty; the input itself now carries the same zero-size/clipped styling directly. None of these three were caused by or specific to Documents/Media — they surfaced only because this session's fuller e2e run put more load on the shared dev server/database than prior single-feature sessions had. |
+| 2026-09-15 | **Search relevance is an in-memory heuristic score, not Postgres full-text search (`tsvector`/`ts_rank`)** — the latter would need a raw-SQL `UNION` across 8 differently-shaped tables (plus the static pages list, which isn't a table at all) to produce one ranked list, a lot of raw SQL to hand-maintain for a single-college site's realistic content volume. The chosen approach — fetch up to 50 `contains`-matched candidates per category, score deterministically, sort once — gives a real, testable relevance ordering without that infrastructure; worth revisiting only if/when content volume or "did you mean" / fuzzy-match requirements actually demand it. |
+| 2026-09-15 | **Dropped Scholarship from search, added Documents and Regulations** — the previous ad hoc 6-module search set (Notice/Event/Program/Faculty/Scholarship/Policy) is superseded by this session's explicit 8-category list (pages/notices/events/programs/faculty/documents/policies/regulations), which doesn't include Scholarship. Conforming exactly to the requested list rather than keeping Scholarship "for free" alongside it, since the user's category list reads as the authoritative full scope, not an addition to whatever existed before. |
+| 2026-09-15 | **"Pages" search results come from a hand-written static list (`SEARCHABLE_PAGES`), not `PUBLIC_NAV_LINKS` directly** — reusing the nav's `{href, label}` shape as-is would give every page result an empty/no snippet, which reads as broken on a results page (every other category has a snippet). Added a one-line description per page instead; this is UI chrome text, not fabricated institutional data, so it doesn't touch CLAUDE.md rule 1. |
+| 2026-09-15 | **Dashboard "compliance percentage" = share of requirements VERIFIED, not average completeness** — the compliance module already computes a live completeness percent per requirement, but averaging those would let a dashboard number look better than the actual, human-gated compliance state CLAUDE.md rule 7 cares about (a 90%-complete-but-never-reviewed requirement is not 90% compliant). Reused `getComplianceOverview()` as-is rather than adding a second compliance aggregation function. |
+| 2026-09-15 | **Dashboard content totals/stale-content are scoped per viewer's real permissions, not site-wide** — every section sums or lists only across the modules `MODULE_PERMISSIONS` says the signed-in role holds `:view` on (same pattern the module link grid already used for navigation). A narrower role sees a smaller, still-honest dashboard rather than either an error or numbers describing domains it can't open. |
+| 2026-09-15 | **28 Prisma `.groupBy()` calls had to be extracted into standalone top-level named functions instead of inline closures inside the module registry array** — contextually typing an inline arrow function against the registry's declared return type broke Prisma's own generic inference for `.groupBy` (its argument/return types resolve together via conditional types that don't tolerate an externally-imposed expected return type), surfacing as a confusing "argument not assignable" error with no mention of inference. A standalone function has no surrounding expected type while its body is checked, so Prisma infers its real return type first; the registry array (built with `satisfies`, not a contextual `: T[]` annotation) only checks that already-concrete type afterward. Worth remembering for any future generic-registry-of-Prisma-queries pattern in this codebase. |
+| 2026-09-14 | **Centralized audit logging implemented** per explicit instruction. Widened `logAudit()`'s `actorId` to `string \| null` so every system/anonymous action (public grievance submission, automatic compliance sync, a login attempt against a nonexistent account) can go through the one real writer instead of a bespoke direct `prisma.auditLog.create()` call — this, not adding new call sites, was the actual "centralization" work, since almost every mutating action already called *some* audit-writing code before this session. |
+| 2026-09-14 | **Audit-log immutability is enforced in two layers, not one**: the application layer (no edit/delete Server Action exists anywhere — verified by grep) plus a database-level Postgres trigger (`BEFORE UPDATE`/`BEFORE DELETE` on `audit_logs`, migration `20260916000000_audit_log_hardening`) that rejects the operation outright. The trigger is the real guarantee; the application-layer absence is necessary but not sufficient, since it only holds as long as nobody ever adds a new write path without reading this comment. |
+| 2026-09-14 | **"Permission changes" is scoped to role assignment (`UserRole` rows) only, not a full Users/Roles/Permissions CRUD suite** — this app's data model has no other runtime-editable permission concept (`ROLE_PERMISSIONS` is fixed in code/seed), so assigning/revoking which roles a user holds is the one real permission change a human can make. The Roles/Permissions matrix editor stays a separate, still-unbuilt module (see Next steps). |
+| 2026-09-14 | **`removeRoleAction` refuses to remove a user's last role** rather than allowing it — a user with zero roles could still sign in (a valid session) but would fail every single permission-gated page, an effectively silent lockout rather than a deliberate account suspension. `User.status` already exists for genuinely disabling an account; that's the intended tool for "this person should lose access," not stripping their last role. |
+| 2026-09-14 | **e2e role-assignment testing targets the non-login-capable `dev-seed-admin` fixture**, not any of the 8 per-role login test accounts (`<role-slug>@example.invalid`) other specs authenticate as — it already holds `SUPER_ADMIN`, so temporarily adding/removing `REVIEWER` changes no *effective* permission and can't corrupt another spec's role-based assumptions about a shared account running in parallel. The test is also written idempotently (checks for and clears a leftover `REVIEWER` assignment at start, restores original state at the end) so a prior aborted run can't leave the fixture in a state that breaks the next one. |
+| 2026-09-14 | **Found a new category of e2e flake, distinct from the two `waitForURL` lessons and the double-`loginAs` lesson from earlier sessions**: calling `waitForURL(pattern)` immediately after a click, when the page was *already* on a URL matching `pattern` before the click ran (here: an idempotent pre-check step already sat on `/admin/users`, then a later click also redirects back to `/admin/users`), can resolve against the pre-click URL instead of waiting for the click's own navigation — silently turning a "wait for the mutation to land" into a no-op wait, surfacing only as an intermittent failure under multi-worker parallel load. Fixed by waiting for a real DOM/content change instead. Combined with the two prior `waitForURL` lessons, the durable rule for this codebase is: never trust `waitForURL` to prove a specific action completed unless the URL is guaranteed to differ from wherever the page already was. |
+| 2026-09-14 | **Content review/freshness tracking implemented** per explicit instruction, scoped to exactly the 5 modules the task's warnings list named (Notices, Timetables, Academic Calendar, Admissions, Faculty) rather than all 28 content modules — Documents already has a more precise freshness signal (`expiryDate`) and wasn't named; the other ~20 modules weren't named either. The underlying engine is generic, so this is a scope choice about *where it's wired up today*, not a ceiling on where it could go. |
+| 2026-09-14 | **"Next review due" is always computed live — `(lastReviewedAt ?? publishedAt ?? createdAt) + periodDays` — never stored on the record.** This is what makes "make the review period configurable" actually mean something: changing a module's period at `/admin/content-review-settings` instantly and retroactively changes every record's overdue status, with no backfill migration ever needed for a period change to take effect. The tradeoff is one extra small query (the module's current period) on every render of a `ReviewPanel` or the dashboard's warning scan — accepted as cheap relative to the correctness benefit. |
+| 2026-09-14 | **"Mark reviewed" is gated on the module's `:publish` permission, not `:manage`** — reviewing content for continued accuracy is a higher-trust check than authoring it, the same tier as approve/publish. Since no role holds both `:manage` and `:publish` for the same domain (the existing separation-of-duties guarantee — see the 2026-09-14 CMS-modules decisions log entries), this also makes self-review structurally impossible, the same way self-approval already was. |
+| 2026-09-14 | **The review-period settings screen reuses the existing `compliance:verify` permission rather than adding a new one** — setting institutional policy on how often content must be reconfirmed is governance in the same vein as compliance verification (both restricted to PRINCIPAL/ADMINISTRATOR/SUPER_ADMIN), and a single settings screen didn't seem to warrant growing the permission matrix for it. |
+| 2026-09-14 | **`ReviewPeriodSetting` is not scoped to a `College`** — like `Role`/`Permission`, review cadence is treated as a system-wide admin policy rather than per-tenant content, consistent with how this schema already treats RBAC configuration. |
+| 2026-09-14 | **Notices/Faculty/Academic Calendar were removed from the dashboard's older `updatedAt`-heuristic "stale content" registry** now that they have real review tracking, rather than showing both signals side by side for the same records — the older heuristic (renamed "Other content not recently reviewed") still covers the ~15 modules that don't have per-record review dates yet. |
+| 2026-09-14 | **Found and fixed a real pre-existing bug surfaced by the full e2e suite, unrelated to this session's own changes**: `getNotices()`/`getImportantAnnouncement()` ordered by `publishDate desc` with no explicit NULLS handling, and Postgres's default for `DESC` is NULLS FIRST — so any notice with no `publishDate` set always outranked every dated notice as "most current" on both the public `/notices` page and the homepage announcement banner. Only surfaced now because a new e2e-created notice happened to have no `publishDate`; fixed with explicit `nulls: "last"` on both queries. A reminder that "the full suite is green" doesn't mean "no latent bugs exist" — it means none have been *triggered* yet by the specific data the suite happens to create. |
+| 2026-09-15 | **Accessibility audit implemented** per explicit instruction, covering keyboard nav/focus management/semantic HTML/headings/labels/form errors/table accessibility/alt text/dialogs/buttons-links/responsive/contrast, with automated axe-core coverage added first (`tests/e2e/accessibility.spec.ts`) so findings were verified programmatically rather than by eye. See the 2026-09-15 Completed entry for the full list of what was found and fixed (systemic `/50`-opacity contrast failure, missing current-page indication in all three nav components, invalid `<dl>` nesting on 17 admin detail pages, non-keyboard-focusable scrollable regions, two missing `<main>`/`<header>` landmarks). |
+| 2026-09-15 | **Chose `grid-flow-col`/`grid-rows-2` over introducing a shared `<DescriptionList>` component to fix the 17 broken `<dl>`s.** A shared component would be the more scalable long-term answer (this exact "label above value, two side by side" shape is hand-rolled independently in all 32 `[id]/page.tsx` files, not just the 17 broken ones), but rewriting all 32 call sites was a larger, riskier refactor than the accessibility task itself needed; the per-file mechanical fix closes every actual violation today without changing any other page's markup. Worth revisiting as a real DRY cleanup later — flagged, not silently deferred. |
+| 2026-09-15 | **A `role="region"` fix attempt (on `DataTable`'s scrollable wrapper) turned out to be a regression, caught and reverted within this same session** — added to close axe's `scrollable-region-focusable` finding, it created a duplicate-named landmark on any page where the table already sits inside a same-named `<section>` (axe `landmark-unique`, e.g. `/academics`). Caught by re-running a broader best-practice axe sweep immediately after the fix as a deliberate verification step, not by chance or by the user — the lesson generalizes: an accessibility fix that adds a new landmark/role needs checking against pages where that component nests inside another already-labeled landmark, not just the one page the original finding came from. |
+| 2026-09-15 | **Left one real e2e flake unfixed, on purpose, after tracing it to test-data accumulation rather than an application or accessibility bug**: `dashboard.spec.ts`'s "document expiry warning" test intermittently fails because the dashboard's expiry-warning table is capped at 10 rows ordered soonest-first, and this long session's repeated full-suite/e2e runs against the same shared dev database have accumulated 12 "E2E Dashboard Expiring Doc" rows all clustered on the same 1–2 expiry dates (confirmed via direct `psql` query) — the newest run's own row can fall outside the top 10. Root cause is the e2e suite creating real, uncleaned rows across many runs in one long-lived dev database, not a bug in the reviewed code paths; out of scope for an accessibility audit to fix (would mean adding test teardown/DB reset infrastructure this suite doesn't have anywhere else). Flagged here rather than silently left for the next person to rediscover. |
+| 2026-09-15 | **Security review implemented** per explicit instruction. Login's new per-IP rate limit deliberately uses a much higher ceiling outside production (`process.env.NODE_ENV === "production" ? 10 : 500`, both per 15 minutes) rather than one fixed value — discovered the hard way, by the review's own full e2e regression tripping the initial production-sized limit (10/15min) purely from this repo's own test suite logging in repeatedly from one IP (localhost). This is the same shape of trade-off as `DEV_LOGIN_PASSWORD`/dev-seed-account gating (`prisma/seed.ts`) — a defense that must stay strict in production but can't be allowed to cripple the very test suite that verifies it works. |
+| 2026-09-15 | **File-upload magic-byte verification (`src/lib/security/file-signature.ts`) checks the byte signature, not full structural validity** — e.g. it confirms a ZIP local-file-header signature for `.docx`/`.xlsx`/`.pptx` without verifying the archive is actually well-formed OOXML, and confirms the OLE2/CFB signature for `.doc`/`.xls`/`.ppt` without distinguishing which of the three it actually is (they share one container format and aren't distinguishable from magic bytes alone). This is a deliberate scope boundary: the actual threat this closes is "attacker uploads a completely different kind of file (HTML/script/executable) disguised as an allow-listed type," not "attacker uploads a subtly malformed Office document" — full parsing of every allow-listed format would be a much larger, format-parser-dependent undertaking for a threat this app doesn't otherwise face (uploaded documents are served for download/embedding, never executed or parsed server-side). |
+| 2026-09-15 | **Did not add per-`collegeId` scoping to admin queries (a real IDOR gap if this app is ever deployed multi-tenant) as part of the security review** — see the new Completed entry and the amended multi-tenancy Open Question below. Judged as flagging a real, currently-inert architectural gap correctly rather than either silently ignoring it (leaves a live risk undocumented for whoever answers the multi-tenancy question later) or unilaterally retrofitting ~30 modules' queries for a requirement `CLAUDE.md`/this project's Open Questions explicitly haven't settled (over-scoping a security review into an unrequested architecture change). |
+| 2026-09-15 | **Full-application browser-automation walkthrough implemented** per explicit instruction — the public site's 10 main entry points plus the complete admin notice lifecycle and a compliance verification, driven with real Playwright/Chromium browser interaction (typing into the real search box, following the real Edit link) rather than direct URL/Server-Action calls, at both desktop and a real 375×812 mobile viewport. Found and fixed a real horizontal-overflow bug on the admin dashboard at mobile width — see the Completed entry above for the full root-cause trace. This is the second time this exact "grid/flex item won't shrink below its content's intrinsic width without an explicit `min-w-0`" bug class has surfaced in this project (the first was the public header's desktop nav, 2026-09-13) — worth remembering as a standing review checklist item for any *new* `grid`/`flex` section holding variable-length text, not just something fixed once and forgotten. |
+| 2026-09-16 | **Added four project-specific Claude Code skills under `.claude/skills/` (`compliance`, `security`, `cms`, `testing`)** per explicit instruction, each documenting purpose/when-it-applies/project rules/implementation rules/validation checklist/common mistakes grounded in the actual current code (`src/lib/content-workflow.ts`, `src/lib/compliance-workflow.ts`, `src/lib/auth/*`, `docs/permission-matrix.md`, `docs/compliance-matrix.md`) rather than generic advice — `compliance` enumerates all 20 circular items plus governance requirements from `docs/requirements.md` §2–3, `security` centers on `requirePermission()`/`requireUser()` as the only real boundary (CLAUDE.md rule 5), `cms` codifies the shared `ContentStatus` state machine and manage/publish separation of duties, `testing` enforces CLAUDE.md rule 10 (never delete/weaken a test to pass it) and keeping `tests.json` honest. These are documentation/process artifacts, not application code — no build/test impact. |
+| 2026-09-16 | **Resolved 13 of this file's long-standing Open Questions via direct user Q&A**, closing most of the "is this the right policy" ambiguity that had accumulated: **single-tenant only** (no second `College` row is planned, so the collegeId-scoping IDOR gap flagged by the 2026-09-15 security review stays documented-but-inert rather than being retrofitted now — revisit *before* a second college's data is ever created if this answer ever changes); **English-only** public site (no i18n work needed); **keep the fixed 8-hour session expiry** (no remember-me/refresh-token); **no MFA required for MVP**; **keep the 20-section Phase 4 route consolidation** as-is; **keep `ComplianceEvidence`→`PUBLISHED`-record verification as human judgment**, not an enforced constraint; **keep the 180-day review-cadence default** for all 5 tracked modules (Notices/Timetables/Academic Calendar/Admissions/Faculty), adjustable per-college later via `/admin/content-review-settings`; **keep "editing a PUBLISHED record doesn't revert its status"** as the policy (a reviewer wanting re-review still uses `request_update` explicitly); **defer building a notification system** (authors still check the audit trail for approve/reject/request_update events); **keep local-disk file storage** (`storage/uploads/`) rather than moving to S3-compatible storage now; **college type = Education College** (affects seed data and terminology — e.g. "moot court room" in Infrastructure is a Law-college-only concept); **keep grievance/compliance oversight folded into `PRINCIPAL`/`ADMINISTRATOR`** rather than adding dedicated `GRIEVANCE_OFFICER`/`COMPLIANCE_OFFICER` roles. Two questions were *not* resolved by this round — see Open Questions below. |
+| 2026-09-16 | **Built the `ComplianceReportExport` feature** (user chose "build it now" over "leave for later"), implemented as a background agent in parallel with the workflow-banner entry below. `/admin/compliance/reports` generates a durable, timestamped snapshot of every `ComplianceRequirement`'s status for the college plus a live website URL (`generateComplianceReport`), then separately records one-way submission to the Office of the Inspector of Colleges (`recordComplianceReportSubmission` — `submittedAt`/`submittedById`, never re-settable once set). Both actions gated on `compliance:verify` (Principal/Administrator/Super Admin, matching `docs/compliance-matrix.md`'s "Principal signs off before submission") and write `AuditLog` entries (`COMPLIANCE_REPORT_GENERATED`, `COMPLIANCE_REPORT_SUBMITTED`). Generation deliberately does **not** require every requirement to be `VERIFIED` first — partial-progress reports are allowed, with completeness visible in the snapshot, since a college mid-launch still needs to show status. `docs/database-design.md` §9 and `docs/compliance-matrix.md` §2 updated to describe the real implementation (a persisted table, and the real `ComplianceRequirement` model name — the docs' earlier sketch used a draft `ComplianceItem` name and called the export "maybe not a stored table"). **Flagged, not fixed**: `compliance:view` and `compliance:verify` currently map to identical roles in the permission matrix, so there's no seeded dev account that can see the reports list without also being able to generate/submit — a real gap in test coverage granularity, not a security issue, noted in the new tests. |
+| 2026-09-16 | **Surfaced the reviewer's `request_update` reason on the record's own admin page** (user chose to surface it over leaving it audit-log-only), implemented as a background agent in parallel with the compliance-report entry above. `WorkflowActions` (`src/components/admin/WorkflowActions.tsx`, shared across all 29 `ContentStatus`-workflow modules) is now an async Server Component taking a new `entityType` prop; when a record's status is `UPDATE_REQUIRED` it looks up and displays the latest `REQUEST_UPDATE` audit comment (new `getLatestActionComment` helper in `src/lib/audit.ts`) as a banner above the action buttons, so the author sees why an update was requested without hunting through the audit trail. **Surfaced a real, previously-unnoticed policy gap while building this**: unlike `reject`, `request_update` does not actually require a non-empty reason today (`REASON_REQUIRED_ACTIONS` in `src/lib/content-workflow.ts` only contains `"reject"`), so the new banner can legitimately have nothing to show. Deliberately not fixed as part of this task (it changes transition *validation*, not just display) — added as a new Open Question below instead of silently patched in. |
+| 2026-09-16 | **Entered the user-supplied college dataset (name, address, phone, emails, website, principal, affiliation, founding year) into the seeded College/CollegeProfile/Contact/Location/Affiliation rows** (`prisma/seed.ts`) and re-ran `npm run db:seed` against the dev database — the user explicitly flagged this as demo/test data, not verified official records (their message tagged the affiliation line "(DEMO DATA ONLY)"; the email/website values use RFC 2606 `.example` addresses), so every field kept the existing `[PLACEHOLDER]`-prefix + `isPlaceholder: true` convention (CLAUDE.md rules 1, 13, 14) rather than being marked verified. One exception: `Affiliation.universityName` was set to the real "Shah Abdul Latif University, Khairpur" unprefixed, since that institution's name is itself the real, documented affiliating university from the circular (`docs/requirements.md`), not invented — only the *claim* that this specific demo college holds that affiliation (number, regulatory body, validity) stays placeholder-marked, since that hasn't been verified by a competent authority. Verified end-to-end via a real `next dev` server + `curl`: the data renders correctly on `/about`, `/campus`, `/contact`, and `/affiliation` with the demo/placeholder notice intact. `npm run typecheck`, `npm run lint`, and `npm test` (650/650) all clean after the change. This closes the "college name/type" half of the Open Question below but not the whole thing — real, verified institutional data (to replace this demo set and flip `isPlaceholder: false`) still hasn't been supplied. |
 
 ## Open questions
 
-- Which specific college (or colleges) is this for? Name, type (Govt/Private/Law/Education), and real
-  institutional data are not yet available.
-- Is this a single-tenant site or a multi-tenant template reusable across affiliated colleges? The schema
-  is tenant-ready (every table carries `collegeId`) regardless of the answer.
-- What languages must the public site support (English/Urdu/Sindhi)? Needs resolution before the content
-  schema (Phase 3 per `docs/implementation-plan.md`) is finalized.
-- Who are the real people behind the 8 seeded roles (`SUPER_ADMIN`, `PRINCIPAL`,
-  `ADMINISTRATOR`, `EDITOR`, `REVIEWER`, `ADMISSION_OFFICER`, `EXAMINATION_OFFICER`,
-  `FACULTY_EDITOR` — `prisma/seed.ts`, `docs/permission-matrix.md`)? Generic system taxonomy,
-  not a confirmed real-world assignment. In particular: is folding grievance/compliance
-  oversight into `PRINCIPAL`/`ADMINISTRATOR` (no dedicated officer role in the new list)
-  actually how this college wants that handled, or does it need its own role later?
-- Should sessions use a longer/shorter lifetime than the current fixed 8-hour absolute expiry
-  (`src/lib/auth/session.ts`)? No "remember me" / refresh-token option exists yet.
-- Is MFA required for any role before go-live? `docs/architecture.md` §3 recommends it for
-  high-privilege roles (Principal, Approver-equivalent, Compliance Officer-equivalent, Super
-  Admin); the `User.mfaEnabled` column exists but nothing enforces or sets it yet.
-- Is the Phase 4 route consolidation (29 → 20 sections; see the decisions log above) the
-  right information architecture, or should any of the folded-together sections (e.g.
-  Academics bundling Departments/Programs/Calendar/Timetable into one long page) get their
-  own URL back once real content makes that page unwieldy?
-- Should `/downloads` be its own content type with a real publish/draft lifecycle, or should
-  a document's visibility simply follow whatever entity it's attached to (its
-  `entityType`/`entityId`)? Blocks closing the `pub-downloads` gap in `tests.json`.
-- How should the compliance report / website URL submission to the Inspector of Colleges be tracked —
-  `docs/database-design.md` §9 proposes a `ComplianceReportExport` model for this; needs confirmation it
-  matches how the college actually wants to submit. Still not built — the Compliance Dashboard itself
-  (list/detail/verify/evidence/history) is done, but generating and recording submission of the report
-  artifact is a separate, not-yet-requested piece.
-- `ComplianceEvidence.entityId` is freeform text (matching its existing generic
-  `(entityType, entityId)` shape), not validated against a real row of that type, and marking a
-  requirement `VERIFIED` doesn't check that its evidence actually points at `PUBLISHED` records —
-  `docs/database-design.md` §9 proposes exactly that constraint ("evidenceRefs must point at records
-  whose own status = published"). Left as a human-judgment call for now (the reviewer sees the evidence
-  list before deciding) rather than an enforced constraint, since building real cross-model existence
-  validation for an open-ended `entityType` wasn't part of what was asked; worth revisiting if reviewers
-  start verifying items with stale/bad evidence pointers in practice.
-- Review-frequency cadence per content type (e.g. how often Notices vs. Faculty vs. Affiliation should be
-  reviewed) is left as a policy decision for the college — see `docs/architecture.md` §12.
-- Is "editing doesn't revert status" (a PUBLISHED record can be edited in place without
-  going back through review) the right policy, or should any edit to already-published
-  content require re-approval? Currently no role's real-world workflow has been confirmed
-  either way. Note this now interacts with `request_update`/`UPDATE_REQUIRED` (see the
-  2026-09-14 content-approval-workflow-v2 decisions log entry) — a reviewer who wants an
-  edit re-reviewed should use `request_update` rather than relying on an in-place edit
-  being blocked.
-- The rejection-reason gap noted here previously is now resolved (rejection requires a
-  non-empty reason, stored on the `AuditLog` row's new `comment` column — see the
-  2026-09-14 content-approval-workflow-v2 decisions log entry) — but there is still no
-  notification system to actively tell the author *when* their content is rejected; they
-  currently have to check the record's audit trail themselves.
-- `request_update`/`UPDATE_REQUIRED` only has `manage`-permission `return_to_draft`
-  available to move it back to `DRAFT` for editing — should the reviewer's `request_update`
-  comment be surfaced more prominently on the edit form itself (not just in the audit log),
-  so the author doesn't have to go hunting for why an update was requested?
+- Real, **verified** institutional data to replace the demo dataset entered 2026-09-16 (see the decisions
+  log entry above) — that dataset is explicitly demo/placeholder, not the college's actual official
+  records, so `isPlaceholder` stays `true` and content stays out of any real compliance sign-off until an
+  authorized person supplies and verifies the real values (name, address, contact, principal, affiliation
+  number, history/vision/mission, departments/programs).
+- Should `request_update` require a non-empty reason/comment, the same way `reject` already does? Surfaced
+  2026-09-16 while building the `request_update`-reason banner (`src/lib/content-workflow.ts`'s
+  `REASON_REQUIRED_ACTIONS` currently only contains `"reject"`) — right now a reviewer can request an
+  update with no comment, leaving the new banner with nothing to show and the author no wiser than before.
+  Not fixed yet since it changes transition validation, not just display, and no role's real-world
+  preference has been confirmed either way.

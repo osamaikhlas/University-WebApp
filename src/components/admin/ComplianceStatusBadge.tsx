@@ -7,7 +7,7 @@ const STATUS_CLASSES: Record<ComplianceStatusValue, string> = {
   READY_FOR_REVIEW: "bg-info-bg text-info-foreground border-info-border",
   VERIFIED: "bg-success-bg text-success-foreground border-success-border",
   NEEDS_UPDATE: "bg-danger-bg text-danger-foreground border-danger-border",
-  NOT_APPLICABLE: "bg-surface-muted text-foreground/50 border-border-subtle",
+  NOT_APPLICABLE: "bg-surface-muted text-foreground/60 border-border-subtle",
 };
 
 const STATUS_LABELS: Record<ComplianceStatusValue, string> = {

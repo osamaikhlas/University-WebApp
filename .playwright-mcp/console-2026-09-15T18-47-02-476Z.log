@@ -1,0 +1,18 @@
+[     395ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:776
+[     445ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:776
+[   60193ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/files/media/cmu1esm90005f0euvto2b2m3a:0
+[   60193ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/files/media/cmu1d2zbh004qv4uvdxtau0p1:0
+[   60193ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/files/media/cmu1bhkol009p9quvoh68skzo:0
+[   60194ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/files/media/cmu1bffss00219quve3p0r2x7:0
+[   60194ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/files/media/cmu1agja3002scauv1igofdlq:0
+[   61397ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/files/media/cmu1a8j7e002vsluvhgczq7e3:0
+[   61446ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/files/media/cmu1a3ehj002r6nuv348zujw3:0
+[   61487ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/files/media/cmu1a0266001tmpuv6sdpnqyy:0
+[   61537ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/files/media/cmu19yzcn0017f8uvw1taqz4k:0
+[   61588ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/files/media/cmu12eyic00cpkjuvrveb0bn8:0
+[   61654ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/files/media/cmu12e0tl008hkjuv4zz1e4bu:0
+[   61740ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/files/media/cmu12cvpu0048kjuv784irxha:0
+[   61879ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/files/media/cmu12c7bh0021kjuvyq90uteb:0
+[   62248ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/files/media/cmu12bz9o0017kjuvcn5buxxw:0
+[   62264ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/files/media/cmu12aw94000akjuvlgj7e2ot:0
+[   62296ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/files/media/dev-seed-media:0

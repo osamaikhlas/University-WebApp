@@ -75,12 +75,25 @@ test.describe.serial("Notices CMS module — full workflow across roles", () => 
     await expect(page.getByRole("link", { name: /^edit$/i })).toHaveCount(0);
   });
 
-  test("REVIEWER can flag the published notice as needing an update", async ({ page }) => {
+  test("REVIEWER can flag the published notice as needing an update, with a reason", async ({
+    page,
+  }) => {
     await loginAs(page, "reviewer");
     await page.goto(noticeUrl);
+    await page.getByLabel(/comment.*reason/i).fill("Publish date needs to be corrected.");
     await page.getByRole("button", { name: /request update/i }).click();
 
     await expect(page.getByText("Update required")).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("the update-request reason is surfaced on the notice's own page, not just the audit log", async ({
+    page,
+  }) => {
+    await loginAs(page, "editor");
+    await page.goto(noticeUrl);
+
+    await expect(page.getByText("Update requested")).toBeVisible();
+    await expect(page.getByText(/Publish date needs to be corrected\./)).toBeVisible();
   });
 });
 

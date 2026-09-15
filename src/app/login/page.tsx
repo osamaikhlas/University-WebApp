@@ -17,18 +17,20 @@ export default async function LoginPage() {
   }
 
   return (
-    <Container>
-      <div className="mx-auto flex max-w-sm flex-col gap-6 py-16">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Admin sign in</h1>
-          <p className="mt-2 text-sm text-foreground/70">
-            Sign in with your admin account to access the CMS and back-office.
-          </p>
+    <main id="main-content" tabIndex={-1} className="focus:outline-none">
+      <Container>
+        <div className="mx-auto flex max-w-sm flex-col gap-6 py-16">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Admin sign in</h1>
+            <p className="mt-2 text-sm text-foreground/70">
+              Sign in with your admin account to access the CMS and back-office.
+            </p>
+          </div>
+          <Card>
+            <LoginForm />
+          </Card>
         </div>
-        <Card>
-          <LoginForm />
-        </Card>
-      </div>
-    </Container>
+      </Container>
+    </main>
   );
 }

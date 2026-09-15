@@ -2,6 +2,7 @@ import "server-only";
 
 import type { AuditAction, VerificationDecision } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit";
 
 /**
  * The compliance verification workflow (docs/compliance-matrix.md §3, CLAUDE.md rule 7).
@@ -150,16 +151,15 @@ export async function applyComplianceTransition(params: {
     });
   }
 
-  await prisma.auditLog.create({
-    data: {
-      actorId: params.actorId,
-      action: transition.auditAction,
-      entityType: "ComplianceRequirement",
-      entityId: params.requirementId,
-      comment,
-      beforeSnapshot: { status: params.currentStatus },
-      afterSnapshot: { status: transition.to },
-    },
+  await logAudit({
+    actorId: params.actorId,
+    action: transition.auditAction,
+    entityType: "ComplianceRequirement",
+    entityId: params.requirementId,
+    comment,
+    before: { status: params.currentStatus },
+    after: { status: transition.to },
+    metadata: transition.decision ? { decision: transition.decision } : undefined,
   });
 }
 
@@ -204,16 +204,15 @@ export async function syncAutomaticStatus(params: {
     data: { status: nextStatus },
   });
 
-  await prisma.auditLog.create({
-    data: {
-      actorId: null,
-      action: "UPDATE",
-      entityType: "ComplianceRequirement",
-      entityId: params.requirementId,
-      comment: "Automatically recalculated from data completeness.",
-      beforeSnapshot: { status: params.currentStatus },
-      afterSnapshot: { status: nextStatus },
-    },
+  await logAudit({
+    actorId: null,
+    action: "UPDATE",
+    entityType: "ComplianceRequirement",
+    entityId: params.requirementId,
+    comment: "Automatically recalculated from data completeness.",
+    before: { status: params.currentStatus },
+    after: { status: nextStatus },
+    metadata: { automatic: true },
   });
 
   return nextStatus;

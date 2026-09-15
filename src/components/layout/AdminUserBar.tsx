@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
  */
 export function AdminUserBar({ user }: { user: AuthenticatedUser }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle bg-surface-muted px-4 py-2 text-xs sm:px-6 lg:px-8">
+    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle bg-surface-muted px-4 py-2 text-xs sm:px-6 lg:px-8">
       <span className="text-foreground/70">
         Signed in as <span className="font-medium text-foreground">{user.name}</span> (
         {user.roles.join(", ") || "no role assigned"})
@@ -19,6 +19,6 @@ export function AdminUserBar({ user }: { user: AuthenticatedUser }) {
           Sign out
         </Button>
       </form>
-    </div>
+    </header>
   );
 }

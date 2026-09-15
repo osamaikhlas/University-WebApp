@@ -70,15 +70,11 @@ export default async function CollegeProfilePage({
                   <dt className="font-medium text-foreground/70">Overview</dt>
                   <dd className="mt-1 whitespace-pre-wrap">{profile.overview ?? "—"}</dd>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <dt className="font-medium text-foreground/70">Vision</dt>
-                    <dd className="mt-1 whitespace-pre-wrap">{profile.visionStatement ?? "—"}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-medium text-foreground/70">Mission</dt>
-                    <dd className="mt-1 whitespace-pre-wrap">{profile.missionStatement ?? "—"}</dd>
-                  </div>
+                <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-2">
+                  <dt className="font-medium text-foreground/70">Vision</dt>
+                  <dd className="mt-1 whitespace-pre-wrap">{profile.visionStatement ?? "—"}</dd>
+                  <dt className="font-medium text-foreground/70">Mission</dt>
+                  <dd className="mt-1 whitespace-pre-wrap">{profile.missionStatement ?? "—"}</dd>
                 </div>
                 <div>
                   <dt className="font-medium text-foreground/70">History</dt>
@@ -100,6 +96,7 @@ export default async function CollegeProfilePage({
             </Card>
 
             <WorkflowActions
+                            entityType="CollegeProfile"
               entityId={profile.id}
               status={profile.status}
               canManage={canManage}

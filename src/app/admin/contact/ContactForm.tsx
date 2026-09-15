@@ -67,7 +67,7 @@ export function ContactForm(props: Props) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="label" className="text-sm font-medium text-foreground">
-          Label <span className="font-normal text-foreground/50">(optional)</span>
+          Label <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <input
           id="label"

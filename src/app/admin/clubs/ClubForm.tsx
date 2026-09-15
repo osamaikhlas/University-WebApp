@@ -39,7 +39,7 @@ export function ClubForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="facultyAdvisorId" className="text-sm font-medium text-foreground">
-            Faculty advisor <span className="font-normal text-foreground/50">(optional)</span>
+            Faculty advisor <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <select
             id="facultyAdvisorId"
@@ -59,7 +59,7 @@ export function ClubForm(props: Props) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="description" className="text-sm font-medium text-foreground">
-          Description <span className="font-normal text-foreground/50">(optional)</span>
+          Description <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <textarea
           id="description"

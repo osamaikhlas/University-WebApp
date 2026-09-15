@@ -67,39 +67,33 @@ export default async function ComplianceRequirementPage({
                 <dd className="mt-1 whitespace-pre-wrap">{requirement.rule.requiredDocuments}</dd>
               </div>
             ) : null}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="font-medium text-foreground/70">Responsible module</dt>
-                <dd className="mt-1">
-                  <Link href={requirement.rule.responsibleModule.adminPath} className="text-brand hover:underline">
-                    {requirement.rule.responsibleModule.label}
+            <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-2">
+              <dt className="font-medium text-foreground/70">Responsible module</dt>
+              <dd className="mt-1">
+                <Link href={requirement.rule.responsibleModule.adminPath} className="text-brand hover:underline">
+                  {requirement.rule.responsibleModule.label}
+                </Link>
+              </dd>
+              <dt className="font-medium text-foreground/70">Responsible role</dt>
+              <dd className="mt-1">{requirement.rule.responsibleRole}</dd>
+            </div>
+            <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-2">
+              <dt className="font-medium text-foreground/70">Public route</dt>
+              <dd className="mt-1">
+                {requirement.rule.publicRoute ? (
+                  <Link href={requirement.rule.publicRoute.path} className="text-brand hover:underline">
+                    {requirement.rule.publicRoute.label}
                   </Link>
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Responsible role</dt>
-                <dd className="mt-1">{requirement.rule.responsibleRole}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Public route</dt>
-                <dd className="mt-1">
-                  {requirement.rule.publicRoute ? (
-                    <Link href={requirement.rule.publicRoute.path} className="text-brand hover:underline">
-                      {requirement.rule.publicRoute.label}
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Owner</dt>
-                <dd className="mt-1">{requirement.ownerName ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Last updated</dt>
-                <dd className="mt-1">{requirement.updatedAt.toLocaleString()}</dd>
-              </div>
+                ) : (
+                  "—"
+                )}
+              </dd>
+              <dt className="font-medium text-foreground/70">Owner</dt>
+              <dd className="mt-1">{requirement.ownerName ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="font-medium text-foreground/70">Last updated</dt>
+              <dd className="mt-1">{requirement.updatedAt.toLocaleString()}</dd>
             </div>
             <div>
               <dt className="font-medium text-foreground/70">
@@ -151,7 +145,7 @@ export default async function ComplianceRequirementPage({
                     {item.entityType} — {item.entityId}
                   </div>
                   {item.note ? <div className="mt-1 text-foreground/70">{item.note}</div> : null}
-                  <div className="mt-1 text-xs text-foreground/50">
+                  <div className="mt-1 text-xs text-foreground/60">
                     Added by {item.addedByName} on {item.createdAt.toLocaleDateString()}
                   </div>
                 </li>
@@ -172,7 +166,7 @@ export default async function ComplianceRequirementPage({
                   <div className="font-medium">
                     {DECISION_LABELS[entry.decision] ?? entry.decision} by {entry.verifiedByName}
                   </div>
-                  <div className="text-xs text-foreground/50">{entry.verifiedAt.toLocaleString()}</div>
+                  <div className="text-xs text-foreground/60">{entry.verifiedAt.toLocaleString()}</div>
                   {entry.note ? <div className="mt-1 text-foreground/70">{entry.note}</div> : null}
                 </li>
               ))}

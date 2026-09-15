@@ -49,3 +49,6 @@ next-env.d.ts
 # prisma
 prisma/dev.db
 prisma/dev.db-journal
+
+# grievance attachments — private submitter files, never committed (CLAUDE.md rule 6, 12)
+/storage/

@@ -36,8 +36,8 @@ describe("public route structure", () => {
 });
 
 describe("admin route structure", () => {
-  it("matches the scope documented in CLAUDE.md, plus College Profile/Departments/Seminars/Workshops/Fee Structures/Enrollment Statistics/Activities/Clubs/Infrastructure/Policies/Regulations/Affiliation/Contact/Location CMS modules (37 sections including Dashboard)", () => {
-    expect(ADMIN_NAV_LINKS).toHaveLength(37);
+  it("matches the scope documented in CLAUDE.md, plus College Profile/Departments/Seminars/Workshops/Fee Structures/Enrollment Statistics/Activities/Clubs/Infrastructure/Policies/Regulations/Affiliation/Contact/Location CMS modules and Review Period Settings (38 sections including Dashboard)", () => {
+    expect(ADMIN_NAV_LINKS).toHaveLength(38);
   });
 
   it("has a page.tsx for every admin nav link", () => {

@@ -11,8 +11,10 @@ import { Card } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { WorkflowActions } from "@/components/admin/WorkflowActions";
+import { ReviewPanel } from "@/components/admin/ReviewPanel";
 import { DemoDataNotice } from "@/components/DemoDataNotice";
-import { transitionAdmission } from "@/app/admin/admissions/actions";
+import { getReviewDisplayData } from "@/lib/content-review";
+import { transitionAdmission, markAdmissionReviewed } from "@/app/admin/admissions/actions";
 
 export const metadata: Metadata = { title: "Admission" };
 
@@ -35,6 +37,7 @@ export default async function AdmissionViewPage({
 
   const canManage = hasPermission(user.permissions, MODULE_PERMISSIONS.admissions.manage);
   const canPublish = hasPermission(user.permissions, MODULE_PERMISSIONS.admissions.publish);
+  const review = await getReviewDisplayData("admissions", admission);
 
   return (
     <Container>
@@ -66,30 +69,39 @@ export default async function AdmissionViewPage({
               <dt className="font-medium text-foreground/70">Eligibility criteria</dt>
               <dd className="mt-1 whitespace-pre-wrap">{admission.eligibilityCriteria ?? "—"}</dd>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="font-medium text-foreground/70">Application start date</dt>
-                <dd className="mt-1">
-                  {admission.applicationStartDate?.toLocaleDateString() ?? "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Application end date</dt>
-                <dd className="mt-1">
-                  {admission.applicationEndDate?.toLocaleDateString() ?? "—"}
-                </dd>
-              </div>
+            <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-2">
+              <dt className="font-medium text-foreground/70">Application start date</dt>
+              <dd className="mt-1">
+                {admission.applicationStartDate?.toLocaleDateString() ?? "—"}
+              </dd>
+              <dt className="font-medium text-foreground/70">Application end date</dt>
+              <dd className="mt-1">
+                {admission.applicationEndDate?.toLocaleDateString() ?? "—"}
+              </dd>
             </div>
           </dl>
         </Card>
 
         <WorkflowActions
+                    entityType="Admission"
           entityId={admission.id}
           status={admission.status}
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionAdmission}
           workflowError={workflowError}
+        />
+
+        <ReviewPanel
+          entityId={admission.id}
+          lastUpdated={review.lastUpdated}
+          lastReviewedAt={review.lastReviewedAt}
+          nextReviewDue={review.nextReviewDue}
+          reviewerName={review.reviewerName}
+          isOverdue={review.isOverdue}
+          periodDays={review.periodDays}
+          canMarkReviewed={canPublish}
+          markReviewed={markAdmissionReviewed}
         />
 
         <Link href="/admin/admissions" className="text-sm text-brand hover:underline">

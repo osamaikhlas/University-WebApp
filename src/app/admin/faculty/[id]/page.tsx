@@ -11,8 +11,10 @@ import { Card } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { WorkflowActions } from "@/components/admin/WorkflowActions";
+import { ReviewPanel } from "@/components/admin/ReviewPanel";
 import { DemoDataNotice } from "@/components/DemoDataNotice";
-import { transitionFaculty } from "@/app/admin/faculty/actions";
+import { getReviewDisplayData } from "@/lib/content-review";
+import { transitionFaculty, markFacultyReviewed } from "@/app/admin/faculty/actions";
 
 export const metadata: Metadata = { title: "Faculty record" };
 
@@ -32,6 +34,7 @@ export default async function FacultyViewPage({
 
   const canManage = hasPermission(user.permissions, MODULE_PERMISSIONS.faculty.manage);
   const canPublish = hasPermission(user.permissions, MODULE_PERMISSIONS.faculty.publish);
+  const review = await getReviewDisplayData("faculty", faculty);
 
   return (
     <Container>
@@ -78,12 +81,25 @@ export default async function FacultyViewPage({
         </Card>
 
         <WorkflowActions
+                    entityType="Faculty"
           entityId={faculty.id}
           status={faculty.status}
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionFaculty}
           workflowError={workflowError}
+        />
+
+        <ReviewPanel
+          entityId={faculty.id}
+          lastUpdated={review.lastUpdated}
+          lastReviewedAt={review.lastReviewedAt}
+          nextReviewDue={review.nextReviewDue}
+          reviewerName={review.reviewerName}
+          isOverdue={review.isOverdue}
+          periodDays={review.periodDays}
+          canMarkReviewed={canPublish}
+          markReviewed={markFacultyReviewed}
         />
 
         <Link href="/admin/faculty" className="text-sm text-brand hover:underline">

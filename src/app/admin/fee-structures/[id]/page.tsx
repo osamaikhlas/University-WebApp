@@ -66,22 +66,19 @@ export default async function FeeStructureViewPage({
               <dt className="font-medium text-foreground/70">Admission cycle</dt>
               <dd className="mt-1">{feeStructure.admission?.academicYear ?? "Not linked"}</dd>
             </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div>
-                <dt className="font-medium text-foreground/70">Academic year</dt>
-                <dd className="mt-1">{feeStructure.academicYear}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Amount</dt>
-                <dd className="mt-1">
-                  {feeStructure.amount.toString()} {feeStructure.currency}
-                </dd>
-              </div>
+            <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-2">
+              <dt className="font-medium text-foreground/70">Academic year</dt>
+              <dd className="mt-1">{feeStructure.academicYear}</dd>
+              <dt className="font-medium text-foreground/70">Amount</dt>
+              <dd className="mt-1">
+                {feeStructure.amount.toString()} {feeStructure.currency}
+              </dd>
             </div>
           </dl>
         </Card>
 
         <WorkflowActions
+                    entityType="FeeStructure"
           entityId={feeStructure.id}
           status={feeStructure.status}
           canManage={canManage}

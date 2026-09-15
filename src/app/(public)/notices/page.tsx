@@ -34,7 +34,7 @@ export default async function NoticesPage() {
                     {notice.category ? <Badge tone="neutral">{notice.category}</Badge> : null}
                   </div>
                   <p className="mt-2 text-sm text-foreground/70">{notice.body}</p>
-                  <p className="mt-3 text-xs text-foreground/50">
+                  <p className="mt-3 text-xs text-foreground/60">
                     {notice.publishDate
                       ? `Published ${notice.publishDate.toLocaleDateString()}`
                       : null}

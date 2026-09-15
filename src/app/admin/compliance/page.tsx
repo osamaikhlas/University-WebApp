@@ -6,6 +6,7 @@ import { Container } from "@/components/ui/Container";
 import { PageHeading } from "@/components/ui/PageHeading";
 import { Card } from "@/components/ui/Card";
 import { DataTable } from "@/components/ui/Table";
+import { LinkButton } from "@/components/ui/Button";
 import { ComplianceStatusBadge } from "@/components/admin/ComplianceStatusBadge";
 
 export const metadata: Metadata = { title: "Compliance" };
@@ -28,16 +29,21 @@ export default async function CompliancePage() {
   return (
     <Container>
       <div className="flex flex-col gap-6 py-10">
-        <PageHeading
-          title="Compliance"
-          description="Track compliance against the 20 circular requirements and generate the compliance report."
-        />
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <PageHeading
+            title="Compliance"
+            description="Track compliance against the 20 circular requirements and generate the compliance report."
+          />
+          <LinkButton href="/admin/compliance/reports" variant="secondary">
+            Compliance reports
+          </LinkButton>
+        </div>
 
         <Card>
           <p className="text-sm text-foreground/70">
             <span className="font-semibold text-foreground">{readyCount}</span> of{" "}
-            <span className="font-semibold text-foreground">{requirements.length}</span> requirements
-            verified.
+            <span className="font-semibold text-foreground">{requirements.length}</span>{" "}
+            requirements verified.
           </p>
         </Card>
 
@@ -90,7 +96,11 @@ export default async function CompliancePage() {
               key: "completeness",
               header: "Completeness",
               render: (row) => (
-                <span title={row.completeness.checks.map((c) => `${c.met ? "✓" : "✗"} ${c.label}`).join("\n")}>
+                <span
+                  title={row.completeness.checks
+                    .map((c) => `${c.met ? "✓" : "✗"} ${c.label}`)
+                    .join("\n")}
+                >
                   {row.completeness.percent}%
                 </span>
               ),

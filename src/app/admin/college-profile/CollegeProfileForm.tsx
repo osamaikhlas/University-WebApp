@@ -27,7 +27,7 @@ export function CollegeProfileForm(props: Props) {
     <form action={formAction} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <label htmlFor="overview" className="text-sm font-medium text-foreground">
-          Overview <span className="font-normal text-foreground/50">(optional)</span>
+          Overview <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <textarea
           id="overview"
@@ -41,7 +41,7 @@ export function CollegeProfileForm(props: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="visionStatement" className="text-sm font-medium text-foreground">
-            Vision <span className="font-normal text-foreground/50">(optional)</span>
+            Vision <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <textarea
             id="visionStatement"
@@ -53,7 +53,7 @@ export function CollegeProfileForm(props: Props) {
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="missionStatement" className="text-sm font-medium text-foreground">
-            Mission <span className="font-normal text-foreground/50">(optional)</span>
+            Mission <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <textarea
             id="missionStatement"
@@ -67,7 +67,7 @@ export function CollegeProfileForm(props: Props) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="history" className="text-sm font-medium text-foreground">
-          History <span className="font-normal text-foreground/50">(optional)</span>
+          History <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <textarea
           id="history"
@@ -81,7 +81,7 @@ export function CollegeProfileForm(props: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="principalName" className="text-sm font-medium text-foreground">
-            Principal&apos;s name <span className="font-normal text-foreground/50">(optional)</span>
+            Principal&apos;s name <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="principalName"
@@ -93,7 +93,7 @@ export function CollegeProfileForm(props: Props) {
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="establishedYear" className="text-sm font-medium text-foreground">
-            Established year <span className="font-normal text-foreground/50">(optional)</span>
+            Established year <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="establishedYear"
@@ -109,7 +109,7 @@ export function CollegeProfileForm(props: Props) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="principalMessage" className="text-sm font-medium text-foreground">
-          Principal&apos;s message <span className="font-normal text-foreground/50">(optional)</span>
+          Principal&apos;s message <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <textarea
           id="principalMessage"

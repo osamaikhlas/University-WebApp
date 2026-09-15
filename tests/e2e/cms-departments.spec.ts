@@ -118,9 +118,12 @@ test.describe.serial("Departments CMS module — full workflow across roles", ()
     await page.getByRole("button", { name: /request update/i }).click();
 
     await expect(page.getByText("Update required")).toBeVisible({ timeout: 15_000 });
-    // The reviewer (manage-permission-less here) has no further action from UPDATE_REQUIRED —
-    // only the author (manage permission) can return it to draft to fix it.
-    await expect(page.locator('[aria-label="Workflow actions"]')).toHaveCount(0);
+    // The reviewer (manage-permission-less here) cannot return it to draft — only the author
+    // (manage permission) can do that — but a publisher can still archive stale
+    // update-required content, so "return to draft" specifically is what's unavailable, not
+    // every action.
+    await expect(page.getByRole("button", { name: /return to draft/i })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^archive$/i })).toBeVisible();
   });
 
   test("EDITOR can return the update-required department to draft to fix it", async ({ page }) => {

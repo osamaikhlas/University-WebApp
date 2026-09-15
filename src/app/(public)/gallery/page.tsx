@@ -42,9 +42,9 @@ export default async function GalleryPage() {
                   {album.items.map((item) => (
                     <li key={item.id}>
                       <Card className="overflow-hidden p-0">
-                        {/* eslint-disable-next-line @next/next/no-img-element -- demo/college-supplied media URLs are arbitrary, not from a configured Next Image domain */}
+                        {/* eslint-disable-next-line @next/next/no-img-element -- served from our own permission-checked API route, not a static/remote asset */}
                         <img
-                          src={item.media.url}
+                          src={`/api/files/media/${item.media.id}`}
                           alt={item.media.altText}
                           loading="lazy"
                           className="aspect-square w-full object-cover"

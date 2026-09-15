@@ -30,7 +30,7 @@ export default async function ContactPage() {
             {contacts.map((contact) => (
               <li key={contact.id}>
                 <Card className="p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-foreground/50">
+                  <p className="text-xs font-medium uppercase tracking-wide text-foreground/60">
                     {contact.label ?? contact.type}
                   </p>
                   <p className="mt-1 text-sm font-medium">{contact.value}</p>

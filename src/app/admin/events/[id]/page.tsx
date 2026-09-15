@@ -56,24 +56,19 @@ export default async function EventViewPage({
               <dt className="font-medium text-foreground/70">Description</dt>
               <dd className="mt-1 whitespace-pre-wrap">{event.description ?? "—"}</dd>
             </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div>
-                <dt className="font-medium text-foreground/70">Start date</dt>
-                <dd className="mt-1">{event.startDate.toLocaleDateString()}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">End date</dt>
-                <dd className="mt-1">{event.endDate?.toLocaleDateString() ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Location</dt>
-                <dd className="mt-1">{event.location ?? "—"}</dd>
-              </div>
+            <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-3">
+              <dt className="font-medium text-foreground/70">Start date</dt>
+              <dd className="mt-1">{event.startDate.toLocaleDateString()}</dd>
+              <dt className="font-medium text-foreground/70">End date</dt>
+              <dd className="mt-1">{event.endDate?.toLocaleDateString() ?? "—"}</dd>
+              <dt className="font-medium text-foreground/70">Location</dt>
+              <dd className="mt-1">{event.location ?? "—"}</dd>
             </div>
           </dl>
         </Card>
 
         <WorkflowActions
+                    entityType="Event"
           entityId={event.id}
           status={event.status}
           canManage={canManage}

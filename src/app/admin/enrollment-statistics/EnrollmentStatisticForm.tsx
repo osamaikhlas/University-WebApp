@@ -68,7 +68,7 @@ export function EnrollmentStatisticForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="sessionType" className="text-sm font-medium text-foreground">
-            Session <span className="font-normal text-foreground/50">(optional)</span>
+            Session <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="sessionType"
@@ -100,7 +100,7 @@ export function EnrollmentStatisticForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="maleCount" className="text-sm font-medium text-foreground">
-            Male <span className="font-normal text-foreground/50">(optional)</span>
+            Male <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="maleCount"
@@ -115,7 +115,7 @@ export function EnrollmentStatisticForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="femaleCount" className="text-sm font-medium text-foreground">
-            Female <span className="font-normal text-foreground/50">(optional)</span>
+            Female <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="femaleCount"

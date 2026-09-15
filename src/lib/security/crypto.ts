@@ -6,8 +6,8 @@ import { env } from "@/lib/env";
 /**
  * AES-256-GCM encryption for at-rest secrets that must be recoverable later (unlike a
  * password, which only ever needs to be verified — see src/lib/auth/password.ts). Used for
- * `Grievance.submitterContact` (CLAUDE.md rule 6: private grievance data must never be
- * exposed, including as plaintext in a database dump or backup).
+ * `Grievance.submitterEmail`/`submitterPhone` (CLAUDE.md rule 6: private grievance data must
+ * never be exposed, including as plaintext in a database dump or backup).
  *
  * Stored format: `<iv>:<authTag>:<ciphertext>`, each hex-encoded. The auth tag makes any
  * tampering with the stored value detectable — `decryptSecret` throws rather than returning

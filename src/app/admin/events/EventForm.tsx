@@ -37,7 +37,7 @@ export function EventForm(props: Props) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="description" className="text-sm font-medium text-foreground">
-          Description <span className="font-normal text-foreground/50">(optional)</span>
+          Description <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <textarea
           id="description"
@@ -65,7 +65,7 @@ export function EventForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="endDate" className="text-sm font-medium text-foreground">
-            End date <span className="font-normal text-foreground/50">(optional)</span>
+            End date <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="endDate"
@@ -78,7 +78,7 @@ export function EventForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="location" className="text-sm font-medium text-foreground">
-            Location <span className="font-normal text-foreground/50">(optional)</span>
+            Location <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="location"

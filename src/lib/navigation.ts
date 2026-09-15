@@ -76,6 +76,7 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
   { href: "/admin/location", label: "Location" },
   { href: "/admin/grievances", label: "Grievances" },
   { href: "/admin/compliance", label: "Compliance" },
+  { href: "/admin/content-review-settings", label: "Review Period Settings" },
   { href: "/admin/audit-logs", label: "Audit logs" },
   { href: "/admin/approval-workflow", label: "Approval workflow" },
 ];

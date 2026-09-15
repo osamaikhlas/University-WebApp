@@ -11,8 +11,13 @@ import { Card } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { WorkflowActions } from "@/components/admin/WorkflowActions";
+import { ReviewPanel } from "@/components/admin/ReviewPanel";
 import { DemoDataNotice } from "@/components/DemoDataNotice";
-import { transitionAcademicCalendarEntry } from "@/app/admin/academic-calendar/actions";
+import { getReviewDisplayData } from "@/lib/content-review";
+import {
+  transitionAcademicCalendarEntry,
+  markAcademicCalendarEntryReviewed,
+} from "@/app/admin/academic-calendar/actions";
 
 export const metadata: Metadata = { title: "Calendar entry" };
 
@@ -32,6 +37,7 @@ export default async function AcademicCalendarEntryViewPage({
 
   const canManage = hasPermission(user.permissions, MODULE_PERMISSIONS.academicCalendar.manage);
   const canPublish = hasPermission(user.permissions, MODULE_PERMISSIONS.academicCalendar.publish);
+  const review = await getReviewDisplayData("academicCalendar", entry);
 
   return (
     <Container>
@@ -56,36 +62,41 @@ export default async function AcademicCalendarEntryViewPage({
               <dt className="font-medium text-foreground/70">Description</dt>
               <dd className="mt-1 whitespace-pre-wrap">{entry.description ?? "—"}</dd>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="font-medium text-foreground/70">Start date</dt>
-                <dd className="mt-1">{entry.startDate.toLocaleDateString()}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">End date</dt>
-                <dd className="mt-1">{entry.endDate?.toLocaleDateString() ?? "—"}</dd>
-              </div>
+            <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-2">
+              <dt className="font-medium text-foreground/70">Start date</dt>
+              <dd className="mt-1">{entry.startDate.toLocaleDateString()}</dd>
+              <dt className="font-medium text-foreground/70">End date</dt>
+              <dd className="mt-1">{entry.endDate?.toLocaleDateString() ?? "—"}</dd>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="font-medium text-foreground/70">Category</dt>
-                <dd className="mt-1">{entry.category ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Academic year</dt>
-                <dd className="mt-1">{entry.academicYear ?? "—"}</dd>
-              </div>
+            <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-2">
+              <dt className="font-medium text-foreground/70">Category</dt>
+              <dd className="mt-1">{entry.category ?? "—"}</dd>
+              <dt className="font-medium text-foreground/70">Academic year</dt>
+              <dd className="mt-1">{entry.academicYear ?? "—"}</dd>
             </div>
           </dl>
         </Card>
 
         <WorkflowActions
+                    entityType="AcademicCalendar"
           entityId={entry.id}
           status={entry.status}
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionAcademicCalendarEntry}
           workflowError={workflowError}
+        />
+
+        <ReviewPanel
+          entityId={entry.id}
+          lastUpdated={review.lastUpdated}
+          lastReviewedAt={review.lastReviewedAt}
+          nextReviewDue={review.nextReviewDue}
+          reviewerName={review.reviewerName}
+          isOverdue={review.isOverdue}
+          periodDays={review.periodDays}
+          canMarkReviewed={canPublish}
+          markReviewed={markAcademicCalendarEntryReviewed}
         />
 
         <Link href="/admin/academic-calendar" className="text-sm text-brand hover:underline">

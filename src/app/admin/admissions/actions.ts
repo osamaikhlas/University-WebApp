@@ -12,6 +12,7 @@ import {
   MANAGE_PERMISSION_ACTIONS,
   type WorkflowActionName,
 } from "@/lib/content-workflow";
+import { markContentReviewed } from "@/lib/content-review";
 import { logAudit } from "@/lib/audit";
 import { getPrimaryCollege } from "@/lib/content";
 
@@ -164,6 +165,22 @@ export async function transitionAdmission(
     if (!(error instanceof WorkflowError)) throw error;
     redirect(`/admin/admissions/${id}?workflowError=${encodeURIComponent(error.message)}`);
   }
+
+  redirect(`/admin/admissions/${id}`);
+}
+
+/** Confirms the admission cycle's information is still accurate as of today —
+ * content-review/freshness tracking, distinct from the publish workflow above. Gated on
+ * `publish` (not `manage`). */
+export async function markAdmissionReviewed(id: string): Promise<void> {
+  const user = await requirePermission(PERMISSIONS.publish);
+
+  await markContentReviewed({
+    entityType: ENTITY_TYPE,
+    entityId: id,
+    actorId: user.id,
+    update: (data) => prisma.admission.update({ where: { id }, data }),
+  });
 
   redirect(`/admin/admissions/${id}`);
 }

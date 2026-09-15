@@ -4,6 +4,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: { findUnique: vi.fn(), update: vi.fn() },
     auditLog: { create: vi.fn() },
+    rateLimitEntry: { findUnique: vi.fn(), upsert: vi.fn(), update: vi.fn() },
   },
 }));
 
@@ -53,6 +54,8 @@ const baseUser = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(prisma.rateLimitEntry.findUnique).mockResolvedValue(null);
+  vi.mocked(prisma.rateLimitEntry.upsert).mockResolvedValue({} as never);
 });
 
 describe("login — input validation", () => {
@@ -187,5 +190,27 @@ describe("logout", () => {
 
     expect(destroySession).toHaveBeenCalledTimes(1);
     expect(prisma.auditLog.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("login — per-IP rate limiting", () => {
+  it("rejects a sign-in attempt once the per-IP limit is exceeded, without even looking up the account", async () => {
+    // Comfortably exceeds the rate limit's threshold in every environment this test could
+    // run in (login.ts uses a much higher ceiling outside production — see its doc comment
+    // — so the test doesn't depend on NODE_ENV being set a particular way here).
+    vi.mocked(prisma.rateLimitEntry.findUnique).mockResolvedValue({
+      key: "login:hash",
+      count: 1_000_000,
+      windowStart: new Date(),
+      updatedAt: new Date(),
+    } as never);
+
+    const result = await login(
+      { error: null },
+      formData({ email: baseUser.email, password: "whatever" }),
+    );
+
+    expect(result.error).toMatch(/too many/i);
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
   });
 });

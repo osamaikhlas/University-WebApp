@@ -12,6 +12,7 @@ import {
   MANAGE_PERMISSION_ACTIONS,
   type WorkflowActionName,
 } from "@/lib/content-workflow";
+import { markContentReviewed } from "@/lib/content-review";
 import { logAudit } from "@/lib/audit";
 import { getPrimaryCollege } from "@/lib/content";
 
@@ -176,6 +177,21 @@ export async function transitionTimetable(
     if (!(error instanceof WorkflowError)) throw error;
     redirect(`/admin/timetables/${id}?workflowError=${encodeURIComponent(error.message)}`);
   }
+
+  redirect(`/admin/timetables/${id}`);
+}
+
+/** Confirms the timetable is still accurate as of today — content-review/freshness tracking,
+ * distinct from the publish workflow above. Gated on `publish` (not `manage`). */
+export async function markTimetableReviewed(id: string): Promise<void> {
+  const user = await requirePermission(PERMISSIONS.publish);
+
+  await markContentReviewed({
+    entityType: ENTITY_TYPE,
+    entityId: id,
+    actorId: user.id,
+    update: (data) => prisma.timetable.update({ where: { id }, data }),
+  });
 
   redirect(`/admin/timetables/${id}`);
 }

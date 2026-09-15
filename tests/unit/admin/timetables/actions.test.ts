@@ -26,6 +26,7 @@ import { requirePermission } from "@/lib/auth/guard";
 import { getPrimaryCollege } from "@/lib/content";
 import {
   createTimetable,
+  markTimetableReviewed,
   transitionTimetable,
   updateTimetable,
 } from "@/app/admin/timetables/actions";
@@ -149,6 +150,20 @@ describe("transitionTimetable", () => {
     expect(prisma.timetable.update).toHaveBeenCalledWith({
       where: { id: "tt-1" },
       data: expect.objectContaining({ status: "DRAFT" }),
+    });
+  });
+});
+
+describe("markTimetableReviewed", () => {
+  it("requires content_general:publish and records lastReviewedAt/lastReviewedById", async () => {
+    vi.mocked(prisma.timetable.update).mockResolvedValue({} as never);
+
+    await expect(markTimetableReviewed("tt-1")).rejects.toThrow("REDIRECT:/admin/timetables/tt-1");
+
+    expect(requirePermission).toHaveBeenCalledWith("content_general:publish");
+    expect(prisma.timetable.update).toHaveBeenCalledWith({
+      where: { id: "tt-1" },
+      data: { lastReviewedAt: expect.any(Date), lastReviewedById: "user-1" },
     });
   });
 });

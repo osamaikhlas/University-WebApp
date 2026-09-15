@@ -43,6 +43,10 @@ export const ADMIN_ROUTE_PERMISSIONS: Record<string, Permission> = {
   "/admin/location": "content_general:view",
   "/admin/grievances": "grievances:view",
   "/admin/compliance": "compliance:view",
+  // Governance policy over every module's review cadence — restricted like compliance
+  // verification (PRINCIPAL/ADMINISTRATOR/SUPER_ADMIN), reusing that existing permission
+  // rather than adding a new one for a single settings screen.
+  "/admin/content-review-settings": "compliance:verify",
   "/admin/audit-logs": "audit_logs:view",
   "/admin/approval-workflow": "approval_workflow:view",
 };

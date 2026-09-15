@@ -67,24 +67,19 @@ export default async function WorkshopViewPage({
               <dt className="font-medium text-foreground/70">Description</dt>
               <dd className="mt-1 whitespace-pre-wrap">{workshop.description ?? "—"}</dd>
             </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div>
-                <dt className="font-medium text-foreground/70">Start date</dt>
-                <dd className="mt-1">{workshop.startDate.toLocaleDateString()}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">End date</dt>
-                <dd className="mt-1">{workshop.endDate?.toLocaleDateString() ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Venue</dt>
-                <dd className="mt-1">{workshop.venue ?? "—"}</dd>
-              </div>
+            <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-3">
+              <dt className="font-medium text-foreground/70">Start date</dt>
+              <dd className="mt-1">{workshop.startDate.toLocaleDateString()}</dd>
+              <dt className="font-medium text-foreground/70">End date</dt>
+              <dd className="mt-1">{workshop.endDate?.toLocaleDateString() ?? "—"}</dd>
+              <dt className="font-medium text-foreground/70">Venue</dt>
+              <dd className="mt-1">{workshop.venue ?? "—"}</dd>
             </div>
           </dl>
         </Card>
 
         <WorkflowActions
+                    entityType="Workshop"
           entityId={workshop.id}
           status={workshop.status}
           canManage={canManage}

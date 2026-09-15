@@ -23,7 +23,7 @@ vi.mock("next/navigation", () => ({
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
 import { getPrimaryCollege } from "@/lib/content";
-import { createNotice, transitionNotice, updateNotice } from "@/app/admin/notices/actions";
+import { createNotice, markNoticeReviewed, transitionNotice, updateNotice } from "@/app/admin/notices/actions";
 
 const fakeUser = { id: "user-1", collegeId: "college-1", permissions: new Set() } as never;
 const college = { id: "college-1" } as never;
@@ -120,6 +120,23 @@ describe("transitionNotice", () => {
     expect(prisma.notice.update).toHaveBeenCalledWith({
       where: { id: "notice-1" },
       data: expect.objectContaining({ status: "PUBLISHED" }),
+    });
+  });
+});
+
+describe("markNoticeReviewed", () => {
+  it("requires content_general:publish (not manage) and records lastReviewedAt/lastReviewedById", async () => {
+    vi.mocked(prisma.notice.update).mockResolvedValue({} as never);
+
+    await expect(markNoticeReviewed("notice-1")).rejects.toThrow("REDIRECT:/admin/notices/notice-1");
+
+    expect(requirePermission).toHaveBeenCalledWith("content_general:publish");
+    expect(prisma.notice.update).toHaveBeenCalledWith({
+      where: { id: "notice-1" },
+      data: { lastReviewedAt: expect.any(Date), lastReviewedById: "user-1" },
+    });
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ action: "MARK_REVIEWED", entityType: "Notice", entityId: "notice-1" }),
     });
   });
 });

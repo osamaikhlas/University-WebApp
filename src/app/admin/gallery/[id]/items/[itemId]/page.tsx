@@ -63,24 +63,31 @@ export default async function ItemViewPage({
         <Card>
           <dl className="flex flex-col gap-3 text-sm">
             <div>
-              <dt className="font-medium text-foreground/70">File</dt>
+              <dt className="font-medium text-foreground/70">Image</dt>
               <dd className="mt-1">
-                <a href={item.media.url} className="text-brand hover:underline">
-                  {item.media.url}
-                </a>
+                {item.media.storedPath ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- served from our own permission-checked API route, not a static/remote asset
+                  <img
+                    src={`/api/files/media/${item.media.id}`}
+                    alt={item.media.altText}
+                    className="h-40 w-40 rounded border border-border-subtle object-cover"
+                  />
+                ) : (
+                  <span className="text-foreground/60">No image uploaded yet.</span>
+                )}
               </dd>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="font-medium text-foreground/70">Alt text</dt>
-                <dd className="mt-1">{item.media.altText}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Media type</dt>
-                <dd className="mt-1">{item.media.mediaType}</dd>
-              </div>
+            <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-2">
+              <dt className="font-medium text-foreground/70">Alt text</dt>
+              <dd className="mt-1">{item.media.altText}</dd>
+              <dt className="font-medium text-foreground/70">Category</dt>
+              <dd className="mt-1">{item.media.category ?? "—"}</dd>
             </div>
-            <div>
+            <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-2">
+              <dt className="font-medium text-foreground/70">Date</dt>
+              <dd className="mt-1">
+                {item.media.mediaDate ? item.media.mediaDate.toLocaleDateString() : "—"}
+              </dd>
               <dt className="font-medium text-foreground/70">Display order</dt>
               <dd className="mt-1">{item.order}</dd>
             </div>
@@ -88,6 +95,7 @@ export default async function ItemViewPage({
         </Card>
 
         <WorkflowActions
+                    entityType="GalleryItem"
           entityId={item.id}
           status={item.status}
           canManage={canManage}

@@ -12,6 +12,7 @@ import {
   MANAGE_PERMISSION_ACTIONS,
   type WorkflowActionName,
 } from "@/lib/content-workflow";
+import { markContentReviewed } from "@/lib/content-review";
 import { logAudit } from "@/lib/audit";
 import { getPrimaryCollege } from "@/lib/content";
 
@@ -147,6 +148,22 @@ export async function transitionNotice(
     if (!(error instanceof WorkflowError)) throw error;
     redirect(`/admin/notices/${id}?workflowError=${encodeURIComponent(error.message)}`);
   }
+
+  redirect(`/admin/notices/${id}`);
+}
+
+/** Confirms the notice is still accurate as of today — content-review/freshness tracking,
+ * distinct from the publish workflow above. Gated on `publish` (not `manage`): reviewing for
+ * accuracy is a higher-trust check than authoring, the same tier as approve/publish. */
+export async function markNoticeReviewed(id: string): Promise<void> {
+  const user = await requirePermission(PERMISSIONS.publish);
+
+  await markContentReviewed({
+    entityType: ENTITY_TYPE,
+    entityId: id,
+    actorId: user.id,
+    update: (data) => prisma.notice.update({ where: { id }, data }),
+  });
 
   redirect(`/admin/notices/${id}`);
 }

@@ -40,7 +40,7 @@ export function AffiliationForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="programId" className="text-sm font-medium text-foreground">
-            Program <span className="font-normal text-foreground/50">(optional)</span>
+            Program <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <select
             id="programId"
@@ -61,7 +61,7 @@ export function AffiliationForm(props: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="affiliationNumber" className="text-sm font-medium text-foreground">
-            Affiliation number <span className="font-normal text-foreground/50">(optional)</span>
+            Affiliation number <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="affiliationNumber"
@@ -74,7 +74,7 @@ export function AffiliationForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="regulatoryBody" className="text-sm font-medium text-foreground">
-            Regulatory body <span className="font-normal text-foreground/50">(optional)</span>
+            Regulatory body <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="regulatoryBody"
@@ -90,7 +90,7 @@ export function AffiliationForm(props: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="validFrom" className="text-sm font-medium text-foreground">
-            Valid from <span className="font-normal text-foreground/50">(optional)</span>
+            Valid from <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="validFrom"
@@ -103,7 +103,7 @@ export function AffiliationForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="validTo" className="text-sm font-medium text-foreground">
-            Valid to <span className="font-normal text-foreground/50">(optional)</span>
+            Valid to <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="validTo"

@@ -25,6 +25,12 @@ export const ROLE_NAMES = [
 
 export type RoleName = (typeof ROLE_NAMES)[number];
 
+const ROLE_NAME_SET: ReadonlySet<string> = new Set(ROLE_NAMES);
+
+export function isRoleName(value: string): value is RoleName {
+  return ROLE_NAME_SET.has(value);
+}
+
 export const ROLE_DESCRIPTIONS: Record<RoleName, string> = {
   SUPER_ADMIN: "Full system access across every module — the only role with user/role/permission management plus all content authority.",
   PRINCIPAL: "Personally accountable for the college website (per the circular). Views and publishes/approves content across every domain, verifies compliance, and oversees grievances — does not author draft content directly.",

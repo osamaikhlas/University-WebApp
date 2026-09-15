@@ -64,7 +64,7 @@ export function AdmissionForm(props: Props) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="eligibilityCriteria" className="text-sm font-medium text-foreground">
-          Eligibility criteria <span className="font-normal text-foreground/50">(optional)</span>
+          Eligibility criteria <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <textarea
           id="eligibilityCriteria"
@@ -78,7 +78,7 @@ export function AdmissionForm(props: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="applicationStartDate" className="text-sm font-medium text-foreground">
-            Application start date <span className="font-normal text-foreground/50">(optional)</span>
+            Application start date <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="applicationStartDate"
@@ -91,7 +91,7 @@ export function AdmissionForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="applicationEndDate" className="text-sm font-medium text-foreground">
-            Application end date <span className="font-normal text-foreground/50">(optional)</span>
+            Application end date <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="applicationEndDate"

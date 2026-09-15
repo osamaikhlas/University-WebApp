@@ -8,11 +8,14 @@ import { MODULE_PERMISSIONS } from "@/lib/admin/module-permissions";
 import {
   applyWorkflowTransition,
   WorkflowError,
+  WORKFLOW_TRANSITIONS,
   MANAGE_PERMISSION_ACTIONS,
   type WorkflowActionName,
 } from "@/lib/content-workflow";
+import { optionalDateField } from "@/lib/admin/zod-helpers";
 import { logAudit } from "@/lib/audit";
 import { getPrimaryCollege } from "@/lib/content";
+import { saveUploadedFile, validateUpload, UploadValidationError } from "@/lib/security/upload-storage";
 
 const PERMISSIONS = MODULE_PERMISSIONS.documents;
 const ENTITY_TYPE = "Document";
@@ -26,25 +29,28 @@ const ENTITY_TYPE = "Document";
  */
 const GENERAL_ENTITY_TYPE = "College";
 
-const documentSchema = z.object({
-  title: z.string().trim().min(1, "Title is required").max(300),
-  category: z.string().trim().max(200).optional(),
-  fileUrl: z.string().trim().min(1, "File URL is required").url("Enter a valid URL").max(1000),
-  mimeType: z.string().trim().max(100).optional(),
-  sizeBytes: z.coerce.number().int().min(0, "Must be zero or greater").optional(),
-});
+const documentSchema = z
+  .object({
+    title: z.string().trim().min(1, "Title is required").max(300),
+    description: z.string().trim().max(4000).optional(),
+    category: z.string().trim().max(200).optional(),
+    publishDate: optionalDateField,
+    expiryDate: optionalDateField,
+  })
+  .refine((data) => !data.publishDate || !data.expiryDate || data.publishDate <= data.expiryDate, {
+    message: "Expiry date must be on or after the publish date.",
+    path: ["expiryDate"],
+  });
 
 export type DocumentFormState = { error: string | null };
 
 function parseForm(formData: FormData) {
   return documentSchema.safeParse({
     title: formData.get("title"),
+    description: formData.get("description") || undefined,
     category: formData.get("category") || undefined,
-    fileUrl: formData.get("fileUrl"),
-    mimeType: formData.get("mimeType") || undefined,
-    // `|| undefined` (not blank-string coercion) so a blank field is genuinely omitted
-    // rather than silently becoming a real 0-byte size.
-    sizeBytes: formData.get("sizeBytes") || undefined,
+    publishDate: formData.get("publishDate") || undefined,
+    expiryDate: formData.get("expiryDate") || undefined,
   });
 }
 
@@ -59,6 +65,17 @@ export async function createDocument(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Select a file to upload." };
+  }
+  try {
+    validateUpload("document", file);
+  } catch (error) {
+    if (!(error instanceof UploadValidationError)) throw error;
+    return { error: error.message };
+  }
+
   const college = await getPrimaryCollege();
   if (!college) {
     return { error: "No college record exists yet — cannot create content." };
@@ -70,14 +87,25 @@ export async function createDocument(
       entityType: GENERAL_ENTITY_TYPE,
       entityId: college.id,
       title: parsed.data.title,
+      description: parsed.data.description || null,
       category: parsed.data.category || null,
-      fileUrl: parsed.data.fileUrl,
-      mimeType: parsed.data.mimeType || null,
-      sizeBytes: parsed.data.sizeBytes ?? null,
+      publishDate: parsed.data.publishDate ?? null,
+      expiryDate: parsed.data.expiryDate ?? null,
       uploadedById: user.id,
       status: "DRAFT",
       isPlaceholder: false,
       updatedBy: user.id,
+    },
+  });
+
+  const stored = await saveUploadedFile("document", document.id, file);
+  const after = await prisma.document.update({
+    where: { id: document.id },
+    data: {
+      storedPath: stored.storedPath,
+      fileName: stored.fileName,
+      mimeType: stored.mimeType,
+      sizeBytes: stored.sizeBytes,
     },
   });
 
@@ -86,7 +114,7 @@ export async function createDocument(
     action: "CREATE",
     entityType: ENTITY_TYPE,
     entityId: document.id,
-    after: document,
+    after,
   });
 
   redirect(`/admin/documents/${document.id}`);
@@ -109,21 +137,49 @@ export async function updateDocument(
     return { error: "Document not found." };
   }
 
+  // Replacing the file is optional on the edit form — leave it blank to change only metadata
+  // (CLAUDE.md-style "implement replacement" without forcing a separate page for it).
+  const file = formData.get("file");
+  let fileUpdate: {
+    storedPath: string;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    version: { increment: number };
+  } | null = null;
+  if (file instanceof File && file.size > 0) {
+    try {
+      validateUpload("document", file);
+    } catch (error) {
+      if (!(error instanceof UploadValidationError)) throw error;
+      return { error: error.message };
+    }
+    const stored = await saveUploadedFile("document", id, file);
+    fileUpdate = {
+      storedPath: stored.storedPath,
+      fileName: stored.fileName,
+      mimeType: stored.mimeType,
+      sizeBytes: stored.sizeBytes,
+      version: { increment: 1 },
+    };
+  }
+
   const after = await prisma.document.update({
     where: { id },
     data: {
       title: parsed.data.title,
+      description: parsed.data.description || null,
       category: parsed.data.category || null,
-      fileUrl: parsed.data.fileUrl,
-      mimeType: parsed.data.mimeType || null,
-      sizeBytes: parsed.data.sizeBytes ?? null,
+      publishDate: parsed.data.publishDate ?? null,
+      expiryDate: parsed.data.expiryDate ?? null,
       updatedBy: user.id,
+      ...(fileUpdate ?? {}),
     },
   });
 
   await logAudit({
     actorId: user.id,
-    action: "UPDATE",
+    action: fileUpdate ? "FILE_REPLACED" : "UPDATE",
     entityType: ENTITY_TYPE,
     entityId: id,
     before,
@@ -145,6 +201,12 @@ export async function transitionDocument(
 
   const document = await prisma.document.findUniqueOrThrow({ where: { id } });
 
+  if (action === "publish" && !document.storedPath) {
+    redirect(
+      `/admin/documents/${id}?workflowError=${encodeURIComponent("Upload a file before publishing.")}`,
+    );
+  }
+
   try {
     await applyWorkflowTransition({
       entityType: ENTITY_TYPE,
@@ -158,6 +220,21 @@ export async function transitionDocument(
   } catch (error) {
     if (!(error instanceof WorkflowError)) throw error;
     redirect(`/admin/documents/${id}?workflowError=${encodeURIComponent(error.message)}`);
+  }
+
+  // "Approver" tracking (prisma/schema.prisma's Document.approvedById/approvedAt comment) is
+  // specific to this module, so it's a small follow-up mutation here rather than a generic
+  // field on every module's shared workflow engine.
+  if (action === "approve") {
+    await prisma.document.update({
+      where: { id },
+      data: { approvedById: user.id, approvedAt: new Date() },
+    });
+  } else if (WORKFLOW_TRANSITIONS[action].to === "DRAFT") {
+    await prisma.document.update({
+      where: { id },
+      data: { approvedById: null, approvedAt: null },
+    });
   }
 
   redirect(`/admin/documents/${id}`);

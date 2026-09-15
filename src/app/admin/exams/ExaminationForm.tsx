@@ -65,7 +65,7 @@ export function ExaminationForm(props: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="academicYear" className="text-sm font-medium text-foreground">
-            Academic year <span className="font-normal text-foreground/50">(optional)</span>
+            Academic year <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="academicYear"
@@ -79,7 +79,7 @@ export function ExaminationForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="noticeId" className="text-sm font-medium text-foreground">
-            Linked notice <span className="font-normal text-foreground/50">(optional)</span>
+            Linked notice <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <select
             id="noticeId"
@@ -100,7 +100,7 @@ export function ExaminationForm(props: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="scheduleStartDate" className="text-sm font-medium text-foreground">
-            Schedule start date <span className="font-normal text-foreground/50">(optional)</span>
+            Schedule start date <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="scheduleStartDate"
@@ -113,7 +113,7 @@ export function ExaminationForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="scheduleEndDate" className="text-sm font-medium text-foreground">
-            Schedule end date <span className="font-normal text-foreground/50">(optional)</span>
+            Schedule end date <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="scheduleEndDate"

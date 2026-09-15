@@ -54,6 +54,10 @@ enum UserStatus {
 //   PUBLISHED -> UPDATE_REQUIRED -> DRAFT
 // Only PUBLISHED content is ever shown on the public site (CLAUDE.md rule 4); reaching
 // PUBLISHED always means the record passed through APPROVED first.
+// ARCHIVED is reachable from any non-archived status (src/lib/content-workflow.ts's `archive`
+// action) and is a deliberate, permanent-until-restored retirement — distinct from
+// UPDATE_REQUIRED (still live, just flagged as needing an edit) and from DRAFT (never
+// published yet). `unarchive` restores an archived record back to DRAFT for rework.
 enum ContentStatus {
   DRAFT
   SUBMITTED
@@ -61,11 +65,18 @@ enum ContentStatus {
   APPROVED
   PUBLISHED
   UPDATE_REQUIRED
+  ARCHIVED
 }
 
+// Case-management lifecycle for the grievance mechanism (CLAUDE.md rule 6, circular item 19)
+// — see src/lib/grievance-workflow.ts for the full state machine. Deliberately not the
+// generic ContentStatus draft/publish lifecycle: a grievance must never be "published," only
+// ever worked by authorized staff.
 enum GrievanceStatus {
   NEW
-  IN_REVIEW
+  ASSIGNED
+  UNDER_REVIEW
+  ACTION_REQUIRED
   RESOLVED
   CLOSED
 }
@@ -136,10 +147,21 @@ enum AuditAction {
   COMPLIANCE_MARK_NOT_APPLICABLE
   COMPLIANCE_REOPEN
   COMPLIANCE_EVIDENCE_ADDED
+  COMPLIANCE_REPORT_GENERATED
+  COMPLIANCE_REPORT_SUBMITTED
+  GRIEVANCE_ASSIGN
+  GRIEVANCE_STATUS_CHANGE
+  GRIEVANCE_NOTE_ADDED
+  GRIEVANCE_RESPONSE_SENT
+  ARCHIVE
+  UNARCHIVE
+  UNPUBLISH
+  FILE_REPLACED
   LOGIN
   LOGIN_FAILED
   LOGOUT
   ROLE_CHANGE
+  MARK_REVIEWED
   OTHER
 }
 
@@ -193,6 +215,7 @@ model College {
   documents               Document[]
   media                   Media[]
   complianceRequirements  ComplianceRequirement[]
+  complianceReportExports ComplianceReportExport[]
 
   @@map("colleges")
 }
@@ -219,11 +242,16 @@ model User {
   sessions Session[]  @relation("UserSessions")
 
   assignedGrievances          Grievance[]              @relation("GrievanceAssignee")
+  grievanceNotes              GrievanceNote[]          @relation("GrievanceNoteAuthor")
+  grievanceResponses          GrievanceResponse[]      @relation("GrievanceResponder")
   uploadedDocuments           Document[]               @relation("DocumentUploader")
+  approvedDocuments           Document[]               @relation("DocumentApprover")
   uploadedMedia               Media[]                  @relation("MediaUploader")
   ownedComplianceRequirements ComplianceRequirement[]  @relation("ComplianceOwner")
   addedComplianceEvidence     ComplianceEvidence[]     @relation("ComplianceEvidenceAdder")
   compliancesVerified         ComplianceVerification[] @relation("ComplianceVerifier")
+  generatedComplianceReports  ComplianceReportExport[] @relation("ComplianceReportGenerator")
+  submittedComplianceReports  ComplianceReportExport[] @relation("ComplianceReportSubmitter")
   auditLogEntries             AuditLog[]               @relation("AuditActor")
   notifications               Notification[]           @relation("NotificationRecipient")
 
@@ -451,23 +479,29 @@ model Affiliation {
 // ---------------------------------------------------------------------------------------
 
 model Faculty {
-  id             String        @id @default(cuid())
-  collegeId      String
-  departmentId   String
-  name           String
-  designation    String
-  qualifications String?
-  subjectsTaught String[]
-  email          String?
-  phone          String?
-  status         ContentStatus @default(DRAFT)
-  isPlaceholder  Boolean       @default(false)
-  publishedAt    DateTime?
-  publishedBy    String?
-  createdBy      String?
-  updatedBy      String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id               String        @id @default(cuid())
+  collegeId        String
+  departmentId     String
+  name             String
+  designation      String
+  qualifications   String?
+  subjectsTaught   String[]
+  email            String?
+  phone            String?
+  status           ContentStatus @default(DRAFT)
+  isPlaceholder    Boolean       @default(false)
+  publishedAt      DateTime?
+  publishedBy      String?
+  createdBy        String?
+  updatedBy        String?
+  // Content review/freshness tracking (src/lib/content-review.ts) — distinct from the
+  // publish workflow above: a record can be PUBLISHED and still be "due for review" if
+  // nobody has confirmed it's still accurate within the configurable review period. Plain
+  // id, not a relation, per this file's top-of-file audit-stamp convention.
+  lastReviewedAt   DateTime?
+  lastReviewedById String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   college      College    @relation(fields: [collegeId], references: [id])
   department   Department @relation(fields: [departmentId], references: [id])
@@ -552,21 +586,23 @@ model Infrastructure {
 // ---------------------------------------------------------------------------------------
 
 model Notice {
-  id            String        @id @default(cuid())
-  collegeId     String
-  title         String
-  body          String
-  category      String?
-  publishDate   DateTime?
-  expiryDate    DateTime?
-  status        ContentStatus @default(DRAFT)
-  isPlaceholder Boolean       @default(false)
-  publishedAt   DateTime?
-  publishedBy   String?
-  createdBy     String?
-  updatedBy     String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id               String        @id @default(cuid())
+  collegeId        String
+  title            String
+  body             String
+  category         String?
+  publishDate      DateTime?
+  expiryDate       DateTime?
+  status           ContentStatus @default(DRAFT)
+  isPlaceholder    Boolean       @default(false)
+  publishedAt      DateTime?
+  publishedBy      String?
+  createdBy        String?
+  updatedBy        String?
+  lastReviewedAt   DateTime?
+  lastReviewedById String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   college      College       @relation(fields: [collegeId], references: [id])
   examinations Examination[]
@@ -680,22 +716,24 @@ model Activity {
 // ---------------------------------------------------------------------------------------
 
 model AcademicCalendar {
-  id            String        @id @default(cuid())
-  collegeId     String
-  title         String
-  description   String?
-  startDate     DateTime
-  endDate       DateTime?
-  category      String?
-  academicYear  String?
-  status        ContentStatus @default(DRAFT)
-  isPlaceholder Boolean       @default(false)
-  publishedAt   DateTime?
-  publishedBy   String?
-  createdBy     String?
-  updatedBy     String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id               String        @id @default(cuid())
+  collegeId        String
+  title            String
+  description      String?
+  startDate        DateTime
+  endDate          DateTime?
+  category         String?
+  academicYear     String?
+  status           ContentStatus @default(DRAFT)
+  isPlaceholder    Boolean       @default(false)
+  publishedAt      DateTime?
+  publishedBy      String?
+  createdBy        String?
+  updatedBy        String?
+  lastReviewedAt   DateTime?
+  lastReviewedById String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   college College @relation(fields: [collegeId], references: [id])
 
@@ -717,6 +755,8 @@ model Timetable {
   publishedBy        String?
   createdBy          String?
   updatedBy          String?
+  lastReviewedAt     DateTime?
+  lastReviewedById   String?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
@@ -746,6 +786,8 @@ model Admission {
   publishedBy          String?
   createdBy            String?
   updatedBy            String?
+  lastReviewedAt       DateTime?
+  lastReviewedById     String?
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 
@@ -1070,26 +1112,42 @@ model Regulation {
 // ---------------------------------------------------------------------------------------
 
 model Grievance {
-  id               String          @id @default(cuid())
-  collegeId        String
-  // Anonymous submission is allowed — both fields nullable.
-  submitterName    String?
-  // App layer must encrypt this at rest before persisting (CLAUDE.md rule 6); this column
-  // holds ciphertext, never plaintext contact info.
-  submitterContact String?
-  category         String?
-  description      String
-  status           GrievanceStatus @default(NEW)
-  assignedToId     String?
-  resolvedAt       DateTime?
-  isPlaceholder    Boolean         @default(false)
-  updatedBy        String?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  id        String @id @default(cuid())
+  collegeId String
 
-  college    College         @relation(fields: [collegeId], references: [id])
-  assignedTo User?           @relation("GrievanceAssignee", fields: [assignedToId], references: [id])
-  notes      GrievanceNote[]
+  // Shown to the submitter on successful submission and used to reference the case in any
+  // later correspondence — never sequential/guessable (see src/lib/grievance-reference.ts).
+  referenceNumber String @unique
+
+  submitterName   String
+  // App layer must encrypt these at rest before persisting (CLAUDE.md rule 6); these columns
+  // hold ciphertext, never plaintext contact info. Phone is the one still-optional contact
+  // field (email is required so staff always have a way to respond).
+  submitterEmail  String
+  submitterPhone  String?
+  // Hash (never the raw address) of the submitting IP, kept only for abuse-pattern review
+  // (CLAUDE.md rule 6 extends to not hoarding unnecessary PII) — see src/lib/security/rate-limit.ts.
+  submitterIpHash String?
+
+  category    String
+  subject     String
+  description String
+
+  status       GrievanceStatus @default(NEW)
+  assignedToId String?
+  resolvedAt   DateTime?
+  closedAt     DateTime?
+
+  isPlaceholder Boolean  @default(false)
+  updatedBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  college     College               @relation(fields: [collegeId], references: [id])
+  assignedTo  User?                 @relation("GrievanceAssignee", fields: [assignedToId], references: [id])
+  notes       GrievanceNote[]
+  responses   GrievanceResponse[]
+  attachments GrievanceAttachment[]
 
   @@index([collegeId])
   @@index([status])
@@ -1107,9 +1165,63 @@ model GrievanceNote {
   createdAt   DateTime @default(now())
 
   grievance Grievance @relation(fields: [grievanceId], references: [id], onDelete: Cascade)
+  author    User?     @relation("GrievanceNoteAuthor", fields: [authorId], references: [id])
 
   @@index([grievanceId])
   @@map("grievance_notes")
+}
+
+// A recorded reply to the submitter (what staff communicated back and when). This system has
+// no outbound email/SMS integration, so a response is the authoritative record of what was
+// said, not proof that a message was actually delivered — see docs/architecture.md for the
+// known gap. Still never shown to the public (CLAUDE.md rule 6): the submitter only ever
+// finds out about it directly, out of band, using the reference number they were given.
+model GrievanceResponse {
+  id            String   @id @default(cuid())
+  grievanceId   String
+  respondedById String
+  message       String
+  createdAt     DateTime @default(now())
+
+  grievance   Grievance @relation(fields: [grievanceId], references: [id], onDelete: Cascade)
+  respondedBy User      @relation("GrievanceResponder", fields: [respondedById], references: [id])
+
+  @@index([grievanceId])
+  @@map("grievance_responses")
+}
+
+// Submitter-provided evidence (screenshots, scanned letters, etc.). A dedicated model rather
+// than the generic Document/Media tables (prisma/schema.prisma §15) because those require a
+// real `uploadedById` User FK — a public grievance submitter is not a User. Files are stored
+// outside `public/` and served only through an authenticated, permission-checked admin route
+// (src/app/api/admin/grievances/[id]/attachments/[attachmentId]/route.ts) — never a public
+// URL (CLAUDE.md rule 6).
+model GrievanceAttachment {
+  id          String   @id @default(cuid())
+  grievanceId String
+  fileName    String
+  storedPath  String
+  mimeType    String?
+  sizeBytes   Int
+  uploadedAt  DateTime @default(now())
+
+  grievance Grievance @relation(fields: [grievanceId], references: [id], onDelete: Cascade)
+
+  @@index([grievanceId])
+  @@map("grievance_attachments")
+}
+
+// Generic fixed-window rate-limit counter (src/lib/security/rate-limit.ts) — currently used
+// to throttle anonymous public grievance submissions per source IP, but keyed generically
+// (`"<scope>:<identifier>"`) so any other unauthenticated write path can reuse it without a
+// new table.
+model RateLimitEntry {
+  key         String   @id
+  count       Int      @default(1)
+  windowStart DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("rate_limit_entries")
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1119,28 +1231,56 @@ model GrievanceNote {
 // ---------------------------------------------------------------------------------------
 
 model Document {
-  id            String        @id @default(cuid())
-  collegeId     String
-  entityType    String
-  entityId      String
-  category      String?
-  title         String
-  fileUrl       String
-  mimeType      String?
-  sizeBytes     Int?
-  version       Int           @default(1)
-  uploadedById  String
-  uploadedAt    DateTime      @default(now())
-  status        ContentStatus @default(DRAFT)
-  isPlaceholder Boolean       @default(false)
+  id          String  @id @default(cuid())
+  collegeId   String
+  entityType  String
+  entityId    String
+  category    String?
+  title       String
+  description String?
+
+  // The uploaded file. `storedPath` is an internal, non-public path within the upload
+  // storage root (src/lib/security/upload-storage.ts) — the only way to read the bytes back
+  // is through src/app/api/files/documents/[id]/route.ts, which enforces the public/
+  // permission-checked visibility split (CLAUDE.md rule 5) rather than exposing storedPath
+  // or any direct file URL. `fileName` is the original uploaded filename, used for the
+  // download's Content-Disposition and shown in the UI; distinct from `title` (an editorial
+  // label, not necessarily the file's actual name). Null only for a record with no file
+  // uploaded yet — the publish transition requires one (see transitionDocument).
+  storedPath String?
+  fileName   String?
+  mimeType   String?
+  sizeBytes  Int?
+  version    Int     @default(1)
+
+  // Scheduling window — separate from `publishedAt` (set automatically when the workflow's
+  // `publish` action runs). A document can be `status: PUBLISHED` yet still not currently
+  // shown on the public site if `publishDate` is in the future or `expiryDate` has passed
+  // (src/lib/content.ts's `getDocuments()`, mirroring Notice's existing publishDate/
+  // expiryDate pattern) — the same window is also enforced by the file-serving route itself.
+  publishDate DateTime?
+  expiryDate  DateTime?
+
+  uploadedById String
+  uploadedAt   DateTime      @default(now())
+  status       ContentStatus @default(DRAFT)
+
+  // Set only by the workflow's `approve` transition (src/app/admin/documents/actions.ts),
+  // never user-editable directly — "who approved this and when," distinct from `publishedBy`
+  // (who actually flipped it live, a separate, later action).
+  approvedById String?
+  approvedAt   DateTime?
+
+  isPlaceholder Boolean   @default(false)
   publishedAt   DateTime?
   publishedBy   String?
   updatedBy     String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   college    College @relation(fields: [collegeId], references: [id])
   uploadedBy User    @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  approvedBy User?   @relation("DocumentApprover", fields: [approvedById], references: [id])
 
   @@index([collegeId])
   @@index([entityType, entityId])
@@ -1148,20 +1288,31 @@ model Document {
 }
 
 model Media {
-  id            String    @id @default(cuid())
-  collegeId     String
-  entityType    String?
-  entityId      String?
-  url           String
+  id         String  @id @default(cuid())
+  collegeId  String
+  entityType String?
+  entityId   String?
+
+  // The uploaded image. `storedPath` is internal-only (see Document's comment above) — read
+  // back only through src/app/api/files/media/[id]/route.ts, which is public exactly when at
+  // least one PUBLISHED GalleryItem currently references this asset (Media itself carries no
+  // status of its own; visibility is governed entirely by the GalleryItem(s) wrapping it).
+  storedPath String?
+  mimeType   String?
   // Required (not optional) to satisfy accessibility (WCAG alt text) regardless of module.
-  altText       String
-  caption       String?
-  mediaType     MediaType @default(IMAGE)
+  altText    String
+  caption    String?
+  category   String?
+  // The date the image represents (e.g. an event date) — distinct from `uploadedAt`, the
+  // system upload timestamp, which never changes on replacement.
+  mediaDate  DateTime?
+  mediaType  MediaType @default(IMAGE)
+
   uploadedById  String
-  uploadedAt    DateTime  @default(now())
-  isPlaceholder Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  uploadedAt    DateTime @default(now())
+  isPlaceholder Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   college      College       @relation(fields: [collegeId], references: [id])
   uploadedBy   User          @relation("MediaUploader", fields: [uploadedById], references: [id])
@@ -1270,11 +1421,49 @@ model ComplianceVerification {
   @@map("compliance_verifications")
 }
 
+// The circular's explicit "compliance report + live website URL submitted to the Office of
+// the Inspector of Colleges" requirement (docs/requirements.md §3, docs/compliance-matrix.md
+// §2), made a real persisted artifact rather than a point-in-time export. `snapshot` freezes
+// each requirement's itemNumber/title/status/completeness/last-verification at the moment of
+// generation, so a later status change never rewrites what was actually submitted — this is
+// deliberately NOT queried live from ComplianceRequirement/ComplianceVerification at read
+// time, since the whole point is a durable record of what the college attested to on a given
+// date. Generating a report never requires every requirement to be VERIFIED first (a college
+// can report partial progress); only `submittedAt`/`submittedById` being set means it was
+// actually sent to the Inspector of Colleges, and that's a one-way action (never re-set once
+// present) — see `recordComplianceReportSubmission` in
+// src/app/admin/compliance/report-actions.ts.
+model ComplianceReportExport {
+  id            String    @id @default(cuid())
+  collegeId     String
+  generatedAt   DateTime  @default(now())
+  generatedById String
+  snapshot      Json
+  websiteUrl    String
+  submittedAt   DateTime?
+  submittedById String?
+
+  college     College @relation(fields: [collegeId], references: [id])
+  generatedBy User    @relation("ComplianceReportGenerator", fields: [generatedById], references: [id])
+  submittedBy User?   @relation("ComplianceReportSubmitter", fields: [submittedById], references: [id])
+
+  @@index([collegeId])
+  @@index([generatedAt])
+  @@map("compliance_report_exports")
+}
+
 // ---------------------------------------------------------------------------------------
 // 17. Audit logging & notifications (database-design.md §6, §7)
 // ---------------------------------------------------------------------------------------
 
 // Append-only — no update/delete path is exposed for this table (CLAUDE.md rule 8).
+// Append-only by design (CLAUDE.md rule 8, and the explicit "audit records should not be
+// editable" requirement): no Server Action anywhere calls `.update()`/`.delete()` on this
+// model — src/lib/audit.ts's `logAudit()` is the single application-layer write path, and
+// the admin viewer (/admin/audit-logs) is read-only. Enforced beyond the application layer
+// too, in the database itself: migration 20260916000000_audit_log_hardening adds Postgres
+// triggers that reject any UPDATE/DELETE on this table outright, so the guarantee holds even
+// against a future write path someone adds without reading this comment.
 model AuditLog {
   id             String      @id @default(cuid())
   actorId        String?
@@ -1283,6 +1472,11 @@ model AuditLog {
   entityId       String
   beforeSnapshot Json?
   afterSnapshot  Json?
+  // Free-form contextual detail beyond before/after field values — e.g. a login's user
+  // agent, or which specific role a permission change added/removed. Distinct from
+  // `comment` (a human-written reason/note) and from `ipAddress` (kept as its own column
+  // since it existed first and is queried on its own).
+  metadata       Json?
   comment        String?
   ipAddress      String?
   createdAt      DateTime    @default(now())
@@ -1293,6 +1487,23 @@ model AuditLog {
   @@index([actorId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// Configurable review period for content freshness tracking (src/lib/admin/review-settings.ts,
+// src/lib/content-review.ts) — one row per module key that has an explicit admin-set override;
+// a module with no row here uses DEFAULT_REVIEW_PERIOD_DAYS. Not scoped to a College: review
+// cadence is a system-wide admin policy, like Role/Permission, not per-tenant content. Changing
+// a period here retroactively affects every record's computed "next review due" date, since
+// that date is always derived live from (lastReviewedAt ?? publishedAt ?? createdAt) + this
+// period rather than stored — see computeReviewFreshness().
+model ReviewPeriodSetting {
+  id         String   @id @default(cuid())
+  moduleKey  String   @unique
+  periodDays Int
+  updatedAt  DateTime @updatedAt
+  updatedBy  String?
+
+  @@map("review_period_settings")
 }
 
 model Notification {

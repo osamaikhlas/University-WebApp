@@ -68,6 +68,7 @@ export default async function AlbumViewPage({
         </Card>
 
         <WorkflowActions
+                    entityType="GalleryAlbum"
           entityId={album.id}
           status={album.status}
           canManage={canManage}
@@ -105,7 +106,7 @@ export default async function AlbumViewPage({
                   </Link>
                 ),
               },
-              { key: "mediaType", header: "Type", render: (row) => row.media.mediaType },
+              { key: "category", header: "Category", render: (row) => row.media.category ?? "—" },
               { key: "order", header: "Order", render: (row) => row.order },
               {
                 key: "status",

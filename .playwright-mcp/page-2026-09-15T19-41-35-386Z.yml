@@ -1,0 +1,567 @@
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - button "Open Next.js Dev Tools" [ref=e12] [cursor=pointer]
+  - alert [ref=e16]
+  - generic [ref=e32]:
+    - banner [ref=e33]:
+      - generic [ref=e34]: Signed in as [DEV SEED] PRINCIPAL Test Account (PRINCIPAL)
+      - button "Sign out" [ref=e36]
+    - generic [ref=e37]:
+      - complementary [ref=e38]:
+        - navigation "Admin" [ref=e39]:
+          - list [ref=e40]:
+            - listitem [ref=e41]:
+              - link "Dashboard" [ref=e42] [cursor=pointer]:
+                - /url: /admin
+            - listitem [ref=e43]:
+              - link "CMS" [ref=e44] [cursor=pointer]:
+                - /url: /admin/cms
+            - listitem [ref=e45]:
+              - link "College Profile" [ref=e46] [cursor=pointer]:
+                - /url: /admin/college-profile
+            - listitem [ref=e47]:
+              - link "Departments" [ref=e48] [cursor=pointer]:
+                - /url: /admin/departments
+            - listitem [ref=e49]:
+              - link "Notices" [ref=e50] [cursor=pointer]:
+                - /url: /admin/notices
+            - listitem [ref=e51]:
+              - link "Events" [ref=e52] [cursor=pointer]:
+                - /url: /admin/events
+            - listitem [ref=e53]:
+              - link "Seminars" [ref=e54] [cursor=pointer]:
+                - /url: /admin/seminars
+            - listitem [ref=e55]:
+              - link "Workshops" [ref=e56] [cursor=pointer]:
+                - /url: /admin/workshops
+            - listitem [ref=e57]:
+              - link "Activities" [ref=e58] [cursor=pointer]:
+                - /url: /admin/activities
+            - listitem [ref=e59]:
+              - link "Clubs" [ref=e60] [cursor=pointer]:
+                - /url: /admin/clubs
+            - listitem [ref=e61]:
+              - link "Faculty" [ref=e62] [cursor=pointer]:
+                - /url: /admin/faculty
+            - listitem [ref=e63]:
+              - link "Staff" [ref=e64] [cursor=pointer]:
+                - /url: /admin/staff
+            - listitem [ref=e65]:
+              - link "Programs" [ref=e66] [cursor=pointer]:
+                - /url: /admin/programs
+            - listitem [ref=e67]:
+              - link "Infrastructure" [ref=e68] [cursor=pointer]:
+                - /url: /admin/infrastructure
+            - listitem [ref=e69]:
+              - link "Admissions" [ref=e70] [cursor=pointer]:
+                - /url: /admin/admissions
+            - listitem [ref=e71]:
+              - link "Fee Structures" [ref=e72] [cursor=pointer]:
+                - /url: /admin/fee-structures
+            - listitem [ref=e73]:
+              - link "Enrollment Statistics" [ref=e74] [cursor=pointer]:
+                - /url: /admin/enrollment-statistics
+            - listitem [ref=e75]:
+              - link "Timetables" [ref=e76] [cursor=pointer]:
+                - /url: /admin/timetables
+            - listitem [ref=e77]:
+              - link "Academic Calendar" [ref=e78] [cursor=pointer]:
+                - /url: /admin/academic-calendar
+            - listitem [ref=e79]:
+              - link "Exams" [ref=e80] [cursor=pointer]:
+                - /url: /admin/exams
+            - listitem [ref=e81]:
+              - link "Results" [ref=e82] [cursor=pointer]:
+                - /url: /admin/results
+            - listitem [ref=e83]:
+              - link "Documents" [ref=e84] [cursor=pointer]:
+                - /url: /admin/documents
+            - listitem [ref=e85]:
+              - link "Gallery" [ref=e86] [cursor=pointer]:
+                - /url: /admin/gallery
+            - listitem [ref=e87]:
+              - link "Scholarships" [ref=e88] [cursor=pointer]:
+                - /url: /admin/scholarships
+            - listitem [ref=e89]:
+              - link "Student Support" [ref=e90] [cursor=pointer]:
+                - /url: /admin/student-support
+            - listitem [ref=e91]:
+              - link "Policies" [ref=e92] [cursor=pointer]:
+                - /url: /admin/policies
+            - listitem [ref=e93]:
+              - link "Regulations" [ref=e94] [cursor=pointer]:
+                - /url: /admin/regulations
+            - listitem [ref=e95]:
+              - link "Affiliation" [ref=e96] [cursor=pointer]:
+                - /url: /admin/affiliation
+            - listitem [ref=e97]:
+              - link "Contact" [ref=e98] [cursor=pointer]:
+                - /url: /admin/contact
+            - listitem [ref=e99]:
+              - link "Location" [ref=e100] [cursor=pointer]:
+                - /url: /admin/location
+            - listitem [ref=e101]:
+              - link "Grievances" [ref=e102] [cursor=pointer]:
+                - /url: /admin/grievances
+            - listitem [ref=e103]:
+              - link "Compliance" [ref=e104] [cursor=pointer]:
+                - /url: /admin/compliance
+            - listitem [ref=e105]:
+              - link "Review Period Settings" [ref=e106] [cursor=pointer]:
+                - /url: /admin/content-review-settings
+            - listitem [ref=e107]:
+              - link "Audit logs" [ref=e108] [cursor=pointer]:
+                - /url: /admin/audit-logs
+            - listitem [ref=e109]:
+              - link "Approval workflow" [ref=e110] [cursor=pointer]:
+                - /url: /admin/approval-workflow
+      - main [ref=e111]:
+        - generic [ref=e113]:
+          - generic [ref=e114]:
+            - heading "Dashboard" [level=1] [ref=e115]
+            - paragraph [ref=e116]: Every number below is a live query against the database — nothing here is hard-coded.
+          - generic [ref=e117]:
+            - link [ref=e118] [cursor=pointer]:
+              - /url: /admin/cms
+              - generic [ref=e119]:
+                - paragraph [ref=e120]: Published
+                - paragraph [ref=e121]: "250"
+            - generic [ref=e122]:
+              - paragraph [ref=e123]: Drafts
+              - paragraph [ref=e124]: "91"
+            - link [ref=e125] [cursor=pointer]:
+              - /url: /admin/approval-workflow
+              - generic [ref=e126]:
+                - paragraph [ref=e127]: Pending review
+                - paragraph [ref=e128]: "24"
+            - link [ref=e129] [cursor=pointer]:
+              - /url: /admin/compliance
+              - generic [ref=e130]:
+                - paragraph [ref=e131]: Compliance
+                - paragraph [ref=e132]: 5%
+                - paragraph [ref=e133]: 1 of 20 verified
+            - link [ref=e134] [cursor=pointer]:
+              - /url: /admin/compliance
+              - generic [ref=e135]:
+                - paragraph [ref=e136]: Requirements needing attention
+                - paragraph [ref=e137]: "10"
+            - link [ref=e138] [cursor=pointer]:
+              - /url: /admin/documents
+              - generic [ref=e139]:
+                - paragraph [ref=e140]: Document expiry warnings
+                - paragraph [ref=e141]: "10"
+                - paragraph [ref=e142]: within 30 days, or already expired
+          - generic [ref=e143]:
+            - generic [ref=e144]:
+              - heading "Content review warnings" [level=2] [ref=e145]
+              - link "Review period settings" [ref=e146] [cursor=pointer]:
+                - /url: /admin/content-review-settings
+            - generic [ref=e147]:
+              - link [ref=e148] [cursor=pointer]:
+                - /url: /admin/notices
+                - generic [ref=e149]:
+                  - paragraph [ref=e150]: Stale notices
+                  - paragraph [ref=e151]: "1"
+                  - paragraph [ref=e152]: overdue for review
+              - link [ref=e153] [cursor=pointer]:
+                - /url: /admin/timetables
+                - generic [ref=e154]:
+                  - paragraph [ref=e155]: Stale timetables
+                  - paragraph [ref=e156]: "0"
+                  - paragraph [ref=e157]: overdue for review
+              - link [ref=e158] [cursor=pointer]:
+                - /url: /admin/academic-calendar
+                - generic [ref=e159]:
+                  - paragraph [ref=e160]: Stale academic calendar
+                  - paragraph [ref=e161]: "0"
+                  - paragraph [ref=e162]: overdue for review
+              - link [ref=e163] [cursor=pointer]:
+                - /url: /admin/admissions
+                - generic [ref=e164]:
+                  - paragraph [ref=e165]: Stale admissions
+                  - paragraph [ref=e166]: "0"
+                  - paragraph [ref=e167]: overdue for review
+              - link [ref=e168] [cursor=pointer]:
+                - /url: /admin/faculty
+                - generic [ref=e169]:
+                  - paragraph [ref=e170]: Stale faculty
+                  - paragraph [ref=e171]: "0"
+                  - paragraph [ref=e172]: overdue for review
+          - generic [ref=e173]:
+            - generic [ref=e174]:
+              - generic [ref=e175]:
+                - heading "Recent notices" [level=2] [ref=e176]
+                - link "View all" [ref=e177] [cursor=pointer]:
+                  - /url: /admin/notices
+              - list [ref=e178]:
+                - listitem [ref=e179]:
+                  - link "[PLACEHOLDER] Expired Sample Notice" [ref=e180] [cursor=pointer]:
+                    - /url: /admin/notices/dev-seed-notice-expired
+                  - generic [ref=e181]: Published
+                - listitem [ref=e182]:
+                  - link "[PLACEHOLDER] Sample Notice" [ref=e183] [cursor=pointer]:
+                    - /url: /admin/notices/dev-seed-notice
+                  - generic [ref=e184]: Published
+                - listitem [ref=e185]:
+                  - link "E2E Test Notice 1789499888421" [ref=e186] [cursor=pointer]:
+                    - /url: /admin/notices/cmu3214vb0004sduvw6war37d
+                  - generic [ref=e187]: Update required
+                - listitem [ref=e188]:
+                  - link "E2E Walkthrough Notice 1789453351038" [ref=e189] [cursor=pointer]:
+                    - /url: /admin/notices/cmu2absdh00b1rxuv6csdyru7
+                  - generic [ref=e190]: Published
+                - listitem [ref=e191]:
+                  - link "E2E Draft Search Test 1789453370189" [ref=e192] [cursor=pointer]:
+                    - /url: /admin/notices/cmu2ac38a00burxuvbdkdsmt8
+                  - generic [ref=e193]: Draft
+            - generic [ref=e194]:
+              - generic [ref=e195]:
+                - heading "Upcoming events" [level=2] [ref=e196]
+                - link "View all" [ref=e197] [cursor=pointer]:
+                  - /url: /admin/events
+              - list [ref=e198]:
+                - listitem [ref=e199]:
+                  - link "[PLACEHOLDER] Sample Event" [ref=e200] [cursor=pointer]:
+                    - /url: /admin/events/dev-seed-event
+                  - generic [ref=e201]:
+                    - generic [ref=e202]: 10/16/2026
+                    - generic [ref=e203]: Published
+          - generic [ref=e204]:
+            - heading "Compliance requirements needing attention" [level=2] [ref=e205]
+            - table [ref=e207]:
+              - caption [ref=e208]: Compliance requirements needing attention
+              - rowgroup [ref=e209]:
+                - row [ref=e210]:
+                  - columnheader "Item" [ref=e211]
+                  - columnheader "Status" [ref=e212]
+                  - columnheader "Completeness" [ref=e213]
+              - rowgroup [ref=e214]:
+                - row [ref=e215]:
+                  - cell [ref=e216]:
+                    - link "#1 College profile" [ref=e217] [cursor=pointer]:
+                      - /url: /admin/compliance/cmtzr28n60009oguv36iijpy5
+                  - cell "Needs update" [ref=e218]
+                  - cell "100%" [ref=e220]
+                - row [ref=e221]:
+                  - cell [ref=e222]:
+                    - link "#14 Co-curricular activities" [ref=e223] [cursor=pointer]:
+                      - /url: /admin/compliance/cmtzr28nt000moguvfshj4wxi
+                  - cell "Needs update" [ref=e224]
+                  - cell "67%" [ref=e226]
+                - row [ref=e227]:
+                  - cell [ref=e228]:
+                    - link "#2 Day-to-day activities" [ref=e229] [cursor=pointer]:
+                      - /url: /admin/compliance/cmtzr28n9000aoguvstx1ykcd
+                  - cell "In progress" [ref=e230]
+                  - cell "50%" [ref=e232]
+                - row [ref=e233]:
+                  - cell [ref=e234]:
+                    - link "#3 Physical infrastructure" [ref=e235] [cursor=pointer]:
+                      - /url: /admin/compliance/cmtzr28na000boguv9zgg41ho
+                  - cell "In progress" [ref=e236]
+                  - cell "67%" [ref=e238]
+                - row [ref=e239]:
+                  - cell [ref=e240]:
+                    - link "#5 Non-teaching staff details" [ref=e241] [cursor=pointer]:
+                      - /url: /admin/compliance/cmtzr28nd000doguv197305b1
+                  - cell "In progress" [ref=e242]
+                  - cell "67%" [ref=e244]
+                - row [ref=e245]:
+                  - cell [ref=e246]:
+                    - link "#6 Programs and affiliation" [ref=e247] [cursor=pointer]:
+                      - /url: /admin/compliance/cmtzr28ne000eoguvfcwv59bu
+                  - cell "In progress" [ref=e248]
+                  - cell "100%" [ref=e250]
+                - row [ref=e251]:
+                  - cell [ref=e252]:
+                    - link "#7 Timetable and academic calendar" [ref=e253] [cursor=pointer]:
+                      - /url: /admin/compliance/cmtzr28ng000foguv0qbpoa7z
+                  - cell "In progress" [ref=e254]
+                  - cell "60%" [ref=e256]
+                - row [ref=e257]:
+                  - cell [ref=e258]:
+                    - link "#8 Admission information" [ref=e259] [cursor=pointer]:
+                      - /url: /admin/compliance/cmtzr28ni000goguvvm83goab
+                  - cell "In progress" [ref=e260]
+                  - cell "50%" [ref=e262]
+                - row [ref=e263]:
+                  - cell [ref=e264]:
+                    - link "#9 Enrollment statistics" [ref=e265] [cursor=pointer]:
+                      - /url: /admin/compliance/cmtzr28nk000hoguv2wz40ply
+                  - cell "In progress" [ref=e266]
+                  - cell "100%" [ref=e268]
+                - row [ref=e269]:
+                  - cell [ref=e270]:
+                    - link "#10 Examination and results info" [ref=e271] [cursor=pointer]:
+                      - /url: /admin/compliance/cmtzr28nm000ioguvtadajmbv
+                  - cell "In progress" [ref=e272]
+                  - cell "40%" [ref=e274]
+          - generic [ref=e275]:
+            - heading "Overdue reviews" [level=2] [ref=e276]
+            - paragraph [ref=e277]:
+              - text: Published Notices, Faculty, Academic Calendar, Timetables, and Admissions content past its configurable review-due date (real last-reviewed tracking, not an updatedAt guess — see
+              - link "review period settings" [ref=e278] [cursor=pointer]:
+                - /url: /admin/content-review-settings
+              - text: ).
+            - table [ref=e280]:
+              - caption [ref=e281]: Overdue reviews
+              - rowgroup [ref=e282]:
+                - row [ref=e283]:
+                  - columnheader "Title" [ref=e284]
+                  - columnheader "Module" [ref=e285]
+                  - columnheader "Last reviewed" [ref=e286]
+                  - columnheader "Reviewer" [ref=e287]
+                  - columnheader "Was due" [ref=e288]
+              - rowgroup [ref=e289]:
+                - row [ref=e290]:
+                  - cell [ref=e291]:
+                    - link "[PLACEHOLDER] Expired Sample Notice" [ref=e292] [cursor=pointer]:
+                      - /url: /admin/notices/dev-seed-notice-expired
+                  - cell "Notices" [ref=e293]
+                  - cell "Never" [ref=e294]
+                  - cell "—" [ref=e295]
+                  - cell "2/16/2026" [ref=e296]
+          - generic [ref=e297]:
+            - heading "Other content not recently reviewed" [level=2] [ref=e298]
+            - paragraph [ref=e299]: Published content (outside Notices/Faculty/Academic Calendar/Timetables/ Admissions, which have the real review tracking above) last updated more than 180 days ago — an updatedAt heuristic, used only where no per-record review date exists yet.
+            - paragraph [ref=e301]: Nothing is overdue for review.
+          - generic [ref=e302]:
+            - heading "Document expiry warnings" [level=2] [ref=e303]
+            - table [ref=e305]:
+              - caption [ref=e306]: Document expiry warnings
+              - rowgroup [ref=e307]:
+                - row [ref=e308]:
+                  - columnheader "Document" [ref=e309]
+                  - columnheader "Expiry date" [ref=e310]
+                  - columnheader "Status" [ref=e311]
+              - rowgroup [ref=e312]:
+                - row [ref=e313]:
+                  - cell [ref=e314]:
+                    - link "E2E Dashboard Expiring Doc 1789408273557" [ref=e315] [cursor=pointer]:
+                      - /url: /admin/documents/cmu1jhk2p001lwauv3yupyzqy
+                  - cell "9/15/2026" [ref=e316]
+                  - cell "Expired" [ref=e317]
+                - row [ref=e318]:
+                  - cell [ref=e319]:
+                    - link "E2E Dashboard Expiring Doc 1789408249710" [ref=e320] [cursor=pointer]:
+                      - /url: /admin/documents/cmu1jh2dh000vwauv6hrvp4s5
+                  - cell "9/15/2026" [ref=e321]
+                  - cell "Expired" [ref=e322]
+                - row [ref=e323]:
+                  - cell [ref=e324]:
+                    - link "E2E Dashboard Expiring Doc 1789408300639" [ref=e325] [cursor=pointer]:
+                      - /url: /admin/documents/cmu1ji5b3002bwauv3si3u1pq
+                  - cell "9/15/2026" [ref=e326]
+                  - cell "Expired" [ref=e327]
+                - row [ref=e328]:
+                  - cell [ref=e329]:
+                    - link "E2E Dashboard Expiring Doc 1789408324546" [ref=e330] [cursor=pointer]:
+                      - /url: /admin/documents/cmu1jinc40031wauvcf3ifvw6
+                  - cell "9/15/2026" [ref=e331]
+                  - cell "Expired" [ref=e332]
+                - row [ref=e333]:
+                  - cell [ref=e334]:
+                    - link "E2E Dashboard Expiring Doc 1789408403729" [ref=e335] [cursor=pointer]:
+                      - /url: /admin/documents/cmu1jkb5c00aowauvmtwwgrn0
+                  - cell "9/15/2026" [ref=e336]
+                  - cell "Expired" [ref=e337]
+                - row [ref=e338]:
+                  - cell [ref=e339]:
+                    - link "E2E Dashboard Expiring Doc 1789408472853" [ref=e340] [cursor=pointer]:
+                      - /url: /admin/documents/cmu1jlu4j00ddwauv8fa34aql
+                  - cell "9/15/2026" [ref=e341]
+                  - cell "Expired" [ref=e342]
+                - row [ref=e343]:
+                  - cell [ref=e344]:
+                    - link "E2E Dashboard Expiring Doc 1789413078918" [ref=e345] [cursor=pointer]:
+                      - /url: /admin/documents/cmu1mcopx00lgqhuvge1jhjeu
+                  - cell "9/15/2026" [ref=e346]
+                  - cell "Expired" [ref=e347]
+                - row [ref=e348]:
+                  - cell [ref=e349]:
+                    - link "E2E Dashboard Expiring Doc 1789412878578" [ref=e350] [cursor=pointer]:
+                      - /url: /admin/documents/cmu1m8bod00amqhuvu4nef8vq
+                  - cell "9/15/2026" [ref=e351]
+                  - cell "Expired" [ref=e352]
+                - row [ref=e353]:
+                  - cell [ref=e354]:
+                    - link "E2E Dashboard Expiring Doc 1789408553481" [ref=e355] [cursor=pointer]:
+                      - /url: /admin/documents/cmu1jnib100l2wauvoizrir99
+                  - cell "9/15/2026" [ref=e356]
+                  - cell "Expired" [ref=e357]
+                - row [ref=e358]:
+                  - cell [ref=e359]:
+                    - link "E2E Dashboard Expiring Doc 1789411021339" [ref=e360] [cursor=pointer]:
+                      - /url: /admin/documents/cmu1l4ewx00b603uvz36r034o
+                  - cell "9/15/2026" [ref=e361]
+                  - cell "Expired" [ref=e362]
+          - generic [ref=e363]:
+            - generic [ref=e364]:
+              - heading "Recent audit activity" [level=2] [ref=e365]
+              - link "View all" [ref=e366] [cursor=pointer]:
+                - /url: /admin/audit-logs
+            - table [ref=e368]:
+              - caption [ref=e369]: Recent audit activity
+              - rowgroup [ref=e370]:
+                - row [ref=e371]:
+                  - columnheader "Action" [ref=e372]
+                  - columnheader "Entity" [ref=e373]
+                  - columnheader "By" [ref=e374]
+                  - columnheader "When" [ref=e375]
+              - rowgroup [ref=e376]:
+                - row [ref=e377]:
+                  - cell "Login" [ref=e378]
+                  - cell "User" [ref=e379]
+                  - cell "[DEV SEED] PRINCIPAL Test Account" [ref=e380]
+                  - cell "9/16/2026, 12:41:34 AM" [ref=e381]
+                - row [ref=e382]:
+                  - cell "Compliance request update" [ref=e383]
+                  - cell "ComplianceRequirement" [ref=e384]
+                  - cell "[DEV SEED] ADMINISTRATOR Test Account" [ref=e385]
+                  - cell "9/16/2026, 12:30:38 AM" [ref=e386]
+                - row [ref=e387]:
+                  - cell "Compliance verify" [ref=e388]
+                  - cell "ComplianceRequirement" [ref=e389]
+                  - cell "[DEV SEED] ADMINISTRATOR Test Account" [ref=e390]
+                  - cell "9/16/2026, 12:30:37 AM" [ref=e391]
+                - row [ref=e392]:
+                  - cell "Compliance submit for review" [ref=e393]
+                  - cell "ComplianceRequirement" [ref=e394]
+                  - cell "[DEV SEED] ADMINISTRATOR Test Account" [ref=e395]
+                  - cell "9/16/2026, 12:30:37 AM" [ref=e396]
+                - row [ref=e397]:
+                  - cell "Compliance report submitted" [ref=e398]
+                  - cell "ComplianceReportExport" [ref=e399]
+                  - cell "[DEV SEED] ADMINISTRATOR Test Account" [ref=e400]
+                  - cell "9/16/2026, 12:30:37 AM" [ref=e401]
+                - row [ref=e402]:
+                  - cell "Compliance request update" [ref=e403]
+                  - cell "ComplianceRequirement" [ref=e404]
+                  - cell "[DEV SEED] ADMINISTRATOR Test Account" [ref=e405]
+                  - cell "9/16/2026, 12:30:37 AM" [ref=e406]
+                - row [ref=e407]:
+                  - cell "Compliance reopen" [ref=e408]
+                  - cell "ComplianceRequirement" [ref=e409]
+                  - cell "[DEV SEED] ADMINISTRATOR Test Account" [ref=e410]
+                  - cell "9/16/2026, 12:30:37 AM" [ref=e411]
+                - row [ref=e412]:
+                  - cell "Compliance evidence added" [ref=e413]
+                  - cell "ComplianceRequirement" [ref=e414]
+                  - cell "[DEV SEED] ADMINISTRATOR Test Account" [ref=e415]
+                  - cell "9/16/2026, 12:30:37 AM" [ref=e416]
+                - row [ref=e417]:
+                  - cell "Compliance report generated" [ref=e418]
+                  - cell "ComplianceReportExport" [ref=e419]
+                  - cell "[DEV SEED] ADMINISTRATOR Test Account" [ref=e420]
+                  - cell "9/16/2026, 12:30:37 AM" [ref=e421]
+                - row [ref=e422]:
+                  - cell "Login" [ref=e423]
+                  - cell "User" [ref=e424]
+                  - cell "[DEV SEED] EDITOR Test Account" [ref=e425]
+                  - cell "9/16/2026, 12:30:37 AM" [ref=e426]
+          - generic [ref=e427]:
+            - heading "Admin modules" [level=2] [ref=e428]
+            - list [ref=e429]:
+              - listitem [ref=e430]:
+                - link "CMS" [ref=e431] [cursor=pointer]:
+                  - /url: /admin/cms
+              - listitem [ref=e432]:
+                - link "College Profile" [ref=e433] [cursor=pointer]:
+                  - /url: /admin/college-profile
+              - listitem [ref=e434]:
+                - link "Departments" [ref=e435] [cursor=pointer]:
+                  - /url: /admin/departments
+              - listitem [ref=e436]:
+                - link "Notices" [ref=e437] [cursor=pointer]:
+                  - /url: /admin/notices
+              - listitem [ref=e438]:
+                - link "Events" [ref=e439] [cursor=pointer]:
+                  - /url: /admin/events
+              - listitem [ref=e440]:
+                - link "Seminars" [ref=e441] [cursor=pointer]:
+                  - /url: /admin/seminars
+              - listitem [ref=e442]:
+                - link "Workshops" [ref=e443] [cursor=pointer]:
+                  - /url: /admin/workshops
+              - listitem [ref=e444]:
+                - link "Activities" [ref=e445] [cursor=pointer]:
+                  - /url: /admin/activities
+              - listitem [ref=e446]:
+                - link "Clubs" [ref=e447] [cursor=pointer]:
+                  - /url: /admin/clubs
+              - listitem [ref=e448]:
+                - link "Faculty" [ref=e449] [cursor=pointer]:
+                  - /url: /admin/faculty
+              - listitem [ref=e450]:
+                - link "Staff" [ref=e451] [cursor=pointer]:
+                  - /url: /admin/staff
+              - listitem [ref=e452]:
+                - link "Programs" [ref=e453] [cursor=pointer]:
+                  - /url: /admin/programs
+              - listitem [ref=e454]:
+                - link "Infrastructure" [ref=e455] [cursor=pointer]:
+                  - /url: /admin/infrastructure
+              - listitem [ref=e456]:
+                - link "Admissions" [ref=e457] [cursor=pointer]:
+                  - /url: /admin/admissions
+              - listitem [ref=e458]:
+                - link "Fee Structures" [ref=e459] [cursor=pointer]:
+                  - /url: /admin/fee-structures
+              - listitem [ref=e460]:
+                - link "Enrollment Statistics" [ref=e461] [cursor=pointer]:
+                  - /url: /admin/enrollment-statistics
+              - listitem [ref=e462]:
+                - link "Timetables" [ref=e463] [cursor=pointer]:
+                  - /url: /admin/timetables
+              - listitem [ref=e464]:
+                - link "Academic Calendar" [ref=e465] [cursor=pointer]:
+                  - /url: /admin/academic-calendar
+              - listitem [ref=e466]:
+                - link "Exams" [ref=e467] [cursor=pointer]:
+                  - /url: /admin/exams
+              - listitem [ref=e468]:
+                - link "Results" [ref=e469] [cursor=pointer]:
+                  - /url: /admin/results
+              - listitem [ref=e470]:
+                - link "Documents" [ref=e471] [cursor=pointer]:
+                  - /url: /admin/documents
+              - listitem [ref=e472]:
+                - link "Gallery" [ref=e473] [cursor=pointer]:
+                  - /url: /admin/gallery
+              - listitem [ref=e474]:
+                - link "Scholarships" [ref=e475] [cursor=pointer]:
+                  - /url: /admin/scholarships
+              - listitem [ref=e476]:
+                - link "Student Support" [ref=e477] [cursor=pointer]:
+                  - /url: /admin/student-support
+              - listitem [ref=e478]:
+                - link "Policies" [ref=e479] [cursor=pointer]:
+                  - /url: /admin/policies
+              - listitem [ref=e480]:
+                - link "Regulations" [ref=e481] [cursor=pointer]:
+                  - /url: /admin/regulations
+              - listitem [ref=e482]:
+                - link "Affiliation" [ref=e483] [cursor=pointer]:
+                  - /url: /admin/affiliation
+              - listitem [ref=e484]:
+                - link "Contact" [ref=e485] [cursor=pointer]:
+                  - /url: /admin/contact
+              - listitem [ref=e486]:
+                - link "Location" [ref=e487] [cursor=pointer]:
+                  - /url: /admin/location
+              - listitem [ref=e488]:
+                - link "Grievances" [ref=e489] [cursor=pointer]:
+                  - /url: /admin/grievances
+              - listitem [ref=e490]:
+                - link "Compliance" [ref=e491] [cursor=pointer]:
+                  - /url: /admin/compliance
+              - listitem [ref=e492]:
+                - link "Review Period Settings" [ref=e493] [cursor=pointer]:
+                  - /url: /admin/content-review-settings
+              - listitem [ref=e494]:
+                - link "Audit logs" [ref=e495] [cursor=pointer]:
+                  - /url: /admin/audit-logs
+              - listitem [ref=e496]:
+                - link "Approval workflow" [ref=e497] [cursor=pointer]:
+                  - /url: /admin/approval-workflow

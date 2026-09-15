@@ -73,7 +73,7 @@ export function ResultForm(props: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="publishDate" className="text-sm font-medium text-foreground">
-            Publish date <span className="font-normal text-foreground/50">(optional)</span>
+            Publish date <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="publishDate"
@@ -86,7 +86,7 @@ export function ResultForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="externalLink" className="text-sm font-medium text-foreground">
-            External link <span className="font-normal text-foreground/50">(optional)</span>
+            External link <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="externalLink"
@@ -109,7 +109,7 @@ export function ResultForm(props: Props) {
         />
         Publicly visible once published
       </label>
-      <p className="-mt-2 text-xs text-foreground/50">
+      <p className="-mt-2 text-xs text-foreground/60">
         A result only appears on the public Results page once it is both PUBLISHED and marked
         publicly visible — two independent gates, so a published-but-restricted result never
         leaks (e.g. results shared only via the external link).

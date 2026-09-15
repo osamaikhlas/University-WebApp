@@ -71,20 +71,17 @@ export default async function ResultViewPage({
                 )}
               </dd>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="font-medium text-foreground/70">Publish date</dt>
-                <dd className="mt-1">{result.publishDate?.toLocaleDateString() ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Publicly visible</dt>
-                <dd className="mt-1">{result.isPublic ? "Yes" : "No"}</dd>
-              </div>
+            <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-2">
+              <dt className="font-medium text-foreground/70">Publish date</dt>
+              <dd className="mt-1">{result.publishDate?.toLocaleDateString() ?? "—"}</dd>
+              <dt className="font-medium text-foreground/70">Publicly visible</dt>
+              <dd className="mt-1">{result.isPublic ? "Yes" : "No"}</dd>
             </div>
           </dl>
         </Card>
 
         <WorkflowActions
+                    entityType="Result"
           entityId={result.id}
           status={result.status}
           canManage={canManage}

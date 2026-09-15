@@ -80,18 +80,42 @@ describe("WORKFLOW_TRANSITIONS", () => {
     }
   });
 
-  it("classifies submit_for_review and return_to_draft as manage actions, everything else as publish actions", () => {
+  it("classifies submit_for_review/return_to_draft/unarchive as manage actions, everything else as publish actions", () => {
     expect(MANAGE_PERMISSION_ACTIONS.has("submit_for_review")).toBe(true);
     expect(MANAGE_PERMISSION_ACTIONS.has("return_to_draft")).toBe(true);
+    expect(MANAGE_PERMISSION_ACTIONS.has("unarchive")).toBe(true);
     for (const action of [
       "start_review",
       "approve",
       "reject",
       "publish",
+      "unpublish",
       "request_update",
+      "archive",
     ] as const) {
       expect(MANAGE_PERMISSION_ACTIONS.has(action)).toBe(false);
     }
+  });
+
+  it("archive is legal from every non-archived status; unarchive only from ARCHIVED, back to DRAFT", () => {
+    expect(WORKFLOW_TRANSITIONS.archive).toMatchObject({
+      from: ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "APPROVED", "PUBLISHED", "UPDATE_REQUIRED"],
+      to: "ARCHIVED",
+      auditAction: "ARCHIVE",
+    });
+    expect(WORKFLOW_TRANSITIONS.unarchive).toMatchObject({
+      from: ["ARCHIVED"],
+      to: "DRAFT",
+      auditAction: "UNARCHIVE",
+    });
+  });
+
+  it("unpublish takes PUBLISHED content back to APPROVED (re-publishable without re-review)", () => {
+    expect(WORKFLOW_TRANSITIONS.unpublish).toMatchObject({
+      from: ["PUBLISHED"],
+      to: "APPROVED",
+      auditAction: "UNPUBLISH",
+    });
   });
 });
 
@@ -124,6 +148,9 @@ describe("applyWorkflowTransition", () => {
     { action: "publish", from: "APPROVED", to: "PUBLISHED" },
     { action: "request_update", from: "PUBLISHED", to: "UPDATE_REQUIRED" },
     { action: "return_to_draft", from: "UPDATE_REQUIRED", to: "DRAFT" },
+    { action: "unpublish", from: "PUBLISHED", to: "APPROVED" },
+    { action: "archive", from: "DRAFT", to: "ARCHIVED" },
+    { action: "unarchive", from: "ARCHIVED", to: "DRAFT" },
   ];
 
   it.each(CHAIN)(
@@ -286,23 +313,26 @@ describe("applyWorkflowTransition", () => {
 });
 
 describe("getAvailableActions", () => {
-  it("offers submit_for_review from DRAFT only when the caller can manage", () => {
+  it("offers submit_for_review from DRAFT only when the caller can manage (archive is also available to a publisher)", () => {
     expect(getAvailableActions("DRAFT", { canManage: true, canPublish: false })).toEqual([
       "submit_for_review",
     ]);
-    expect(getAvailableActions("DRAFT", { canManage: false, canPublish: true })).toEqual([]);
+    expect(getAvailableActions("DRAFT", { canManage: false, canPublish: true })).toEqual([
+      "archive",
+    ]);
   });
 
   it("offers start_review from SUBMITTED only when the caller can publish", () => {
     expect(getAvailableActions("SUBMITTED", { canManage: true, canPublish: false })).toEqual([]);
     expect(getAvailableActions("SUBMITTED", { canManage: false, canPublish: true })).toEqual([
       "start_review",
+      "archive",
     ]);
   });
 
   it("offers approve/reject from UNDER_REVIEW only when the caller can publish", () => {
     const withPublish = getAvailableActions("UNDER_REVIEW", { canManage: true, canPublish: true });
-    expect(withPublish.sort()).toEqual(["approve", "reject"].sort());
+    expect(withPublish.sort()).toEqual(["approve", "archive", "reject"].sort());
 
     expect(getAvailableActions("UNDER_REVIEW", { canManage: true, canPublish: false })).toEqual([]);
   });
@@ -311,26 +341,45 @@ describe("getAvailableActions", () => {
     expect(getAvailableActions("APPROVED", { canManage: true, canPublish: false })).toEqual([]);
     expect(getAvailableActions("APPROVED", { canManage: false, canPublish: true })).toEqual([
       "publish",
+      "archive",
     ]);
   });
 
-  it("offers request_update from PUBLISHED only when the caller can publish", () => {
+  it("offers unpublish/request_update/archive from PUBLISHED only when the caller can publish", () => {
     expect(getAvailableActions("PUBLISHED", { canManage: true, canPublish: false })).toEqual([]);
     expect(getAvailableActions("PUBLISHED", { canManage: false, canPublish: true })).toEqual([
+      "unpublish",
       "request_update",
+      "archive",
     ]);
   });
 
-  it("offers return_to_draft from UPDATE_REQUIRED only when the caller can manage", () => {
-    expect(getAvailableActions("UPDATE_REQUIRED", { canManage: false, canPublish: true })).toEqual(
-      [],
-    );
+  it("offers return_to_draft (manage) and archive (publish) from UPDATE_REQUIRED, gated separately", () => {
+    expect(getAvailableActions("UPDATE_REQUIRED", { canManage: false, canPublish: true })).toEqual([
+      "archive",
+    ]);
     expect(getAvailableActions("UPDATE_REQUIRED", { canManage: true, canPublish: false })).toEqual([
       "return_to_draft",
     ]);
   });
 
-  it("a manage-only caller can never review, approve, reject, publish, or flag a published record", () => {
+  it("offers archive from every non-archived status, gated by publish permission", () => {
+    for (const status of ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "APPROVED"] as const) {
+      expect(getAvailableActions(status, { canManage: true, canPublish: true })).toContain("archive");
+      expect(getAvailableActions(status, { canManage: true, canPublish: false })).not.toContain(
+        "archive",
+      );
+    }
+  });
+
+  it("offers unarchive from ARCHIVED only when the caller can manage", () => {
+    expect(getAvailableActions("ARCHIVED", { canManage: true, canPublish: false })).toEqual([
+      "unarchive",
+    ]);
+    expect(getAvailableActions("ARCHIVED", { canManage: false, canPublish: true })).toEqual([]);
+  });
+
+  it("a manage-only caller can never review, approve, reject, publish, unpublish, archive, or flag a published record", () => {
     for (const status of [
       "DRAFT",
       "SUBMITTED",
@@ -338,17 +387,20 @@ describe("getAvailableActions", () => {
       "APPROVED",
       "PUBLISHED",
       "UPDATE_REQUIRED",
+      "ARCHIVED",
     ] as const) {
       const actions = getAvailableActions(status, { canManage: true, canPublish: false });
       expect(actions).not.toContain("start_review");
       expect(actions).not.toContain("approve");
       expect(actions).not.toContain("reject");
       expect(actions).not.toContain("publish");
+      expect(actions).not.toContain("unpublish");
       expect(actions).not.toContain("request_update");
+      expect(actions).not.toContain("archive");
     }
   });
 
-  it("a publish-only caller can never submit for review or return update-required content to draft", () => {
+  it("a publish-only caller can never submit for review, return update-required content to draft, or unarchive", () => {
     for (const status of [
       "DRAFT",
       "SUBMITTED",
@@ -356,10 +408,12 @@ describe("getAvailableActions", () => {
       "APPROVED",
       "PUBLISHED",
       "UPDATE_REQUIRED",
+      "ARCHIVED",
     ] as const) {
       const actions = getAvailableActions(status, { canManage: false, canPublish: true });
       expect(actions).not.toContain("submit_for_review");
       expect(actions).not.toContain("return_to_draft");
+      expect(actions).not.toContain("unarchive");
     }
   });
 });
@@ -373,6 +427,7 @@ describe("isPubliclyVisible", () => {
       "UNDER_REVIEW",
       "APPROVED",
       "UPDATE_REQUIRED",
+      "ARCHIVED",
     ] as const) {
       expect(isPubliclyVisible(status)).toBe(false);
     }

@@ -1,0 +1,371 @@
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - link "[PLACEHOLDER] Affiliated College Portal" [ref=e5] [cursor=pointer]:
+        - /url: /
+      - navigation "Primary" [ref=e6]:
+        - list [ref=e7]:
+          - listitem [ref=e8]:
+            - link "About" [ref=e9] [cursor=pointer]:
+              - /url: /about
+          - listitem [ref=e10]:
+            - link "Academics" [ref=e11] [cursor=pointer]:
+              - /url: /academics
+          - listitem [ref=e12]:
+            - link "Admissions" [ref=e13] [cursor=pointer]:
+              - /url: /admissions
+          - listitem [ref=e14]:
+            - link "Faculty" [ref=e15] [cursor=pointer]:
+              - /url: /faculty
+          - listitem [ref=e16]:
+            - link "Staff" [ref=e17] [cursor=pointer]:
+              - /url: /staff
+          - listitem [ref=e18]:
+            - link "Campus" [ref=e19] [cursor=pointer]:
+              - /url: /campus
+          - listitem [ref=e20]:
+            - link "Notices" [ref=e21] [cursor=pointer]:
+              - /url: /notices
+          - listitem [ref=e22]:
+            - link "Events" [ref=e23] [cursor=pointer]:
+              - /url: /events
+          - listitem [ref=e24]:
+            - link "Gallery" [ref=e25] [cursor=pointer]:
+              - /url: /gallery
+          - listitem [ref=e26]:
+            - link "Examinations" [ref=e27] [cursor=pointer]:
+              - /url: /examinations
+          - listitem [ref=e28]:
+            - link "Results" [ref=e29] [cursor=pointer]:
+              - /url: /results
+          - listitem [ref=e30]:
+            - link "Scholarships" [ref=e31] [cursor=pointer]:
+              - /url: /scholarships
+          - listitem [ref=e32]:
+            - link "Student Support" [ref=e33] [cursor=pointer]:
+              - /url: /student-support
+          - listitem [ref=e34]:
+            - link "Rules & Regulations" [ref=e35] [cursor=pointer]:
+              - /url: /rules
+          - listitem [ref=e36]:
+            - link "Affiliation" [ref=e37] [cursor=pointer]:
+              - /url: /affiliation
+          - listitem [ref=e38]:
+            - link "Grievance" [ref=e39] [cursor=pointer]:
+              - /url: /grievance
+          - listitem [ref=e40]:
+            - link "Contact" [ref=e41] [cursor=pointer]:
+              - /url: /contact
+          - listitem [ref=e42]:
+            - link "Downloads" [ref=e43] [cursor=pointer]:
+              - /url: /downloads
+      - link "Search" [ref=e45] [cursor=pointer]:
+        - /url: /search
+  - main [ref=e46]:
+    - generic [ref=e49]:
+      - generic [ref=e50]: Development placeholder
+      - heading "[PLACEHOLDER] Affiliated College Portal" [level=1] [ref=e51]
+      - paragraph [ref=e52]: This site is being built to satisfy Shah Abdul Latif University, Khairpur Circular No. I.C/SALU/KHP/-662 (04.09.2026), which requires every affiliated college to publish an official website. No real college content has been supplied yet — every section below is a placeholder until official records are provided.
+      - generic [ref=e53]:
+        - link "Admissions" [ref=e54] [cursor=pointer]:
+          - /url: /admissions
+        - link "Notices" [ref=e55] [cursor=pointer]:
+          - /url: /notices
+        - link "Contact us" [ref=e56] [cursor=pointer]:
+          - /url: /contact
+    - generic [ref=e58]:
+      - region [ref=e59]:
+        - heading "Important announcement" [level=2] [ref=e60]
+        - alert [ref=e61]:
+          - paragraph [ref=e62]: "[PLACEHOLDER] Sample Notice"
+          - generic [ref=e63]:
+            - paragraph [ref=e64]: "[PLACEHOLDER] Sample notice body text."
+            - paragraph [ref=e65]: Published 9/13/2026 · demo content
+      - region [ref=e66]:
+        - heading "Quick links" [level=2] [ref=e67]
+        - list [ref=e68]:
+          - listitem [ref=e69]:
+            - link "Admissions" [ref=e71] [cursor=pointer]:
+              - /url: /admissions
+          - listitem [ref=e72]:
+            - link "Academic Programs" [ref=e74] [cursor=pointer]:
+              - /url: /academics
+          - listitem [ref=e75]:
+            - link "Notices" [ref=e77] [cursor=pointer]:
+              - /url: /notices
+          - listitem [ref=e78]:
+            - link "Results" [ref=e80] [cursor=pointer]:
+              - /url: /results
+          - listitem [ref=e81]:
+            - link "Scholarships" [ref=e83] [cursor=pointer]:
+              - /url: /scholarships
+          - listitem [ref=e84]:
+            - link "Grievance" [ref=e86] [cursor=pointer]:
+              - /url: /grievance
+          - listitem [ref=e87]:
+            - link "Downloads" [ref=e89] [cursor=pointer]:
+              - /url: /downloads
+          - listitem [ref=e90]:
+            - link "Contact" [ref=e92] [cursor=pointer]:
+              - /url: /contact
+      - generic [ref=e93]:
+        - region [ref=e94]:
+          - generic [ref=e95]:
+            - heading "Latest notices" [level=2] [ref=e96]
+            - link "View all" [ref=e97] [cursor=pointer]:
+              - /url: /notices
+          - alert [ref=e98]:
+            - paragraph [ref=e99]: Demo content
+            - generic [ref=e100]: This section is showing clearly-marked placeholder data for development purposes, not verified official information from the college.
+          - list [ref=e101]:
+            - listitem [ref=e102]:
+              - generic [ref=e103]:
+                - paragraph [ref=e104]: "[PLACEHOLDER] Sample Notice"
+                - paragraph [ref=e105]: 9/13/2026
+            - listitem [ref=e106]:
+              - generic [ref=e107]:
+                - paragraph [ref=e108]: "[PLACEHOLDER] Expired Sample Notice"
+                - paragraph [ref=e109]: 1/1/2026
+            - listitem [ref=e110]:
+              - paragraph [ref=e112]: E2E Walkthrough Notice 1789453351038
+            - listitem [ref=e113]:
+              - paragraph [ref=e115]: E2E Review Notice 1789453337101
+            - listitem [ref=e116]:
+              - paragraph [ref=e118]: E2E Walkthrough Notice 1789453198536
+        - region [ref=e119]:
+          - generic [ref=e120]:
+            - heading "Upcoming events" [level=2] [ref=e121]
+            - link "View all" [ref=e122] [cursor=pointer]:
+              - /url: /events
+          - alert [ref=e123]:
+            - paragraph [ref=e124]: Demo content
+            - generic [ref=e125]: This section is showing clearly-marked placeholder data for development purposes, not verified official information from the college.
+          - list [ref=e126]:
+            - listitem [ref=e127]:
+              - generic [ref=e128]:
+                - paragraph [ref=e129]: "[PLACEHOLDER] Sample Event"
+                - paragraph [ref=e130]: 10/14/2026
+      - region [ref=e131]:
+        - generic [ref=e132]:
+          - heading "About the college" [level=2] [ref=e133]
+          - link "View all" [ref=e134] [cursor=pointer]:
+            - /url: /about
+        - generic [ref=e135]:
+          - alert [ref=e137]:
+            - paragraph [ref=e138]: Demo content
+            - generic [ref=e139]: This section is showing clearly-marked placeholder data for development purposes, not verified official information from the college.
+          - paragraph [ref=e140]: "[PLACEHOLDER] Sample overview text — replace with real college profile copy."
+          - paragraph [ref=e141]: "Mission: [PLACEHOLDER] Sample mission statement."
+      - generic [ref=e142]:
+        - region [ref=e143]:
+          - generic [ref=e144]:
+            - heading "Academic programs" [level=2] [ref=e145]
+            - link "View all" [ref=e146] [cursor=pointer]:
+              - /url: /academics
+          - alert [ref=e147]:
+            - paragraph [ref=e148]: Demo content
+            - generic [ref=e149]: This section is showing clearly-marked placeholder data for development purposes, not verified official information from the college.
+          - list [ref=e150]:
+            - listitem [ref=e151]:
+              - generic [ref=e152]:
+                - paragraph [ref=e153]: "[PLACEHOLDER] BS Sample Studies"
+                - paragraph [ref=e154]: "[PLACEHOLDER] Department of Sample Studies · UNDERGRADUATE · 4 yrs"
+        - region [ref=e155]:
+          - generic [ref=e156]:
+            - heading "Departments" [level=2] [ref=e157]
+            - link "View all" [ref=e158] [cursor=pointer]:
+              - /url: /academics
+          - alert [ref=e159]:
+            - paragraph [ref=e160]: Demo content
+            - generic [ref=e161]: This section is showing clearly-marked placeholder data for development purposes, not verified official information from the college.
+          - list [ref=e162]:
+            - listitem [ref=e163]:
+              - generic [ref=e164]:
+                - paragraph [ref=e165]: "[PLACEHOLDER] Department of Sample Studies"
+                - paragraph [ref=e166]: "[PLACEHOLDER] Sample department for local development only."
+            - listitem [ref=e167]:
+              - paragraph [ref=e169]: E2E Audit Department 1789410777562
+            - listitem [ref=e170]:
+              - paragraph [ref=e172]: E2E Audit Department 1789410921575
+            - listitem [ref=e173]:
+              - paragraph [ref=e175]: E2E Audit Department 1789410940291
+            - listitem [ref=e176]:
+              - paragraph [ref=e178]: E2E Audit Department 1789412797306
+            - listitem [ref=e179]:
+              - paragraph [ref=e181]: E2E Audit Department 1789413001033
+      - generic [ref=e182]:
+        - region [ref=e183]:
+          - generic [ref=e184]:
+            - heading "Facilities" [level=2] [ref=e185]
+            - link "View all" [ref=e186] [cursor=pointer]:
+              - /url: /campus
+          - alert [ref=e187]:
+            - paragraph [ref=e188]: Demo content
+            - generic [ref=e189]: This section is showing clearly-marked placeholder data for development purposes, not verified official information from the college.
+          - list [ref=e190]:
+            - listitem [ref=e191]:
+              - generic [ref=e192]:
+                - paragraph [ref=e193]: "[PLACEHOLDER] Sample Library"
+                - paragraph [ref=e194]: LIBRARY
+        - region [ref=e195]:
+          - generic [ref=e196]:
+            - heading "Latest activities" [level=2] [ref=e197]
+            - link "View all" [ref=e198] [cursor=pointer]:
+              - /url: /events
+          - alert [ref=e199]:
+            - paragraph [ref=e200]: Demo content
+            - generic [ref=e201]: This section is showing clearly-marked placeholder data for development purposes, not verified official information from the college.
+          - list [ref=e202]:
+            - listitem [ref=e203]:
+              - generic [ref=e204]:
+                - paragraph [ref=e205]: "[PLACEHOLDER] Sample Co-curricular Activity"
+                - paragraph [ref=e206]: co-curricular
+      - region [ref=e207]:
+        - heading "Scholarships & student support" [level=2] [ref=e209]
+        - alert [ref=e210]:
+          - paragraph [ref=e211]: Demo content
+          - generic [ref=e212]: This section is showing clearly-marked placeholder data for development purposes, not verified official information from the college.
+        - generic [ref=e213]:
+          - generic [ref=e214]:
+            - generic [ref=e215]:
+              - heading "Scholarships" [level=3] [ref=e216]
+              - link "View all" [ref=e217] [cursor=pointer]:
+                - /url: /scholarships
+            - list [ref=e218]:
+              - listitem [ref=e219]:
+                - paragraph [ref=e221]: "[PLACEHOLDER] Sample Scholarship"
+          - generic [ref=e222]:
+            - generic [ref=e223]:
+              - heading "Student support" [level=3] [ref=e224]
+              - link "View all" [ref=e225] [cursor=pointer]:
+                - /url: /student-support
+            - list [ref=e226]:
+              - listitem [ref=e227]:
+                - paragraph [ref=e229]: "[PLACEHOLDER] Sample Student Support Service"
+      - region [ref=e230]:
+        - generic [ref=e231]:
+          - heading "Important documents" [level=2] [ref=e232]
+          - link "View all" [ref=e233] [cursor=pointer]:
+            - /url: /downloads
+        - alert [ref=e234]:
+          - paragraph [ref=e235]: Demo content
+          - generic [ref=e236]: This section is showing clearly-marked placeholder data for development purposes, not verified official information from the college.
+        - list [ref=e238]:
+          - listitem [ref=e239]:
+            - link "E2E Dashboard Expiring Doc 1789453345805" [ref=e240] [cursor=pointer]:
+              - /url: /api/files/documents/cmu2abmgi00aerxuvknhd9h1c
+          - listitem [ref=e241]:
+            - link "E2E Dashboard Expiring Doc 1789451390751" [ref=e242] [cursor=pointer]:
+              - /url: /api/files/documents/cmu295pzd00aio6uvod1k41yi
+          - listitem [ref=e243]:
+            - link "E2E Dashboard Expiring Doc 1789450017098" [ref=e244] [cursor=pointer]:
+              - /url: /api/files/documents/cmu28c7hv0002u3uvehaycm6a
+          - listitem [ref=e245]:
+            - link "E2E Dashboard Expiring Doc 1789449973257" [ref=e246] [cursor=pointer]:
+              - /url: /api/files/documents/cmu28ba2400afzbuvxuvjro3s
+          - listitem [ref=e247]:
+            - link "[PLACEHOLDER] Sample Attachment" [ref=e248] [cursor=pointer]:
+              - /url: /api/files/documents/dev-seed-document
+            - text: attachment
+      - region [ref=e249]:
+        - generic [ref=e250]:
+          - generic [ref=e251]:
+            - heading "Have a concern?" [level=2] [ref=e252]
+            - paragraph [ref=e253]: Submit a grievance confidentially — it is never published or shown to anyone other than authorized staff reviewing it.
+          - link "Submit a grievance" [ref=e254] [cursor=pointer]:
+            - /url: /grievance
+      - generic [ref=e255]:
+        - region [ref=e256]:
+          - generic [ref=e257]:
+            - heading "Location" [level=2] [ref=e258]
+            - link "View all" [ref=e259] [cursor=pointer]:
+              - /url: /campus
+          - generic [ref=e260]:
+            - alert [ref=e262]:
+              - paragraph [ref=e263]: Demo content
+              - generic [ref=e264]: This section is showing clearly-marked placeholder data for development purposes, not verified official information from the college.
+            - paragraph [ref=e265]: E2E Test Address 1789453315333, Test City
+        - region [ref=e266]:
+          - generic [ref=e267]:
+            - heading "Contact" [level=2] [ref=e268]
+            - link "View all" [ref=e269] [cursor=pointer]:
+              - /url: /contact
+          - alert [ref=e270]:
+            - paragraph [ref=e271]: Demo content
+            - generic [ref=e272]: This section is showing clearly-marked placeholder data for development purposes, not verified official information from the college.
+          - list [ref=e274]:
+            - listitem [ref=e275]:
+              - generic [ref=e276]: "[PLACEHOLDER] General Enquiries:"
+              - text: info@example.invalid
+  - contentinfo [ref=e277]:
+    - generic [ref=e278]:
+      - generic [ref=e279]:
+        - paragraph [ref=e280]: "[PLACEHOLDER] Affiliated College Portal — required per Shah Abdul Latif University, Khairpur, Circular No. I.C/SALU/KHP/-662 (04.09.2026)."
+        - navigation "Site map" [ref=e281]:
+          - list [ref=e282]:
+            - listitem [ref=e283]:
+              - link "Home" [ref=e284] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e285]:
+              - link "About" [ref=e286] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=e287]:
+              - link "Academics" [ref=e288] [cursor=pointer]:
+                - /url: /academics
+            - listitem [ref=e289]:
+              - link "Admissions" [ref=e290] [cursor=pointer]:
+                - /url: /admissions
+            - listitem [ref=e291]:
+              - link "Faculty" [ref=e292] [cursor=pointer]:
+                - /url: /faculty
+            - listitem [ref=e293]:
+              - link "Staff" [ref=e294] [cursor=pointer]:
+                - /url: /staff
+            - listitem [ref=e295]:
+              - link "Campus" [ref=e296] [cursor=pointer]:
+                - /url: /campus
+            - listitem [ref=e297]:
+              - link "Notices" [ref=e298] [cursor=pointer]:
+                - /url: /notices
+            - listitem [ref=e299]:
+              - link "Events" [ref=e300] [cursor=pointer]:
+                - /url: /events
+            - listitem [ref=e301]:
+              - link "Gallery" [ref=e302] [cursor=pointer]:
+                - /url: /gallery
+            - listitem [ref=e303]:
+              - link "Examinations" [ref=e304] [cursor=pointer]:
+                - /url: /examinations
+            - listitem [ref=e305]:
+              - link "Results" [ref=e306] [cursor=pointer]:
+                - /url: /results
+            - listitem [ref=e307]:
+              - link "Scholarships" [ref=e308] [cursor=pointer]:
+                - /url: /scholarships
+            - listitem [ref=e309]:
+              - link "Student Support" [ref=e310] [cursor=pointer]:
+                - /url: /student-support
+            - listitem [ref=e311]:
+              - link "Rules & Regulations" [ref=e312] [cursor=pointer]:
+                - /url: /rules
+            - listitem [ref=e313]:
+              - link "Affiliation" [ref=e314] [cursor=pointer]:
+                - /url: /affiliation
+            - listitem [ref=e315]:
+              - link "Grievance" [ref=e316] [cursor=pointer]:
+                - /url: /grievance
+            - listitem [ref=e317]:
+              - link "Contact" [ref=e318] [cursor=pointer]:
+                - /url: /contact
+            - listitem [ref=e319]:
+              - link "Downloads" [ref=e320] [cursor=pointer]:
+                - /url: /downloads
+            - listitem [ref=e321]:
+              - link "Search" [ref=e322] [cursor=pointer]:
+                - /url: /search
+      - generic [ref=e323]:
+        - heading "Contact" [level=2] [ref=e324]
+        - list [ref=e325]:
+          - listitem [ref=e326]: "[PLACEHOLDER] General Enquiries: info@example.invalid(demo)"

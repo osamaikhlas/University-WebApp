@@ -37,9 +37,7 @@ export default async function DownloadsPage() {
               header: "Document",
               render: (row) => (
                 <a
-                  href={row.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href={`/api/files/documents/${row.id}`}
                   className="font-medium text-brand hover:underline"
                 >
                   {row.title}

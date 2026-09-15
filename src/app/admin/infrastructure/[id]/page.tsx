@@ -67,6 +67,7 @@ export default async function InfrastructureViewPage({
         </Card>
 
         <WorkflowActions
+                    entityType="Infrastructure"
           entityId={infrastructure.id}
           status={infrastructure.status}
           canManage={canManage}

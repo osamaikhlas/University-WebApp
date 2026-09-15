@@ -68,6 +68,7 @@ export default async function RegulationViewPage({
         </Card>
 
         <WorkflowActions
+                    entityType="Regulation"
           entityId={regulation.id}
           status={regulation.status}
           canManage={canManage}

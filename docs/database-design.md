@@ -193,12 +193,21 @@ Rules encoded around this table (matching `docs/requirements.md` §4 and rule 7)
 - A college's overall launch-readiness = `COUNT(ComplianceItem WHERE status='verified') = COUNT(*
   ComplianceRequirement)` for that college — i.e. all 20 (+ governance) items verified.
 
-**ComplianceReportExport** (generated artifact, not necessarily a persisted table — may instead be a
-generated document + a log entry)
-`id, collegeId, generatedAt, generatedBy, snapshotOfComplianceItems (JSON), websiteUrl, submittedAt
-(nullable)`
-— represents the report + live URL submitted to the Office of the Inspector of Colleges. Recording
-`submittedAt` closes the loop on the circular's explicit reporting requirement.
+**ComplianceReportExport** (implemented as a real persisted table — `prisma/schema.prisma`, migration
+`20260915191533_add_compliance_report_export`; not just a generated document + log entry as originally
+sketched here)
+`id, collegeId, generatedAt, generatedById (→ User), snapshot (JSON — a frozen array of
+{itemNumber, title, status, completenessPercent, verifiedAt, verifiedByName} per requirement at
+generation time), websiteUrl, submittedAt (nullable), submittedById (→ User, nullable)`
+— represents the report + live URL submitted to the Office of the Inspector of Colleges. Generating a
+report (`src/app/admin/compliance/report-actions.ts` → `generateComplianceReport`, gated on
+`compliance:verify`) never requires every requirement to already be `VERIFIED` — a college can report
+partial progress toward the circular's 1-month launch deadline. Recording `submittedAt`/`submittedById`
+(`recordComplianceReportSubmission`, same permission, one-way — a report already marked submitted cannot
+be re-submitted) closes the loop on the circular's explicit reporting requirement. `snapshot` is
+deliberately frozen at generation time rather than computed live on read, since the point of the artifact
+is a durable record of what was actually attested to on a given date, not a live view that would silently
+change after later status updates. See `/admin/compliance/reports`.
 
 ## 10. Relationship overview (textual ER summary)
 
@@ -225,9 +234,14 @@ Any content table ---1 ApprovalRequest (per pending change)
 Any content table ---* AuditLog (per state transition)
 Any content table ---1 ContentReviewSchedule (freshness tracking)
 
-ComplianceRequirement 1---* ComplianceItem *---1 College
-ComplianceItem *---* (ContentItem | Faculty | Program | ... via evidenceRefs)
-ComplianceItem 1---* ComplianceReportExport (via snapshot, not a hard FK)
+College 1---* ComplianceRequirement (one row per college per circular item/governance code —
+  ComplianceRequirement itself plays the per-college "ComplianceItem" role this summary originally
+  sketched as a separate table; see §9)
+ComplianceRequirement 1---* ComplianceEvidence *---* (ContentItem | Faculty | Program | ... via
+  entityType/entityId)
+ComplianceRequirement 1---* ComplianceVerification (append-only verify/needs-update history)
+College 1---* ComplianceReportExport (snapshot is a frozen copy of ComplianceRequirement state, not a
+  live FK to it)
 
 User *---* Role (via UserRole, scoped per College)
 Role *---* Permission (via RolePermission)

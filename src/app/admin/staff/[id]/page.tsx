@@ -64,6 +64,7 @@ export default async function StaffViewPage({
         </Card>
 
         <WorkflowActions
+                    entityType="Staff"
           entityId={staff.id}
           status={staff.status}
           canManage={canManage}

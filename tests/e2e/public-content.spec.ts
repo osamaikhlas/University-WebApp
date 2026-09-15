@@ -83,6 +83,10 @@ test.describe("grievance submission", () => {
     page,
   }) => {
     await page.goto("/grievance");
+    await page.getByLabel("Name").fill("Playwright Test Submitter");
+    await page.getByLabel("Email").fill(`playwright-${Date.now()}@example.invalid`);
+    await page.getByLabel("Category").selectOption("Other");
+    await page.getByLabel("Subject").fill("Playwright public-content smoke test");
     await page.getByLabel(/description/i).fill("This is a test grievance submitted by Playwright.");
     await page.getByRole("button", { name: /submit grievance/i }).click();
 

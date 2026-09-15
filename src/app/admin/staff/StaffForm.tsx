@@ -50,7 +50,7 @@ export function StaffForm(props: Props) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="department" className="text-sm font-medium text-foreground">
-          Department / Office <span className="font-normal text-foreground/50">(optional)</span>
+          Department / Office <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <input
           id="department"

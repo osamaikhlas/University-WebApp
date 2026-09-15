@@ -64,6 +64,7 @@ export default async function ClubViewPage({
         </Card>
 
         <WorkflowActions
+                    entityType="Club"
           entityId={club.id}
           status={club.status}
           canManage={canManage}

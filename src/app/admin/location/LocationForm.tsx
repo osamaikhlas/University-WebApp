@@ -37,7 +37,7 @@ export function LocationForm(props: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="latitude" className="text-sm font-medium text-foreground">
-            Latitude <span className="font-normal text-foreground/50">(optional)</span>
+            Latitude <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="latitude"
@@ -53,7 +53,7 @@ export function LocationForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="longitude" className="text-sm font-medium text-foreground">
-            Longitude <span className="font-normal text-foreground/50">(optional)</span>
+            Longitude <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="longitude"
@@ -70,7 +70,7 @@ export function LocationForm(props: Props) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="mapEmbedUrl" className="text-sm font-medium text-foreground">
-          Map embed URL <span className="font-normal text-foreground/50">(optional)</span>
+          Map embed URL <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <input
           id="mapEmbedUrl"

@@ -37,7 +37,7 @@ export function RegulationForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="category" className="text-sm font-medium text-foreground">
-            Category <span className="font-normal text-foreground/50">(optional)</span>
+            Category <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="category"
@@ -52,7 +52,7 @@ export function RegulationForm(props: Props) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="regulatingBody" className="text-sm font-medium text-foreground">
-          Regulating body <span className="font-normal text-foreground/50">(optional)</span>
+          Regulating body <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <input
           id="regulatingBody"
@@ -66,7 +66,7 @@ export function RegulationForm(props: Props) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="body" className="text-sm font-medium text-foreground">
-          Body <span className="font-normal text-foreground/50">(optional)</span>
+          Body <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <textarea
           id="body"

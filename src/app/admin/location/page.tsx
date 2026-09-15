@@ -67,15 +67,11 @@ export default async function LocationPage({
                   <dt className="font-medium text-foreground/70">Address</dt>
                   <dd className="mt-1 whitespace-pre-wrap">{location.address}</dd>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <dt className="font-medium text-foreground/70">Latitude</dt>
-                    <dd className="mt-1">{location.latitude ?? "—"}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-medium text-foreground/70">Longitude</dt>
-                    <dd className="mt-1">{location.longitude ?? "—"}</dd>
-                  </div>
+                <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-2">
+                  <dt className="font-medium text-foreground/70">Latitude</dt>
+                  <dd className="mt-1">{location.latitude ?? "—"}</dd>
+                  <dt className="font-medium text-foreground/70">Longitude</dt>
+                  <dd className="mt-1">{location.longitude ?? "—"}</dd>
                 </div>
                 <div>
                   <dt className="font-medium text-foreground/70">Map embed URL</dt>
@@ -85,6 +81,7 @@ export default async function LocationPage({
             </Card>
 
             <WorkflowActions
+                            entityType="Location"
               entityId={location.id}
               status={location.status}
               canManage={canManage}

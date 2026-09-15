@@ -22,6 +22,7 @@ const VALID_STATUSES: ContentStatusValue[] = [
   "APPROVED",
   "PUBLISHED",
   "UPDATE_REQUIRED",
+  "ARCHIVED",
 ];
 
 export default async function DocumentsListPage({

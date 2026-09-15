@@ -59,30 +59,23 @@ export default async function AffiliationViewPage({
               <dt className="font-medium text-foreground/70">Program</dt>
               <dd className="mt-1">{affiliation.program?.name ?? "College-wide"}</dd>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="font-medium text-foreground/70">Affiliation number</dt>
-                <dd className="mt-1">{affiliation.affiliationNumber ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Regulatory body</dt>
-                <dd className="mt-1">{affiliation.regulatoryBody ?? "—"}</dd>
-              </div>
+            <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-2">
+              <dt className="font-medium text-foreground/70">Affiliation number</dt>
+              <dd className="mt-1">{affiliation.affiliationNumber ?? "—"}</dd>
+              <dt className="font-medium text-foreground/70">Regulatory body</dt>
+              <dd className="mt-1">{affiliation.regulatoryBody ?? "—"}</dd>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="font-medium text-foreground/70">Valid from</dt>
-                <dd className="mt-1">{affiliation.validFrom?.toLocaleDateString() ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Valid to</dt>
-                <dd className="mt-1">{affiliation.validTo?.toLocaleDateString() ?? "—"}</dd>
-              </div>
+            <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-2">
+              <dt className="font-medium text-foreground/70">Valid from</dt>
+              <dd className="mt-1">{affiliation.validFrom?.toLocaleDateString() ?? "—"}</dd>
+              <dt className="font-medium text-foreground/70">Valid to</dt>
+              <dd className="mt-1">{affiliation.validTo?.toLocaleDateString() ?? "—"}</dd>
             </div>
           </dl>
         </Card>
 
         <WorkflowActions
+                    entityType="Affiliation"
           entityId={affiliation.id}
           status={affiliation.status}
           canManage={canManage}

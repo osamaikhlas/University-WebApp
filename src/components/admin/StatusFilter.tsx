@@ -10,6 +10,7 @@ const FILTERS: { value: ContentStatusValue | "ALL"; label: string }[] = [
   { value: "APPROVED", label: "Approved" },
   { value: "PUBLISHED", label: "Published" },
   { value: "UPDATE_REQUIRED", label: "Update required" },
+  { value: "ARCHIVED", label: "Archived" },
 ];
 
 /** Status-filter tabs for a module's list page, driven by a `?status=` query param. */

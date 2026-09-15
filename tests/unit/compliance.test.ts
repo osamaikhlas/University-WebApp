@@ -32,6 +32,7 @@ vi.mock("@/lib/prisma", () => ({
     complianceEvidence: { findMany: vi.fn() },
     complianceRequirement: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     complianceVerification: { create: vi.fn() },
+    complianceReportExport: { findMany: vi.fn() },
     auditLog: { create: vi.fn() },
   },
 }));
@@ -46,6 +47,8 @@ import {
   COMPLIANCE_RULES,
   getComplianceOverview,
   getComplianceRequirementDetail,
+  buildComplianceReportSnapshot,
+  getComplianceReportExports,
 } from "@/lib/compliance";
 
 const COLLEGE_ID = "college-1";
@@ -188,7 +191,13 @@ describe("item 4: Faculty details", () => {
 
   it("faculty existing with missing qualifications/contact info is not treated as compliant", async () => {
     vi.mocked(prisma.faculty.findMany).mockResolvedValue([
-      { designation: "Lecturer", qualifications: null, subjectsTaught: [], email: null, phone: null },
+      {
+        designation: "Lecturer",
+        qualifications: null,
+        subjectsTaught: [],
+        email: null,
+        phone: null,
+      },
     ] as never);
     vi.mocked(prisma.department.count).mockResolvedValueOnce(1).mockResolvedValueOnce(1);
     const result = await check(ctx);
@@ -224,7 +233,9 @@ describe("item 4: Faculty details", () => {
     ] as never);
     vi.mocked(prisma.department.count).mockResolvedValueOnce(3).mockResolvedValueOnce(1);
     const result = await check(ctx);
-    expect(result.checks.find((c) => c.label.includes("Every published department"))?.met).toBe(false);
+    expect(result.checks.find((c) => c.label.includes("Every published department"))?.met).toBe(
+      false,
+    );
     expect(result.percent).toBeLessThan(100);
   });
 });
@@ -392,7 +403,9 @@ describe("item 10: Examination and results info", () => {
   });
 
   it("an examination without a scheduled date is not fully compliant even if results exist", async () => {
-    vi.mocked(prisma.examination.findMany).mockResolvedValue([{ scheduleStartDate: null }] as never);
+    vi.mocked(prisma.examination.findMany).mockResolvedValue([
+      { scheduleStartDate: null },
+    ] as never);
     vi.mocked(prisma.result.findMany).mockResolvedValue([{ publishDate: new Date() }] as never);
     const result = await check(ctx);
     expect(result.checks.find((c) => c.label.includes("scheduled start date"))?.met).toBe(false);
@@ -404,7 +417,9 @@ describe("item 10: Examination and results info", () => {
       { scheduleStartDate: new Date() },
     ] as never);
     vi.mocked(prisma.result.findMany).mockResolvedValue([{ publishDate: new Date() }] as never);
-    vi.mocked(prisma.complianceEvidence.findMany).mockResolvedValue([{ entityId: "doc-1" }] as never);
+    vi.mocked(prisma.complianceEvidence.findMany).mockResolvedValue([
+      { entityId: "doc-1" },
+    ] as never);
     vi.mocked(prisma.document.count).mockResolvedValue(1);
     expect((await check(ctx)).percent).toBe(100);
   });
@@ -484,7 +499,9 @@ describe("item 13: Regulatory/affiliation status", () => {
     vi.mocked(prisma.affiliation.findMany).mockResolvedValue([
       { affiliationNumber: "AFF-001", regulatoryBody: "HEC", validFrom: new Date() },
     ] as never);
-    vi.mocked(prisma.complianceEvidence.findMany).mockResolvedValue([{ entityId: "doc-1" }] as never);
+    vi.mocked(prisma.complianceEvidence.findMany).mockResolvedValue([
+      { entityId: "doc-1" },
+    ] as never);
     vi.mocked(prisma.document.count).mockResolvedValue(1);
     expect((await check(ctx)).percent).toBe(100);
   });
@@ -555,7 +572,9 @@ describe("item 16: Photo gallery", () => {
 
   it("is 100% when the album qualifies and every photo has a caption", async () => {
     vi.mocked(prisma.galleryAlbum.count).mockResolvedValue(1);
-    vi.mocked(prisma.galleryItem.findMany).mockResolvedValue([{ caption: "Graduation day" }] as never);
+    vi.mocked(prisma.galleryItem.findMany).mockResolvedValue([
+      { caption: "Graduation day" },
+    ] as never);
     expect((await check(ctx)).percent).toBe(100);
   });
 });
@@ -571,14 +590,18 @@ describe("item 17: Scholarships and student support", () => {
 
   it("a scholarship missing eligibility criteria is not fully compliant", async () => {
     vi.mocked(prisma.scholarship.findMany).mockResolvedValue([{ eligibility: null }] as never);
-    vi.mocked(prisma.studentSupport.findMany).mockResolvedValue([{ contactInfo: "support@example.invalid" }] as never);
+    vi.mocked(prisma.studentSupport.findMany).mockResolvedValue([
+      { contactInfo: "support@example.invalid" },
+    ] as never);
     const result = await check(ctx);
     expect(result.checks.find((c) => c.label.includes("eligibility"))?.met).toBe(false);
     expect(result.percent).toBeLessThan(100);
   });
 
   it("is 100% when scholarships and support services both carry their fields", async () => {
-    vi.mocked(prisma.scholarship.findMany).mockResolvedValue([{ eligibility: "Merit-based" }] as never);
+    vi.mocked(prisma.scholarship.findMany).mockResolvedValue([
+      { eligibility: "Merit-based" },
+    ] as never);
     vi.mocked(prisma.studentSupport.findMany).mockResolvedValue([
       { contactInfo: "support@example.invalid" },
     ] as never);
@@ -610,7 +633,9 @@ describe("item 18: Rules, regulations, policies", () => {
     vi.mocked(prisma.regulation.findMany).mockResolvedValue([
       { body: "Regulation text", regulatingBody: "HEC" },
     ] as never);
-    vi.mocked(prisma.complianceEvidence.findMany).mockResolvedValue([{ entityId: "doc-1" }] as never);
+    vi.mocked(prisma.complianceEvidence.findMany).mockResolvedValue([
+      { entityId: "doc-1" },
+    ] as never);
     vi.mocked(prisma.document.count).mockResolvedValue(1);
     expect((await check(ctx)).percent).toBe(100);
   });
@@ -813,5 +838,100 @@ describe("getComplianceRequirementDetail", () => {
     ]);
     // NOT_APPLICABLE is a human-gated status — automatic sync must not touch it.
     expect(prisma.complianceRequirement.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("buildComplianceReportSnapshot", () => {
+  it("freezes each requirement's status/completeness/last-verification, not just its id", async () => {
+    vi.mocked(getPrimaryCollege).mockResolvedValue({ id: COLLEGE_ID } as never);
+    vi.mocked(prisma.complianceRequirement.findMany).mockResolvedValue([
+      {
+        id: "req-20",
+        itemNumber: 20,
+        title: "Other required information",
+        description: "desc",
+        circularReference: "ref",
+        status: "VERIFIED",
+        ownerId: null,
+        updatedAt: new Date("2026-01-01"),
+        _count: { evidence: 0 },
+        verifications: [
+          {
+            id: "v1",
+            decision: "VERIFIED",
+            verifiedAt: new Date("2026-02-01"),
+            note: "Looks good.",
+            verifiedBy: { name: "Reviewer One" },
+          },
+        ],
+      },
+    ] as never);
+
+    const snapshot = await buildComplianceReportSnapshot();
+
+    expect(snapshot).toEqual([
+      {
+        itemNumber: 20,
+        title: "Other required information",
+        status: "VERIFIED",
+        completenessPercent: 0,
+        verifiedAt: new Date("2026-02-01").toISOString(),
+        verifiedByName: "Reviewer One",
+      },
+    ]);
+  });
+});
+
+describe("getComplianceReportExports", () => {
+  it("returns no rows when there is no college yet", async () => {
+    vi.mocked(getPrimaryCollege).mockResolvedValue(null);
+    const rows = await getComplianceReportExports();
+    expect(rows).toEqual([]);
+    expect(prisma.complianceReportExport.findMany).not.toHaveBeenCalled();
+  });
+
+  it("derives verified/total counts from the frozen snapshot, not live requirement status", async () => {
+    vi.mocked(getPrimaryCollege).mockResolvedValue({ id: COLLEGE_ID } as never);
+    vi.mocked(prisma.complianceReportExport.findMany).mockResolvedValue([
+      {
+        id: "report-1",
+        generatedAt: new Date("2026-03-01"),
+        generatedBy: { name: "Principal Person" },
+        websiteUrl: "https://example-college.edu.pk",
+        submittedAt: null,
+        submittedBy: null,
+        snapshot: [
+          {
+            itemNumber: 1,
+            title: "College profile",
+            status: "VERIFIED",
+            completenessPercent: 100,
+            verifiedAt: null,
+            verifiedByName: null,
+          },
+          {
+            itemNumber: 2,
+            title: "Day-to-day activities",
+            status: "IN_PROGRESS",
+            completenessPercent: 40,
+            verifiedAt: null,
+            verifiedByName: null,
+          },
+        ],
+      },
+    ] as never);
+
+    const rows = await getComplianceReportExports();
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      id: "report-1",
+      generatedByName: "Principal Person",
+      websiteUrl: "https://example-college.edu.pk",
+      submittedAt: null,
+      submittedByName: null,
+      verifiedCount: 1,
+      totalCount: 2,
+    });
   });
 });

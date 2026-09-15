@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { AuditAction } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit";
 
 /**
  * The content approval workflow shared by every CMS content module (College Profile,
@@ -15,6 +15,9 @@ import { prisma } from "@/lib/prisma";
  *     UNDER_REVIEW --approve--> APPROVED --publish--> PUBLISHED
  *     UNDER_REVIEW --reject--> DRAFT   (a rejection reason/comment is mandatory)
  *   PUBLISHED --request_update--> UPDATE_REQUIRED --return_to_draft--> DRAFT
+ *   PUBLISHED --unpublish--> APPROVED   (take it down without flagging it as needing rework —
+ *                                        re-publishing again needs no re-review)
+ *   any non-ARCHIVED status --archive--> ARCHIVED --unarchive--> DRAFT
  *
  * Only PUBLISHED content is ever shown on the public site (CLAUDE.md rule 4) — see
  * src/lib/content.ts's queries, every one of which filters on `status: "PUBLISHED"`. Reaching
@@ -22,7 +25,13 @@ import { prisma } from "@/lib/prisma";
  * transition that leads there.
  */
 export type ContentStatusValue =
-  "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "PUBLISHED" | "UPDATE_REQUIRED";
+  | "DRAFT"
+  | "SUBMITTED"
+  | "UNDER_REVIEW"
+  | "APPROVED"
+  | "PUBLISHED"
+  | "UPDATE_REQUIRED"
+  | "ARCHIVED";
 
 export const WORKFLOW_ACTIONS = [
   "submit_for_review",
@@ -30,8 +39,11 @@ export const WORKFLOW_ACTIONS = [
   "approve",
   "reject",
   "publish",
+  "unpublish",
   "request_update",
   "return_to_draft",
+  "archive",
+  "unarchive",
 ] as const;
 
 export type WorkflowActionName = (typeof WORKFLOW_ACTIONS)[number];
@@ -41,11 +53,14 @@ export type WorkflowActionName = (typeof WORKFLOW_ACTIONS)[number];
  * action is a higher-trust reviewer/publisher action (`publish` permission) — see
  * `getAvailableActions` and each module's `transition*` Server Action. No role holds both
  * `manage` and `publish` for the same domain (docs/permission-matrix.md), so an author can
- * never approve, review, or publish their own submission.
+ * never approve, review, or publish their own submission. `archive`/`unpublish` stay
+ * publish-tier (taking live content down is as significant as putting it up); `unarchive`
+ * (restoring to DRAFT for rework) is manage-tier, like `return_to_draft`.
  */
 export const MANAGE_PERMISSION_ACTIONS = new Set<WorkflowActionName>([
   "submit_for_review",
   "return_to_draft",
+  "unarchive",
 ]);
 
 /** Actions that require a non-empty comment/reason — currently just rejection. */
@@ -89,6 +104,12 @@ export const WORKFLOW_TRANSITIONS: Record<WorkflowActionName, Transition> = {
     auditAction: "PUBLISH",
     label: "Publish",
   },
+  unpublish: {
+    from: ["PUBLISHED"],
+    to: "APPROVED",
+    auditAction: "UNPUBLISH",
+    label: "Unpublish",
+  },
   request_update: {
     from: ["PUBLISHED"],
     to: "UPDATE_REQUIRED",
@@ -100,6 +121,18 @@ export const WORKFLOW_TRANSITIONS: Record<WorkflowActionName, Transition> = {
     to: "DRAFT",
     auditAction: "RETURN_TO_DRAFT",
     label: "Return to draft",
+  },
+  archive: {
+    from: ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "APPROVED", "PUBLISHED", "UPDATE_REQUIRED"],
+    to: "ARCHIVED",
+    auditAction: "ARCHIVE",
+    label: "Archive",
+  },
+  unarchive: {
+    from: ["ARCHIVED"],
+    to: "DRAFT",
+    auditAction: "UNARCHIVE",
+    label: "Unarchive (restore to draft)",
   },
 };
 
@@ -156,16 +189,14 @@ export async function applyWorkflowTransition(params: {
 
   await params.update(data);
 
-  await prisma.auditLog.create({
-    data: {
-      actorId: params.actorId,
-      action: transition.auditAction,
-      entityType: params.entityType,
-      entityId: params.entityId,
-      comment,
-      beforeSnapshot: { status: params.currentStatus },
-      afterSnapshot: { status: transition.to },
-    },
+  await logAudit({
+    actorId: params.actorId,
+    action: transition.auditAction,
+    entityType: params.entityType,
+    entityId: params.entityId,
+    comment,
+    before: { status: params.currentStatus },
+    after: { status: transition.to },
   });
 }
 

@@ -52,7 +52,7 @@ export function NoticeForm(props: Props) {
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="category" className="text-sm font-medium text-foreground">
-            Category <span className="font-normal text-foreground/50">(optional)</span>
+            Category <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="category"
@@ -66,7 +66,7 @@ export function NoticeForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="publishDate" className="text-sm font-medium text-foreground">
-            Publish date <span className="font-normal text-foreground/50">(optional)</span>
+            Publish date <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="publishDate"
@@ -79,7 +79,7 @@ export function NoticeForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="expiryDate" className="text-sm font-medium text-foreground">
-            Expiry date <span className="font-normal text-foreground/50">(optional)</span>
+            Expiry date <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="expiryDate"

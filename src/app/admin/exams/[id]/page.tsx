@@ -67,22 +67,19 @@ export default async function ExaminationViewPage({
               <dt className="font-medium text-foreground/70">Linked notice</dt>
               <dd className="mt-1">{examination.notice?.title ?? "—"}</dd>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="font-medium text-foreground/70">Schedule start date</dt>
-                <dd className="mt-1">
-                  {examination.scheduleStartDate?.toLocaleDateString() ?? "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Schedule end date</dt>
-                <dd className="mt-1">{examination.scheduleEndDate?.toLocaleDateString() ?? "—"}</dd>
-              </div>
+            <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-2">
+              <dt className="font-medium text-foreground/70">Schedule start date</dt>
+              <dd className="mt-1">
+                {examination.scheduleStartDate?.toLocaleDateString() ?? "—"}
+              </dd>
+              <dt className="font-medium text-foreground/70">Schedule end date</dt>
+              <dd className="mt-1">{examination.scheduleEndDate?.toLocaleDateString() ?? "—"}</dd>
             </div>
           </dl>
         </Card>
 
         <WorkflowActions
+                    entityType="Examination"
           entityId={examination.id}
           status={examination.status}
           canManage={canManage}

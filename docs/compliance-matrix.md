@@ -38,7 +38,7 @@ compliance. This is the artifact that ultimately backs the **Compliance Dashboar
 | Content must be accurate, current, authentic, duly verified | Draft → Pending Review → Approved → Published lifecycle; no auto-publish | `ContentItem.status`, `ApprovalRequest` | Approver role (human) |
 | Website regularly updated (admissions, academics, timetable, faculty/staff, notices, exams, events, infrastructure, student info) | Content Review/Freshness module: `reviewDueAt` per content item, stale-content alerts | `ContentReviewSchedule` | Assigned reviewer; surfaced on Compliance Dashboard |
 | Launch within 1 month; strict compliance | Compliance Dashboard tracks per-item status against the 20 requirements + an overall launch-readiness view | `ComplianceRequirement`, `ComplianceItem` | Principal/Compliance Officer |
-| Compliance report + URL submitted to Inspector of Colleges | Compliance Dashboard exports a compliance report (status of all 20 items + live URL) | `ComplianceItem`, `ComplianceReportExport` (generated, not a stored table — see `database-design.md`) | Principal (signs off before submission) |
+| Compliance report + URL submitted to Inspector of Colleges | `/admin/compliance/reports` generates a timestamped snapshot of every requirement's status + the live website URL, then records when it was actually submitted (one-way, never re-settable) | `ComplianceRequirement`, `ComplianceReportExport` (persisted table — see `database-design.md` §9) | Principal/Administrator/Super Admin (`compliance:verify`; signs off before submission) |
 | MOST URGENT / strict compliance in letter and spirit | Prioritization only — no distinct system mechanism | — | — |
 
 ## 3. Compliance status lifecycle (per requirement item)

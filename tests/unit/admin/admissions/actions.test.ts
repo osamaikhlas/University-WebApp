@@ -26,6 +26,7 @@ import { requirePermission } from "@/lib/auth/guard";
 import { getPrimaryCollege } from "@/lib/content";
 import {
   createAdmission,
+  markAdmissionReviewed,
   transitionAdmission,
   updateAdmission,
 } from "@/app/admin/admissions/actions";
@@ -128,5 +129,19 @@ describe("transitionAdmission", () => {
       "REDIRECT:/admin/admissions/adm-1",
     );
     expect(requirePermission).toHaveBeenCalledWith("content_admissions:publish");
+  });
+});
+
+describe("markAdmissionReviewed", () => {
+  it("requires content_admissions:publish and records lastReviewedAt/lastReviewedById", async () => {
+    vi.mocked(prisma.admission.update).mockResolvedValue({} as never);
+
+    await expect(markAdmissionReviewed("adm-1")).rejects.toThrow("REDIRECT:/admin/admissions/adm-1");
+
+    expect(requirePermission).toHaveBeenCalledWith("content_admissions:publish");
+    expect(prisma.admission.update).toHaveBeenCalledWith({
+      where: { id: "adm-1" },
+      data: { lastReviewedAt: expect.any(Date), lastReviewedById: "user-1" },
+    });
   });
 });

@@ -5,6 +5,7 @@ import {
   type ContentStatusValue,
   type WorkflowActionName,
 } from "@/lib/content-workflow";
+import { getLatestActionComment } from "@/lib/audit";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 
@@ -23,8 +24,15 @@ const DESTRUCTIVE_ACTIONS = new Set<WorkflowActionName>(["reject", "request_upda
  * legal (CLAUDE.md rule 5). `workflowError`, when present (the transition Server Action
  * redirects back here with `?workflowError=...` on a validation failure), is rendered as an
  * alert so a rejected-without-a-reason submission is visible, not silently dropped.
+ *
+ * An async Server Component: when `status` is `UPDATE_REQUIRED`, it looks up the reviewer's
+ * `request_update` reason itself (via `getLatestActionComment`) and surfaces it as a banner,
+ * rather than leaving the author to go dig it out of the audit trail. `entityType` must be the
+ * same string the module's own Server Actions pass to `applyWorkflowTransition`, so the lookup
+ * matches the entries that action actually wrote.
  */
-export function WorkflowActions({
+export async function WorkflowActions({
+  entityType,
   entityId,
   status,
   canManage,
@@ -32,6 +40,7 @@ export function WorkflowActions({
   transition,
   workflowError,
 }: {
+  entityType: string;
   entityId: string;
   status: ContentStatusValue;
   canManage: boolean;
@@ -40,10 +49,20 @@ export function WorkflowActions({
   workflowError?: string;
 }) {
   const actions = getAvailableActions(status, { canManage, canPublish });
+  const updateRequested =
+    status === "UPDATE_REQUIRED"
+      ? await getLatestActionComment({ entityType, entityId, action: "REQUEST_UPDATE" })
+      : null;
 
   return (
     <div className="flex flex-col gap-3">
       {workflowError ? <Alert tone="danger">{workflowError}</Alert> : null}
+      {updateRequested ? (
+        <Alert tone="warning" title="Update requested">
+          {updateRequested.actorName} on {updateRequested.createdAt.toLocaleDateString()}:{" "}
+          {updateRequested.comment}
+        </Alert>
+      ) : null}
 
       {actions.length > 0 ? (
         <form className="flex flex-col gap-3" aria-label="Workflow actions">

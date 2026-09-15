@@ -2,10 +2,7 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { getPrimaryCollege } from "@/lib/content";
-import {
-  syncAutomaticStatus,
-  type ComplianceStatusValue,
-} from "@/lib/compliance-workflow";
+import { syncAutomaticStatus, type ComplianceStatusValue } from "@/lib/compliance-workflow";
 
 export type CompletenessCheck = { label: string; met: boolean };
 export type CompletenessResult = { percent: number; checks: CompletenessCheck[] };
@@ -144,14 +141,17 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
 
   3: {
     itemNumber: 3,
-    requiredRecords: "At least one published Infrastructure record, ideally across several categories.",
+    requiredRecords:
+      "At least one published Infrastructure record, ideally across several categories.",
     requiredFields: "Every published infrastructure record needs a name and a description.",
     requiredDocuments: null,
     publicRoute: { label: "Campus", path: "/campus" },
     responsibleRole: "EDITOR (author); REVIEWER or PRINCIPAL (publish)",
     responsibleModule: { label: "Infrastructure", adminPath: "/admin/infrastructure" },
     check: async ({ collegeId }) => {
-      const items = await prisma.infrastructure.findMany({ where: { collegeId, status: PUBLISHED } });
+      const items = await prisma.infrastructure.findMany({
+        where: { collegeId, status: PUBLISHED },
+      });
       const categories = new Set(items.map((i) => i.category));
       return toResult([
         { label: "At least one published infrastructure item", met: items.length > 0 },
@@ -188,8 +188,14 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
         },
         ...everyRecordHasFields(faculty, [
           { label: "Every faculty member has a designation", get: (f) => f.designation },
-          { label: "Every faculty member has qualifications recorded", get: (f) => f.qualifications },
-          { label: "Every faculty member has subjects taught recorded", get: (f) => f.subjectsTaught },
+          {
+            label: "Every faculty member has qualifications recorded",
+            get: (f) => f.qualifications,
+          },
+          {
+            label: "Every faculty member has subjects taught recorded",
+            get: (f) => f.subjectsTaught,
+          },
           {
             label: "Every faculty member has an email or phone number",
             get: (f) => f.email || f.phone,
@@ -221,7 +227,8 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
 
   6: {
     itemNumber: 6,
-    requiredRecords: "At least one published Program, each linked to at least one Affiliation record.",
+    requiredRecords:
+      "At least one published Program, each linked to at least one Affiliation record.",
     requiredFields: "Every published program needs a level, a duration, and a description.",
     requiredDocuments: null,
     publicRoute: { label: "Academics", path: "/academics" },
@@ -250,7 +257,8 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
 
   7: {
     itemNumber: 7,
-    requiredRecords: "At least one published Timetable and at least one published AcademicCalendar entry.",
+    requiredRecords:
+      "At least one published Timetable and at least one published AcademicCalendar entry.",
     requiredFields:
       "Every published timetable needs a structuredSchedule. Every published calendar entry needs a category and an academicYear.",
     requiredDocuments: null,
@@ -264,7 +272,10 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
       ]);
       return toResult([
         { label: "At least one published timetable", met: timetables.length > 0 },
-        { label: "At least one published academic calendar entry", met: calendarEntries.length > 0 },
+        {
+          label: "At least one published academic calendar entry",
+          met: calendarEntries.length > 0,
+        },
         ...everyRecordHasFields(timetables, [
           { label: "Every timetable has a structured schedule", get: (t) => t.structuredSchedule },
         ]),
@@ -278,7 +289,8 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
 
   8: {
     itemNumber: 8,
-    requiredRecords: "At least one published, current-cycle Admission record and at least one published FeeStructure.",
+    requiredRecords:
+      "At least one published, current-cycle Admission record and at least one published FeeStructure.",
     requiredFields:
       "Every published admission cycle needs eligibilityCriteria, applicationStartDate, and applicationEndDate.",
     requiredDocuments: "An admission notice / prospectus document, attached as evidence.",
@@ -295,7 +307,10 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
         { label: "At least one published admission cycle", met: admissions.length > 0 },
         { label: "At least one published fee structure", met: feeStructures > 0 },
         ...everyRecordHasFields(admissions, [
-          { label: "Every admission cycle has eligibility criteria", get: (a) => a.eligibilityCriteria },
+          {
+            label: "Every admission cycle has eligibility criteria",
+            get: (a) => a.eligibilityCriteria,
+          },
           {
             label: "Every admission cycle has an application start date",
             get: (a) => a.applicationStartDate,
@@ -317,9 +332,14 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
     requiredDocuments: null,
     publicRoute: { label: "Admissions", path: "/admissions" },
     responsibleRole: "ADMISSION_OFFICER (author); REVIEWER or PRINCIPAL (publish)",
-    responsibleModule: { label: "Enrollment Statistics", adminPath: "/admin/enrollment-statistics" },
+    responsibleModule: {
+      label: "Enrollment Statistics",
+      adminPath: "/admin/enrollment-statistics",
+    },
     check: async ({ collegeId }) => {
-      const stats = await prisma.enrollmentStatistic.findMany({ where: { collegeId, status: PUBLISHED } });
+      const stats = await prisma.enrollmentStatistic.findMany({
+        where: { collegeId, status: PUBLISHED },
+      });
       return toResult([
         { label: "At least one published enrollment statistic", met: stats.length > 0 },
         ...everyRecordHasFields(stats, [
@@ -335,7 +355,8 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
     requiredRecords: "At least one published Examination and at least one published Result.",
     requiredFields:
       "Every published examination needs a scheduleStartDate. Every published result needs a publishDate.",
-    requiredDocuments: "A results gazette / examination notification document, attached as evidence.",
+    requiredDocuments:
+      "A results gazette / examination notification document, attached as evidence.",
     publicRoute: { label: "Examinations", path: "/examinations" },
     responsibleRole: "EXAMINATION_OFFICER (author); REVIEWER or PRINCIPAL (publish)",
     responsibleModule: { label: "Exams, Results", adminPath: "/admin/exams" },
@@ -349,7 +370,10 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
         { label: "At least one published examination", met: examinations.length > 0 },
         { label: "At least one published result", met: results.length > 0 },
         ...everyRecordHasFields(examinations, [
-          { label: "Every examination has a scheduled start date", get: (e) => e.scheduleStartDate },
+          {
+            label: "Every examination has a scheduled start date",
+            get: (e) => e.scheduleStartDate,
+          },
         ]),
         ...everyRecordHasFields(results, [
           { label: "Every result has a publish date", get: (r) => r.publishDate },
@@ -361,7 +385,8 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
 
   11: {
     itemNumber: 11,
-    requiredRecords: "At least one published phone Contact and at least one published email Contact.",
+    requiredRecords:
+      "At least one published phone Contact and at least one published email Contact.",
     requiredFields: "Every published contact needs a label describing what it's for.",
     requiredDocuments: null,
     publicRoute: { label: "Contact", path: "/contact" },
@@ -417,8 +442,14 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
       return toResult([
         { label: "At least one published affiliation record", met: affiliations.length > 0 },
         ...everyRecordHasFields(affiliations, [
-          { label: "Every affiliation has an affiliation/registration number", get: (a) => a.affiliationNumber },
-          { label: "Every affiliation has a regulatory body recorded", get: (a) => a.regulatoryBody },
+          {
+            label: "Every affiliation has an affiliation/registration number",
+            get: (a) => a.affiliationNumber,
+          },
+          {
+            label: "Every affiliation has a regulatory body recorded",
+            get: (a) => a.regulatoryBody,
+          },
           { label: "Every affiliation has a valid-from date", get: (a) => a.validFrom },
         ]),
         { label: "Affiliation approval letter/certificate attached as evidence", met: hasDocument },
@@ -435,7 +466,9 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
     responsibleRole: "EDITOR (author); REVIEWER or PRINCIPAL (publish)",
     responsibleModule: { label: "Activities", adminPath: "/admin/activities" },
     check: async ({ collegeId }) => {
-      const activities = await prisma.activity.findMany({ where: { collegeId, status: PUBLISHED } });
+      const activities = await prisma.activity.findMany({
+        where: { collegeId, status: PUBLISHED },
+      });
       return toResult([
         { label: "At least one published co-curricular activity", met: activities.length > 0 },
         ...everyRecordHasFields(activities, [
@@ -467,7 +500,8 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
 
   16: {
     itemNumber: 16,
-    requiredRecords: "At least one published GalleryAlbum containing at least one published GalleryItem.",
+    requiredRecords:
+      "At least one published GalleryAlbum containing at least one published GalleryItem.",
     requiredFields: "Every published gallery item needs a caption.",
     requiredDocuments: null,
     publicRoute: { label: "Gallery", path: "/gallery" },
@@ -491,7 +525,8 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
 
   17: {
     itemNumber: 17,
-    requiredRecords: "At least one published Scholarship and at least one published StudentSupport service.",
+    requiredRecords:
+      "At least one published Scholarship and at least one published StudentSupport service.",
     requiredFields:
       "Every published scholarship needs eligibility criteria. Every published student support service needs contact info.",
     requiredDocuments: null,
@@ -534,10 +569,15 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
       return toResult([
         { label: "At least one published policy", met: policies.length > 0 },
         { label: "At least one published regulation", met: regulations.length > 0 },
-        ...everyRecordHasFields(policies, [{ label: "Every policy has a body", get: (p) => p.body }]),
+        ...everyRecordHasFields(policies, [
+          { label: "Every policy has a body", get: (p) => p.body },
+        ]),
         ...everyRecordHasFields(regulations, [
           { label: "Every regulation has a body", get: (r) => r.body },
-          { label: "Every regulation has a regulating body recorded", get: (r) => r.regulatingBody },
+          {
+            label: "Every regulation has a regulating body recorded",
+            get: (r) => r.regulatingBody,
+          },
         ]),
         { label: "Policy/regulation document attached as evidence", met: hasDocument },
       ]);
@@ -546,8 +586,10 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
 
   19: {
     itemNumber: 19,
-    requiredRecords: "At least one User holding the PRINCIPAL, ADMINISTRATOR, or SUPER_ADMIN role, assigned within the college.",
-    requiredFields: "N/A — this requirement is procedural (a staffed, reachable mechanism), not a content record.",
+    requiredRecords:
+      "At least one User holding the PRINCIPAL, ADMINISTRATOR, or SUPER_ADMIN role, assigned within the college.",
+    requiredFields:
+      "N/A — this requirement is procedural (a staffed, reachable mechanism), not a content record.",
     requiredDocuments: null,
     publicRoute: { label: "Grievance", path: "/grievance" },
     responsibleRole: "PRINCIPAL or ADMINISTRATOR",
@@ -577,7 +619,9 @@ export const COMPLIANCE_RULES: Record<number, ComplianceRule> = {
     // evidenced only through manually attached ComplianceEvidence, reviewed case by case, and
     // is deliberately never automatically satisfied by any content table.
     check: async () =>
-      toResult([{ label: "No fixed data source — reviewed case by case via attached evidence", met: false }]),
+      toResult([
+        { label: "No fixed data source — reviewed case by case via attached evidence", met: false },
+      ]),
   },
 };
 
@@ -637,7 +681,10 @@ export async function getComplianceOverview(): Promise<ComplianceRequirementRow[
   return Promise.all(
     requirements.map(async (requirement) => {
       const rule = COMPLIANCE_RULES[requirement.itemNumber] ?? FALLBACK_RULE;
-      const completeness = await rule.check({ collegeId: college.id, requirementId: requirement.id });
+      const completeness = await rule.check({
+        collegeId: college.id,
+        requirementId: requirement.id,
+      });
       const hasProgress = completeness.percent > 0 || requirement._count.evidence > 0;
       const status = await syncAutomaticStatus({
         requirementId: requirement.id,
@@ -742,4 +789,73 @@ export async function getComplianceRequirementDetail(
       note: verification.note,
     })),
   };
+}
+
+export type ComplianceReportSnapshotItem = {
+  itemNumber: number;
+  title: string;
+  status: ComplianceStatusValue;
+  completenessPercent: number;
+  verifiedAt: string | null;
+  verifiedByName: string | null;
+};
+
+export type ComplianceReportRow = {
+  id: string;
+  generatedAt: Date;
+  generatedByName: string;
+  websiteUrl: string;
+  submittedAt: Date | null;
+  submittedByName: string | null;
+  verifiedCount: number;
+  totalCount: number;
+  snapshot: ComplianceReportSnapshotItem[];
+};
+
+/**
+ * Builds a durable snapshot of every requirement's current state, for freezing into a new
+ * `ComplianceReportExport` row (docs/database-design.md §9, docs/compliance-matrix.md §2 —
+ * the circular's compliance-report/URL-submission requirement). Reuses
+ * `getComplianceOverview`'s completeness/status computation rather than re-deriving it, so
+ * what gets reported always matches what the dashboard shows at generation time. Deliberately
+ * does not require every item to be VERIFIED — a college may need to report partial progress
+ * before launch.
+ */
+export async function buildComplianceReportSnapshot(): Promise<ComplianceReportSnapshotItem[]> {
+  const requirements = await getComplianceOverview();
+  return requirements.map((requirement) => ({
+    itemNumber: requirement.itemNumber,
+    title: requirement.title,
+    status: requirement.status,
+    completenessPercent: requirement.completeness.percent,
+    verifiedAt: requirement.lastVerification?.verifiedAt.toISOString() ?? null,
+    verifiedByName: requirement.lastVerification?.verifiedByName ?? null,
+  }));
+}
+
+/** Loads all generated compliance report exports for the primary college, newest first. */
+export async function getComplianceReportExports(): Promise<ComplianceReportRow[]> {
+  const college = await getPrimaryCollege();
+  if (!college) return [];
+
+  const reports = await prisma.complianceReportExport.findMany({
+    where: { collegeId: college.id },
+    orderBy: { generatedAt: "desc" },
+    include: { generatedBy: true, submittedBy: true },
+  });
+
+  return reports.map((report) => {
+    const snapshot = report.snapshot as unknown as ComplianceReportSnapshotItem[];
+    return {
+      id: report.id,
+      generatedAt: report.generatedAt,
+      generatedByName: report.generatedBy.name,
+      websiteUrl: report.websiteUrl,
+      submittedAt: report.submittedAt,
+      submittedByName: report.submittedBy?.name ?? null,
+      verifiedCount: snapshot.filter((item) => item.status === "VERIFIED").length,
+      totalCount: snapshot.length,
+      snapshot,
+    };
+  });
 }

@@ -11,8 +11,10 @@ import { Card } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { WorkflowActions } from "@/components/admin/WorkflowActions";
+import { ReviewPanel } from "@/components/admin/ReviewPanel";
 import { DemoDataNotice } from "@/components/DemoDataNotice";
-import { transitionTimetable } from "@/app/admin/timetables/actions";
+import { getReviewDisplayData } from "@/lib/content-review";
+import { transitionTimetable, markTimetableReviewed } from "@/app/admin/timetables/actions";
 
 export const metadata: Metadata = { title: "Timetable" };
 
@@ -35,6 +37,7 @@ export default async function TimetableViewPage({
 
   const canManage = hasPermission(user.permissions, MODULE_PERMISSIONS.timetables.manage);
   const canPublish = hasPermission(user.permissions, MODULE_PERMISSIONS.timetables.publish);
+  const review = await getReviewDisplayData("timetables", timetable);
 
   return (
     <Container>
@@ -67,7 +70,10 @@ export default async function TimetableViewPage({
               <dt className="font-medium text-foreground/70">Schedule</dt>
               <dd className="mt-1">
                 {timetable.structuredSchedule != null ? (
-                  <pre className="overflow-x-auto rounded-md bg-surface-muted p-3 text-xs">
+                  <pre
+                    tabIndex={0}
+                    className="overflow-x-auto rounded-md bg-surface-muted p-3 text-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                  >
                     {JSON.stringify(timetable.structuredSchedule, null, 2)}
                   </pre>
                 ) : (
@@ -79,12 +85,25 @@ export default async function TimetableViewPage({
         </Card>
 
         <WorkflowActions
+                    entityType="Timetable"
           entityId={timetable.id}
           status={timetable.status}
           canManage={canManage}
           canPublish={canPublish}
           transition={transitionTimetable}
           workflowError={workflowError}
+        />
+
+        <ReviewPanel
+          entityId={timetable.id}
+          lastUpdated={review.lastUpdated}
+          lastReviewedAt={review.lastReviewedAt}
+          nextReviewDue={review.nextReviewDue}
+          reviewerName={review.reviewerName}
+          isOverdue={review.isOverdue}
+          periodDays={review.periodDays}
+          canMarkReviewed={canPublish}
+          markReviewed={markTimetableReviewed}
         />
 
         <Link href="/admin/timetables" className="text-sm text-brand hover:underline">

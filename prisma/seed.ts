@@ -1,3 +1,6 @@
+import { createCipheriv, randomBytes } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/lib/auth/password";
@@ -7,6 +10,48 @@ import {
   ROLE_NAMES,
   ROLE_PERMISSIONS,
 } from "../src/lib/auth/permissions";
+
+/**
+ * A standalone copy of `src/lib/security/crypto.ts`'s `encryptSecret` (same algorithm/format),
+ * not an import of it: that module starts with `import "server-only"`, which throws when
+ * loaded outside Next's server module graph — as this plain `tsx`-run script is. Duplicated
+ * rather than stripping the guard from the real module, since that guard is exactly what
+ * should keep `GRIEVANCE_ENCRYPTION_KEY` out of any accidental client bundle in the app itself.
+ */
+function seedEncryptSecret(plainText: string): string {
+  const key = Buffer.from(process.env.GRIEVANCE_ENCRYPTION_KEY ?? "", "hex");
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([cipher.update(plainText, "utf8"), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return [iv.toString("hex"), authTag.toString("hex"), encrypted.toString("hex")].join(":");
+}
+
+/**
+ * A standalone copy of `src/lib/security/upload-storage.ts`'s storage layout (same reasoning
+ * as `seedEncryptSecret` above — that module is `import "server-only"`-guarded). Writes a
+ * tiny real placeholder file so the seeded Document/Media rows work end-to-end through the
+ * actual file-serving routes (src/app/api/files/*), not just as inert database rows.
+ */
+const UPLOAD_STORAGE_ROOT = path.join(process.cwd(), "storage", "uploads");
+
+async function seedWritePlaceholderFile(
+  kind: "document" | "media",
+  entityId: string,
+  fileName: string,
+  contents: Buffer,
+): Promise<string> {
+  const directory = path.join(UPLOAD_STORAGE_ROOT, kind, entityId);
+  await mkdir(directory, { recursive: true });
+  await writeFile(path.join(directory, fileName), contents);
+  return path.join(kind, entityId, fileName);
+}
+
+// A minimal valid 1x1 transparent PNG.
+const PLACEHOLDER_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64",
+);
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -164,15 +209,26 @@ async function main() {
     });
   }
 
+  // Demo dataset supplied by the user 2026-09-16 for exercising the CMS end-to-end — NOT a
+  // verified official college record (CLAUDE.md rule 1). `.example` (RFC 2606) email/website
+  // values and the "[PLACEHOLDER]"-prefixed name plus `isPlaceholder: true` keep this from ever
+  // being mistaken for real institutional data (rule 14); it must go through the normal
+  // draft -> review -> publish workflow like any other content before appearing publicly, and
+  // real verified data must replace it before go-live (rule 1).
+  const DEMO_COLLEGE_NAME =
+    "[PLACEHOLDER] Government College of Education, Khairpur (GCE Khairpur) — demo data, not a verified official record";
+
   await prisma.college.upsert({
     where: { id: PLACEHOLDER_COLLEGE_ID },
     update: {
+      name: DEMO_COLLEGE_NAME,
+      type: "EDUCATION",
       isPlaceholder: true,
     },
     create: {
       id: PLACEHOLDER_COLLEGE_ID,
-      name: "[PLACEHOLDER] Sample Affiliated College — replace with real college record",
-      type: "GOVT_DEGREE",
+      name: DEMO_COLLEGE_NAME,
+      type: "EDUCATION",
       isPlaceholder: true,
     },
   });
@@ -252,9 +308,19 @@ async function main() {
   }
 
   // --- College profile -------------------------------------------------------------------
+  const DEMO_PROFILE_FIELDS = {
+    overview: "[PLACEHOLDER] Sample overview text — replace with real college profile copy.",
+    missionStatement: "[PLACEHOLDER] Sample mission statement.",
+    visionStatement: "[PLACEHOLDER] Sample vision statement.",
+    history:
+      "[PLACEHOLDER] Demo data: established 1998. Replace with real, verified college history.",
+    principalName: "[PLACEHOLDER] Dr. Ayesha Rahman (demo data, not verified)",
+    principalMessage: "[PLACEHOLDER] Sample principal's message.",
+  };
   await prisma.collegeProfile.upsert({
     where: { collegeId: PLACEHOLDER_COLLEGE_ID },
     update: {
+      ...DEMO_PROFILE_FIELDS,
       status: "PUBLISHED",
       isPlaceholder: true,
       publishedAt: new Date(),
@@ -262,12 +328,7 @@ async function main() {
     },
     create: {
       collegeId: PLACEHOLDER_COLLEGE_ID,
-      overview: "[PLACEHOLDER] Sample overview text — replace with real college profile copy.",
-      missionStatement: "[PLACEHOLDER] Sample mission statement.",
-      visionStatement: "[PLACEHOLDER] Sample vision statement.",
-      history: "[PLACEHOLDER] Sample history text.",
-      principalName: "[PLACEHOLDER] Principal Name",
-      principalMessage: "[PLACEHOLDER] Sample principal's message.",
+      ...DEMO_PROFILE_FIELDS,
       status: "PUBLISHED",
       isPlaceholder: true,
       publishedAt: new Date(),
@@ -351,9 +412,15 @@ async function main() {
     },
   });
 
+  // universityName below is the real university this circular is from (docs/requirements.md) —
+  // not fabricated — but the affiliation record itself (number, regulatory body, validity
+  // dates, and the claim that this specific demo college holds it) is unverified demo data, so
+  // it stays isPlaceholder: true until a competent authority confirms it (CLAUDE.md rule 1/7).
   await prisma.affiliation.upsert({
     where: { id: "dev-seed-affiliation" },
     update: {
+      universityName: "Shah Abdul Latif University, Khairpur",
+      affiliationNumber: "[PLACEHOLDER] AFF-0000 (demo data, not verified)",
       status: "PUBLISHED",
       isPlaceholder: true,
       publishedAt: new Date(),
@@ -363,8 +430,8 @@ async function main() {
       id: "dev-seed-affiliation",
       collegeId: PLACEHOLDER_COLLEGE_ID,
       programId: program.id,
-      universityName: "[PLACEHOLDER] Sample Affiliating University",
-      affiliationNumber: "[PLACEHOLDER] AFF-0000",
+      universityName: "Shah Abdul Latif University, Khairpur",
+      affiliationNumber: "[PLACEHOLDER] AFF-0000 (demo data, not verified)",
       regulatoryBody: "[PLACEHOLDER] Sample Regulatory Body",
       validFrom: new Date("2026-01-01"),
       status: "PUBLISHED",
@@ -783,35 +850,72 @@ async function main() {
   });
 
   // --- Contact & location ------------------------------------------------------------------
-  await prisma.contact.upsert({
-    where: { id: "dev-seed-contact" },
-    update: {
-      status: "PUBLISHED",
-      isPlaceholder: true,
-    },
-    create: {
+  // Demo contact points supplied by the user 2026-09-16 (see the College block above for why
+  // these are isPlaceholder despite looking realistic — RFC 2606 .example addresses, not real
+  // reachable contacts).
+  const demoContacts: Array<{ id: string; type: "EMAIL" | "PHONE" | "OTHER"; value: string; label: string }> = [
+    {
       id: "dev-seed-contact",
-      collegeId: PLACEHOLDER_COLLEGE_ID,
       type: "EMAIL",
-      value: "info@example.invalid",
-      label: "[PLACEHOLDER] General Enquiries",
-      status: "PUBLISHED",
-      isPlaceholder: true,
-      createdBy: devUser.id,
-      updatedBy: devUser.id,
+      value: "info@gce-khairpur.example",
+      label: "[PLACEHOLDER] General Enquiries (demo data)",
     },
-  });
+    {
+      id: "dev-seed-contact-phone",
+      type: "PHONE",
+      value: "+92 243 000000",
+      label: "[PLACEHOLDER] College Phone (demo data)",
+    },
+    {
+      id: "dev-seed-contact-principal-email",
+      type: "EMAIL",
+      value: "principal@gce-khairpur.example",
+      label: "[PLACEHOLDER] Principal's Office (demo data)",
+    },
+    {
+      id: "dev-seed-contact-website",
+      type: "OTHER",
+      value: "https://gce-khairpur.example",
+      label: "[PLACEHOLDER] College Website (demo data)",
+    },
+  ];
+  for (const contact of demoContacts) {
+    await prisma.contact.upsert({
+      where: { id: contact.id },
+      update: {
+        type: contact.type,
+        value: contact.value,
+        label: contact.label,
+        status: "PUBLISHED",
+        isPlaceholder: true,
+      },
+      create: {
+        id: contact.id,
+        collegeId: PLACEHOLDER_COLLEGE_ID,
+        type: contact.type,
+        value: contact.value,
+        label: contact.label,
+        status: "PUBLISHED",
+        isPlaceholder: true,
+        createdBy: devUser.id,
+        updatedBy: devUser.id,
+      },
+    });
+  }
 
+  const DEMO_ADDRESS =
+    "[PLACEHOLDER] College Road, Education District, Khairpur, Sindh, Pakistan — 66020 (demo data)";
   await prisma.location.upsert({
     where: { id: "dev-seed-location" },
     update: {
+      address: DEMO_ADDRESS,
       status: "PUBLISHED",
       isPlaceholder: true,
     },
     create: {
       id: "dev-seed-location",
       collegeId: PLACEHOLDER_COLLEGE_ID,
-      address: "[PLACEHOLDER] Sample Address, Sample City",
+      address: DEMO_ADDRESS,
       status: "PUBLISHED",
       isPlaceholder: true,
       createdBy: devUser.id,
@@ -820,6 +924,12 @@ async function main() {
   });
 
   // --- Gallery -------------------------------------------------------------------------
+  const mediaStoredPath = await seedWritePlaceholderFile(
+    "media",
+    "dev-seed-media",
+    "placeholder.png",
+    PLACEHOLDER_PNG,
+  );
   const media = await prisma.media.upsert({
     where: { id: "dev-seed-media" },
     update: {
@@ -828,8 +938,10 @@ async function main() {
     create: {
       id: "dev-seed-media",
       collegeId: PLACEHOLDER_COLLEGE_ID,
-      url: "https://example.invalid/placeholder.jpg",
+      storedPath: mediaStoredPath,
+      mimeType: "image/png",
       altText: "[PLACEHOLDER] Sample image — replace with a real, described photo.",
+      category: "General",
       uploadedById: devUser.id,
       isPlaceholder: true,
     },
@@ -968,16 +1080,19 @@ async function main() {
   const grievance = await prisma.grievance.upsert({
     where: { id: "dev-seed-grievance" },
     update: {
-      status: "NEW",
+      status: "ASSIGNED",
       isPlaceholder: true,
     },
     create: {
       id: "dev-seed-grievance",
       collegeId: PLACEHOLDER_COLLEGE_ID,
-      submitterName: "[DEV SEED] Anonymous Test Submitter",
-      description: "[DEV SEED] Sample grievance description for local development only.",
+      referenceNumber: "GRV-DEVSEED-000001",
+      submitterName: "[DEV SEED] Test Submitter",
+      submitterEmail: seedEncryptSecret("dev-seed-submitter@example.invalid"),
       category: "general",
-      status: "NEW",
+      subject: "[DEV SEED] Sample grievance subject",
+      description: "[DEV SEED] Sample grievance description for local development only.",
+      status: "ASSIGNED",
       assignedToId: devUser.id,
       isPlaceholder: true,
       updatedBy: devUser.id,
@@ -996,6 +1111,12 @@ async function main() {
   });
 
   // --- Documents -----------------------------------------------------------------------
+  const documentStoredPath = await seedWritePlaceholderFile(
+    "document",
+    "dev-seed-document",
+    "placeholder.txt",
+    Buffer.from("[PLACEHOLDER] Sample document content for local development only.\n", "utf8"),
+  );
   await prisma.document.upsert({
     where: { id: "dev-seed-document" },
     update: {
@@ -1003,6 +1124,8 @@ async function main() {
       isPlaceholder: true,
       publishedAt: new Date(),
       publishedBy: devUser.id,
+      approvedById: devUser.id,
+      approvedAt: new Date(),
     },
     create: {
       id: "dev-seed-document",
@@ -1011,13 +1134,17 @@ async function main() {
       entityId: notice.id,
       category: "attachment",
       title: "[PLACEHOLDER] Sample Attachment",
-      fileUrl: "https://example.invalid/placeholder.pdf",
-      mimeType: "application/pdf",
+      description: "[PLACEHOLDER] Sample document description for local development only.",
+      storedPath: documentStoredPath,
+      fileName: "placeholder.txt",
+      mimeType: "text/plain",
       uploadedById: devUser.id,
       status: "PUBLISHED",
       isPlaceholder: true,
       publishedAt: new Date(),
       publishedBy: devUser.id,
+      approvedById: devUser.id,
+      approvedAt: new Date(),
       updatedBy: devUser.id,
     },
   });

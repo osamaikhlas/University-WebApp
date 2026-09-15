@@ -24,7 +24,7 @@ vi.mock("next/navigation", () => ({
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
 import { getPrimaryCollege } from "@/lib/content";
-import { createFaculty, transitionFaculty, updateFaculty } from "@/app/admin/faculty/actions";
+import { createFaculty, markFacultyReviewed, transitionFaculty, updateFaculty } from "@/app/admin/faculty/actions";
 
 const fakeUser = { id: "user-1", collegeId: "college-1", permissions: new Set() } as never;
 const college = { id: "college-1" } as never;
@@ -128,6 +128,20 @@ describe("transitionFaculty", () => {
     expect(prisma.faculty.update).toHaveBeenCalledWith({
       where: { id: "fac-1" },
       data: expect.objectContaining({ status: "UPDATE_REQUIRED" }),
+    });
+  });
+});
+
+describe("markFacultyReviewed", () => {
+  it("requires content_faculty:publish and records lastReviewedAt/lastReviewedById", async () => {
+    vi.mocked(prisma.faculty.update).mockResolvedValue({} as never);
+
+    await expect(markFacultyReviewed("fac-1")).rejects.toThrow("REDIRECT:/admin/faculty/fac-1");
+
+    expect(requirePermission).toHaveBeenCalledWith("content_faculty:publish");
+    expect(prisma.faculty.update).toHaveBeenCalledWith({
+      where: { id: "fac-1" },
+      data: { lastReviewedAt: expect.any(Date), lastReviewedById: "user-1" },
     });
   });
 });

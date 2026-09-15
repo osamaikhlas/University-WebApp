@@ -25,6 +25,7 @@ import { requirePermission } from "@/lib/auth/guard";
 import { getPrimaryCollege } from "@/lib/content";
 import {
   createAcademicCalendarEntry,
+  markAcademicCalendarEntryReviewed,
   transitionAcademicCalendarEntry,
   updateAcademicCalendarEntry,
 } from "@/app/admin/academic-calendar/actions";
@@ -107,5 +108,21 @@ describe("transitionAcademicCalendarEntry", () => {
       transitionAcademicCalendarEntry("cal-1", "approve", new FormData()),
     ).rejects.toThrow("REDIRECT:/admin/academic-calendar/cal-1");
     expect(requirePermission).toHaveBeenCalledWith("content_general:publish");
+  });
+});
+
+describe("markAcademicCalendarEntryReviewed", () => {
+  it("requires content_general:publish and records lastReviewedAt/lastReviewedById", async () => {
+    vi.mocked(prisma.academicCalendar.update).mockResolvedValue({} as never);
+
+    await expect(markAcademicCalendarEntryReviewed("cal-1")).rejects.toThrow(
+      "REDIRECT:/admin/academic-calendar/cal-1",
+    );
+
+    expect(requirePermission).toHaveBeenCalledWith("content_general:publish");
+    expect(prisma.academicCalendar.update).toHaveBeenCalledWith({
+      where: { id: "cal-1" },
+      data: { lastReviewedAt: expect.any(Date), lastReviewedById: "user-1" },
+    });
   });
 });

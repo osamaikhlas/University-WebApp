@@ -64,6 +64,7 @@ export default async function PolicyViewPage({
         </Card>
 
         <WorkflowActions
+                    entityType="Policy"
           entityId={policy.id}
           status={policy.status}
           canManage={canManage}

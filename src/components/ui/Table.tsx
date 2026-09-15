@@ -33,7 +33,15 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border-subtle">
+    // No `role="region"` here: this wrapper is very often nested inside a page `<section>`
+    // that already carries the same accessible name (e.g. a "Departments" section wrapping
+    // a "Departments" table), and a second same-named landmark right inside the first is
+    // itself an accessibility bug (axe's landmark-unique rule) — a scrollable container only
+    // needs to be keyboard-operable (`tabIndex`), not its own named landmark.
+    <div
+      tabIndex={0}
+      className="overflow-x-auto rounded-lg border border-border-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+    >
       <table className="w-full min-w-max text-left text-sm">
         <caption className="sr-only">{caption}</caption>
         <thead className="bg-surface-muted text-xs font-medium uppercase tracking-wide text-foreground/60">

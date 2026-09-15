@@ -8,6 +8,7 @@ const STATUS_CLASSES: Record<ContentStatusValue, string> = {
   APPROVED: "bg-info-bg text-info-foreground border-info-border",
   PUBLISHED: "bg-success-bg text-success-foreground border-success-border",
   UPDATE_REQUIRED: "bg-danger-bg text-danger-foreground border-danger-border",
+  ARCHIVED: "bg-surface-muted text-foreground/60 border-border-subtle",
 };
 
 const STATUS_LABELS: Record<ContentStatusValue, string> = {
@@ -17,6 +18,7 @@ const STATUS_LABELS: Record<ContentStatusValue, string> = {
   APPROVED: "Approved",
   PUBLISHED: "Published",
   UPDATE_REQUIRED: "Update required",
+  ARCHIVED: "Archived",
 };
 
 export function StatusBadge({ status }: { status: ContentStatusValue }) {

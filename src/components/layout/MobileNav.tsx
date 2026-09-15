@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import type { NavLink } from "@/lib/navigation";
 
@@ -15,6 +16,7 @@ const PANEL_ID = "mobile-nav-panel";
  */
 export function MobileNav({ links }: { links: NavLink[] }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!open) return;
@@ -58,17 +60,24 @@ export function MobileNav({ links }: { links: NavLink[] }) {
         )}
       >
         <ul className="flex flex-col divide-y divide-border-subtle px-4 py-2 sm:px-6">
-          {links.map((link) => (
-            <li key={link.href}>
-              <Link
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className="block py-3 text-sm font-medium text-foreground/80 hover:text-foreground"
-              >
-                {link.label}
-              </Link>
-            </li>
-          ))}
+          {links.map((link) => {
+            const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
+            return (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  onClick={() => setOpen(false)}
+                  aria-current={isActive ? "page" : undefined}
+                  className={clsx(
+                    "block py-3 text-sm font-medium",
+                    isActive ? "text-foreground" : "text-foreground/80 hover:text-foreground",
+                  )}
+                >
+                  {link.label}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
     </div>

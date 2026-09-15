@@ -64,6 +64,7 @@ export default async function ScholarshipViewPage({
         </Card>
 
         <WorkflowActions
+                    entityType="Scholarship"
           entityId={scholarship.id}
           status={scholarship.status}
           canManage={canManage}

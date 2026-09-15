@@ -72,24 +72,19 @@ export default async function EnrollmentStatisticViewPage({
               <dt className="font-medium text-foreground/70">Session</dt>
               <dd className="mt-1">{enrollmentStatistic.sessionType ?? "—"}</dd>
             </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div>
-                <dt className="font-medium text-foreground/70">Total enrolled</dt>
-                <dd className="mt-1">{enrollmentStatistic.totalEnrolled}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Male</dt>
-                <dd className="mt-1">{enrollmentStatistic.maleCount ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-foreground/70">Female</dt>
-                <dd className="mt-1">{enrollmentStatistic.femaleCount ?? "—"}</dd>
-              </div>
+            <div className="grid gap-x-4 sm:grid-flow-col sm:grid-rows-2 sm:grid-cols-3">
+              <dt className="font-medium text-foreground/70">Total enrolled</dt>
+              <dd className="mt-1">{enrollmentStatistic.totalEnrolled}</dd>
+              <dt className="font-medium text-foreground/70">Male</dt>
+              <dd className="mt-1">{enrollmentStatistic.maleCount ?? "—"}</dd>
+              <dt className="font-medium text-foreground/70">Female</dt>
+              <dd className="mt-1">{enrollmentStatistic.femaleCount ?? "—"}</dd>
             </div>
           </dl>
         </Card>
 
         <WorkflowActions
+                    entityType="EnrollmentStatistic"
           entityId={enrollmentStatistic.id}
           status={enrollmentStatistic.status}
           canManage={canManage}

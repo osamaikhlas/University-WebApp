@@ -99,7 +99,7 @@ export function ProgramForm(props: Props) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="description" className="text-sm font-medium text-foreground">
-          Description <span className="font-normal text-foreground/50">(optional)</span>
+          Description <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <textarea
           id="description"

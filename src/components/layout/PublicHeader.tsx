@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PUBLIC_NAV_LINKS } from "@/lib/navigation";
 import { getPrimaryCollege } from "@/lib/content";
 import { MobileNav } from "@/components/layout/MobileNav";
+import { DesktopNavLinks } from "@/components/layout/DesktopNavLinks";
 
 const FALLBACK_SITE_NAME = "[PLACEHOLDER] Affiliated College Portal";
 
@@ -20,19 +21,9 @@ export async function PublicHeader() {
         {/* min-w-0 lets this flex item actually shrink below its content's natural width,
             which is what allows overflow-x-auto below to scroll instead of forcing the
             whole header (and page) to overflow horizontally. */}
-        <nav aria-label="Primary" className="hidden min-w-0 flex-1 lg:block">
-          <ul className="flex items-center gap-4 overflow-x-auto text-sm whitespace-nowrap text-foreground/70">
-            {PUBLIC_NAV_LINKS.filter((link) => link.href !== "/" && link.href !== "/search").map(
-              (link) => (
-                <li key={link.href} className="shrink-0">
-                  <Link href={link.href} className="hover:text-foreground">
-                    {link.label}
-                  </Link>
-                </li>
-              ),
-            )}
-          </ul>
-        </nav>
+        <DesktopNavLinks
+          links={PUBLIC_NAV_LINKS.filter((link) => link.href !== "/" && link.href !== "/search")}
+        />
 
         <div className="flex shrink-0 items-center gap-2">
           <Link

@@ -49,7 +49,7 @@ export function EvidenceForm({ requirementId }: { requirementId: string }) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="note" className="text-sm font-medium text-foreground">
-          Note <span className="font-normal text-foreground/50">(optional)</span>
+          Note <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <textarea
           id="note"

@@ -74,6 +74,7 @@ export default async function ProgramViewPage({
         </Card>
 
         <WorkflowActions
+                    entityType="Program"
           entityId={program.id}
           status={program.status}
           canManage={canManage}

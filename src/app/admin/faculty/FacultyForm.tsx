@@ -76,7 +76,7 @@ export function FacultyForm(props: Props) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="qualifications" className="text-sm font-medium text-foreground">
-          Qualifications <span className="font-normal text-foreground/50">(optional)</span>
+          Qualifications <span className="font-normal text-foreground/60">(optional)</span>
         </label>
         <input
           id="qualifications"
@@ -89,7 +89,7 @@ export function FacultyForm(props: Props) {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="subjectsTaught" className="text-sm font-medium text-foreground">
-          Subjects taught <span className="font-normal text-foreground/50">(comma-separated, optional)</span>
+          Subjects taught <span className="font-normal text-foreground/60">(comma-separated, optional)</span>
         </label>
         <input
           id="subjectsTaught"
@@ -104,7 +104,7 @@ export function FacultyForm(props: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="email" className="text-sm font-medium text-foreground">
-            Email <span className="font-normal text-foreground/50">(optional)</span>
+            Email <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="email"
@@ -117,7 +117,7 @@ export function FacultyForm(props: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="phone" className="text-sm font-medium text-foreground">
-            Phone <span className="font-normal text-foreground/50">(optional)</span>
+            Phone <span className="font-normal text-foreground/60">(optional)</span>
           </label>
           <input
             id="phone"
