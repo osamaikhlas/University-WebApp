@@ -16,7 +16,7 @@ export function DesktopNavLinks({ links }: { links: NavLink[] }) {
 
   return (
     <nav aria-label="Primary" className="hidden min-w-0 flex-1 lg:block">
-      <ul className="flex items-center gap-4 overflow-x-auto text-sm whitespace-nowrap text-foreground/70">
+      <ul className="flex items-center gap-6 overflow-x-auto text-sm whitespace-nowrap">
         {links.map((link) => {
           const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
           return (
@@ -24,7 +24,13 @@ export function DesktopNavLinks({ links }: { links: NavLink[] }) {
               <Link
                 href={link.href}
                 aria-current={isActive ? "page" : undefined}
-                className={clsx(isActive ? "font-medium text-foreground" : "hover:text-foreground")}
+                className={clsx(
+                  "relative inline-flex items-center py-2 font-medium tracking-wide transition-colors",
+                  "after:absolute after:inset-x-0 after:-bottom-px after:h-px after:origin-left after:scale-x-0 after:bg-[var(--pub-gold-500)] after:transition-transform after:duration-[var(--pub-duration-base)] after:ease-[var(--pub-ease)] hover:after:scale-x-100",
+                  isActive
+                    ? "text-[var(--pub-navy-900)] after:scale-x-100"
+                    : "text-[var(--pub-ink-soft)] hover:text-[var(--pub-navy-900)]",
+                )}
               >
                 {link.label}
               </Link>

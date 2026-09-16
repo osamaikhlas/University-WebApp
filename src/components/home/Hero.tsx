@@ -1,7 +1,8 @@
-import { Badge } from "@/components/ui/Badge";
-import { LinkButton } from "@/components/ui/Button";
-import { Container } from "@/components/ui/Container";
-import { getCollegeProfile, getPrimaryCollege } from "@/lib/content";
+import { Eyebrow } from "@/components/public/Eyebrow";
+import { CTAButton } from "@/components/public/CTAButton";
+import { MediaSlot } from "@/components/public/MediaSlot";
+import { PublicContainer } from "@/components/public/Container";
+import { getAdmissions, getCollegeProfile, getPrimaryCollege } from "@/lib/content";
 
 const FALLBACK_SITE_NAME = "[PLACEHOLDER] Affiliated College Portal";
 const FALLBACK_TAGLINE =
@@ -17,35 +18,75 @@ const FALLBACK_TAGLINE =
  * heading immediately).
  */
 export async function Hero() {
-  const [college, profile] = await Promise.all([getPrimaryCollege(), getCollegeProfile()]);
+  const [college, profile, admissions] = await Promise.all([
+    getPrimaryCollege(),
+    getCollegeProfile(),
+    getAdmissions(),
+  ]);
 
   const isPlaceholder = !college || college.isPlaceholder;
   const siteName = college && !college.isPlaceholder ? college.name : FALLBACK_SITE_NAME;
   const tagline =
     profile && !profile.isPlaceholder && profile.overview ? profile.overview : FALLBACK_TAGLINE;
 
+  const currentAdmission = admissions[0] ?? null;
+  const now = new Date();
+  const admissionsOpen = currentAdmission
+    ? (!currentAdmission.applicationStartDate || currentAdmission.applicationStartDate <= now) &&
+      (!currentAdmission.applicationEndDate || currentAdmission.applicationEndDate >= now)
+    : null;
+
   return (
-    <div className="border-b border-border-subtle bg-surface-muted">
-      <Container>
-        <div className="flex flex-col gap-4 py-10 sm:py-14">
-          {isPlaceholder ? <Badge tone="placeholder">Development placeholder</Badge> : null}
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
-            {siteName}
-          </h1>
-          <p className="max-w-2xl text-sm text-foreground/70 sm:text-base">{tagline}</p>
-          <div className="mt-2 flex flex-wrap gap-3">
-            <LinkButton href="/admissions" variant="primary">
-              Admissions
-            </LinkButton>
-            <LinkButton href="/notices" variant="secondary">
-              Notices
-            </LinkButton>
-            <LinkButton href="/contact" variant="secondary">
-              Contact us
-            </LinkButton>
+    <section className="relative overflow-hidden bg-[var(--pub-cream)]">
+      <PublicContainer size="wide">
+        <div className="grid items-start gap-12 py-12 sm:py-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:py-20">
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <Eyebrow>{isPlaceholder ? "Development Placeholder" : "Official Website"}</Eyebrow>
+              {profile?.establishedYear ? (
+                <span className="text-xs font-medium tracking-wide text-[var(--pub-ink-muted)]">
+                  Est. {profile.establishedYear}
+                </span>
+              ) : null}
+            </div>
+
+            <h1 className="pub-font-display text-4xl leading-[1.04] font-medium tracking-tight text-[var(--pub-ink)] sm:text-6xl lg:text-[3.75rem]">
+              {siteName}
+            </h1>
+
+            <p className="max-w-xl text-base leading-relaxed text-[var(--pub-ink-soft)] sm:text-lg">
+              {tagline}
+            </p>
+
+            <div className="mt-2 flex flex-wrap gap-3">
+              <CTAButton href="/academics" variant="primary">
+                Explore Programs
+              </CTAButton>
+              <CTAButton href="/admissions" variant="secondary">
+                {currentAdmission ? `Admissions ${currentAdmission.academicYear}` : "Admissions"}
+              </CTAButton>
+            </div>
+          </div>
+
+          <div className="relative">
+            <MediaSlot scene="campus" caption="Campus" ratio="square" className="lg:aspect-[4/3]" />
+
+            {currentAdmission ? (
+              <div className="absolute -top-6 right-4 left-4 sm:left-auto sm:right-8 sm:w-72">
+                <div className="rounded-[var(--pub-radius-md)] border border-[var(--pub-border)] bg-[var(--pub-surface)] p-4 shadow-[var(--pub-shadow-lg)]">
+                  <p className="text-xs font-semibold tracking-[0.1em] text-[var(--pub-ink-muted)] uppercase">
+                    Academic Year {currentAdmission.academicYear}
+                    {currentAdmission.isPlaceholder ? " · demo" : ""}
+                  </p>
+                  <p className="pub-font-display mt-1 text-xl font-medium text-[var(--pub-navy-900)]">
+                    Admissions {admissionsOpen ? "Open" : "Closed"}
+                  </p>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
-      </Container>
-    </div>
+      </PublicContainer>
+    </section>
   );
 }

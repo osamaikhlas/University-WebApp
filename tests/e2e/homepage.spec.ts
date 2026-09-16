@@ -7,29 +7,32 @@ import { expect, test } from "@playwright/test";
  * something real to assert against.
  */
 
+// Updated for the public-site redesign (see docs/public-design-system.md): several
+// sections were renamed, merged, or given new editorial headline copy instead of a plain
+// functional label, and two sections (Why Choose Us, Principal's Message) are new. Every
+// entry here is the section's *real* rendered <h2> text, not the eyebrow label above it.
 const SECTION_HEADINGS = [
   "Latest notices",
   "Upcoming events",
-  "About the college",
-  "Academic programs",
-  "Departments",
-  "Facilities",
-  "Latest activities",
-  "Scholarships & student support",
+  "Educating with purpose, for over a generation.", // was "About the college"
+  "Programs built for real classrooms.", // was "Academic programs"; Departments merged in
+  "An education built on more than a classroom.", // new: Why Choose Us
+  "A campus built for hands-on learning.", // was "Facilities"
+  "A campus community, not just a campus.", // was "Latest activities" (now Student Life)
+  "Support that helps students succeed.", // was "Scholarships & student support"
   "Important documents",
   "Have a concern?",
-  "Location",
-  "Contact",
+  "Visit the campus", // was "Location"; Contact merged in, no longer a separate heading
 ];
 
 test.describe("homepage sections", () => {
-  test("renders all 15 required sections", async ({ page }) => {
+  test("renders every required section", async ({ page }) => {
     await page.goto("/");
-    // Scoped to <main> since the footer repeats a "Contact" heading in its sitemap column.
+    // Scoped to <main> since the footer repeats several of these labels in its own nav.
     const main = page.locator("#main-content");
 
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible(); // 1. Hero
-    await expect(main.getByRole("heading", { name: "Quick links" })).toBeVisible(); // 3
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible(); // Hero
+    await expect(main.locator("#quick-links-heading")).toBeAttached(); // sr-only landmark label
     for (const heading of SECTION_HEADINGS) {
       await expect(
         main.getByRole("heading", { name: heading }),
@@ -46,19 +49,31 @@ test.describe("homepage sections", () => {
     // page (that list isn't expiry-filtered) — only the announcement banner itself must
     // exclude it.
     const announcement = page.locator("section", { has: page.locator("#announcement-heading") });
-    await expect(announcement.getByText("[PLACEHOLDER] Sample Notice", { exact: true })).toBeVisible();
+    // getImportantAnnouncement() orders by publishDate desc (src/lib/content.ts); of the
+    // three demo notices seeded with the same publishDate, "Faculty Development Workshop" is
+    // the last one the seed script creates, so it has the latest timestamp and wins.
+    await expect(
+      announcement.getByText("[PLACEHOLDER] Faculty Development Workshop", { exact: true }),
+    ).toBeVisible();
     await expect(announcement.getByText("[PLACEHOLDER] Expired Sample Notice")).toHaveCount(0);
   });
 
   test("upcoming events shows the future demo event", async ({ page }) => {
     await page.goto("/");
     const eventsSection = page.locator("section", { has: page.getByRole("heading", { name: "Upcoming events" }) });
-    await expect(eventsSection.getByText("[PLACEHOLDER] Sample Event")).toBeVisible();
+    // The featured event's title also appears a second time inside its MediaSlot's
+    // image-placeholder caption, so scope to the real <h3> rather than a generic text match.
+    await expect(
+      eventsSection.getByRole("heading", { level: 3, name: "[PLACEHOLDER] Teacher Education Seminar 2026" }),
+    ).toBeVisible();
   });
 
   test("quick links navigate to the right pages", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("link", { name: "Academic Programs" }).click();
+    // QuickLinks was redesigned to the brief's specific 5-item set (Programs, Departments,
+    // Admissions, Academic Calendar, Notices); "Programs" and "Academic Calendar" both point
+    // at /academics (Phase 4 consolidated those into sections of one page).
+    await page.getByRole("link", { name: "Programs", exact: true }).click();
     await expect(page).toHaveURL(/\/academics$/);
   });
 

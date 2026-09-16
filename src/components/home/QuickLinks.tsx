@@ -1,42 +1,46 @@
 import Link from "next/link";
-import { Card } from "@/components/ui/Card";
+import { PublicContainer } from "@/components/public/Container";
 
 /**
- * Pure navigation shortcuts — labels/hrefs are UI chrome, not institutional content, so
- * hardcoding them here doesn't conflict with "all content that can change must come from
- * the database": there's nothing about a specific college in this list.
+ * Pure navigation shortcuts — labels/hrefs are UI chrome, not institutional content (see the
+ * original file's note this preserves), restyled as a dense institutional "quick access"
+ * strip rather than five identical cards. `/academics` covers both Programs and Academic
+ * Calendar since Phase 4 consolidated those into sections of one page (src/lib/navigation.ts).
  */
 const QUICK_LINKS = [
+  { href: "/academics", label: "Programs" },
+  { href: "/academics", label: "Departments" },
   { href: "/admissions", label: "Admissions" },
-  { href: "/academics", label: "Academic Programs" },
+  { href: "/academics", label: "Academic Calendar" },
   { href: "/notices", label: "Notices" },
-  { href: "/results", label: "Results" },
-  { href: "/scholarships", label: "Scholarships" },
-  { href: "/grievance", label: "Grievance" },
-  { href: "/downloads", label: "Downloads" },
-  { href: "/contact", label: "Contact" },
 ];
 
 export function QuickLinks() {
   return (
-    <section aria-labelledby="quick-links-heading" className="flex flex-col gap-3">
-      <h2 id="quick-links-heading" className="text-lg font-semibold tracking-tight sm:text-xl">
-        Quick links
+    <section aria-labelledby="quick-links-heading" className="border-y border-white/10 bg-[var(--pub-navy-950)]">
+      <h2 id="quick-links-heading" className="sr-only">
+        Quick access
       </h2>
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {QUICK_LINKS.map((link) => (
-          <li key={link.href}>
-            <Card className="relative p-4 transition-colors hover:bg-surface-muted">
+      <PublicContainer size="wide">
+        <ul className="grid grid-cols-2 divide-x divide-y divide-white/10 sm:grid-cols-3 lg:grid-cols-5 lg:divide-y-0">
+          {QUICK_LINKS.map((link, index) => (
+            <li key={`${link.href}-${link.label}`} className={index === QUICK_LINKS.length - 1 && index % 2 === 0 ? "col-span-2 sm:col-span-1" : ""}>
               <Link
                 href={link.href}
-                className="text-sm font-medium after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                className="group flex items-center justify-between gap-2 px-5 py-5 text-sm font-medium text-[var(--pub-ink-on-navy-muted)] transition-colors hover:bg-white/[0.04] hover:text-[var(--pub-ink-on-navy)] sm:px-6"
               >
                 {link.label}
+                <span
+                  aria-hidden="true"
+                  className="text-[var(--pub-gold-400)] transition-transform duration-[var(--pub-duration-base)] ease-[var(--pub-ease)] group-hover:translate-x-1 motion-reduce:group-hover:translate-x-0"
+                >
+                  →
+                </span>
               </Link>
-            </Card>
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
+      </PublicContainer>
     </section>
   );
 }

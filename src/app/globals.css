@@ -102,3 +102,158 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/*
+ * ---------------------------------------------------------------------------------------
+ * PUBLIC SITE design tokens ("--pub-*") — additive, and deliberately separate from the
+ * tokens above. The tokens above (--brand, --surface, --border-subtle, ...) back every
+ * shared src/components/ui/** primitive, which 150+ admin pages also depend on directly —
+ * changing their values would silently restyle the admin portal too. Everything under
+ * "--pub-*" is consumed only by src/components/public/**, src/components/layout/Public*,
+ * and src/components/home/** (see docs/public-design-system.md). The admin portal is
+ * intentionally untouched by this system (CLAUDE.md-adjacent project instruction: public
+ * gets the premium visual treatment, admin stays plain/functional).
+ * ---------------------------------------------------------------------------------------
+ */
+:root {
+  /* Primary — deep academic navy. */
+  --pub-navy-950: #060f1f;
+  --pub-navy-900: #0b1f3b;
+  --pub-navy-800: #142c4f;
+  --pub-navy-700: #1f3b63;
+  --pub-navy-600: #2c4f7c;
+
+  /* Secondary — refined teal, used sparingly (icons, dividers, small accents). */
+  --pub-teal-700: #0b5f66;
+  --pub-teal-600: #0e7c86;
+  --pub-teal-500: #14939e;
+
+  /* Accent — warm gold, reserved for CTAs, active states, and important emphasis only. */
+  /* Darkened from #a9782f (then #8a6122 — still only 4.48:1 against a 10%-opacity gold pill
+     composited over --pub-surface-alt, just under AA's 4.5:1; axe-core caught both). Every
+     usage of this token is small text (a "demo" marker, the PublicDemoNotice pill, ...) on a
+     near-white/cream background — this clears ≥5.4:1 against the darkest such background. */
+  --pub-gold-600: #7a5420;
+  --pub-gold-500: #c89b3c;
+  --pub-gold-400: #dab662;
+
+  /* Warm neutrals — background/surface, never pure white. */
+  --pub-cream: #faf8f4;
+  --pub-cream-deep: #f2ede2;
+  --pub-surface: #ffffff;
+  --pub-surface-alt: #f4efe4;
+  --pub-border: #e6e0d3;
+  --pub-border-strong: #d8cfba;
+
+  /* Text — strong dark neutral, never pure black. */
+  --pub-ink: #191c22;
+  --pub-ink-soft: #454b57;
+  /* Darkened from a more typical #6b7280 (Tailwind gray-500): that value clears AA (4.5:1)
+     against --pub-cream but not against the slightly darker --pub-cream-deep, which is
+     exactly where this token gets used (e.g. PublicPageShell's breadcrumb band) — axe-core
+     caught it (tests/e2e/accessibility.spec.ts). This value clears 4.5:1 against both. */
+  --pub-ink-muted: #5b6472;
+  --pub-ink-on-navy: #f4f1ea;
+  --pub-ink-on-navy-muted: #b9c3d4;
+
+  /* Typography */
+  --pub-font-display: var(--font-display, "Fraunces", "Georgia", serif);
+  --pub-font-sans: var(--font-geist-sans), "Segoe UI", sans-serif;
+
+  /* Radius — restrained, not maximally rounded. */
+  --pub-radius-sm: 0.375rem;
+  --pub-radius-md: 0.625rem;
+  --pub-radius-lg: 1rem;
+  --pub-radius-full: 999px;
+
+  /* Shadows — soft and diffused rather than heavy. */
+  --pub-shadow-sm: 0 1px 2px rgba(11, 31, 59, 0.06);
+  --pub-shadow-md: 0 8px 24px -12px rgba(11, 31, 59, 0.18);
+  --pub-shadow-lg: 0 24px 48px -20px rgba(11, 31, 59, 0.28);
+
+  /* Motion */
+  --pub-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --pub-duration-fast: 150ms;
+  --pub-duration-base: 240ms;
+  --pub-duration-slow: 420ms;
+
+  /* Container widths */
+  --pub-container-normal: 80rem; /* 1280px */
+  --pub-container-wide: 90rem; /* 1440px */
+  --pub-container-narrow: 46rem; /* 736px — long-form reading measure */
+
+  /* Section rhythm */
+  --pub-section-y: clamp(3.5rem, 3rem + 3vw, 7rem);
+  --pub-section-y-tight: clamp(2.5rem, 2.2rem + 1.5vw, 4rem);
+}
+
+/*
+ * The public site is a deliberately fixed light editorial theme (warm cream/navy/gold), not
+ * a light+dark pair like the tokens above (which mirror the OS theme for the admin portal).
+ * `color-scheme: light` on `.pub-root` (src/app/(public)/layout.tsx) also keeps native form
+ * controls/scrollbars light there regardless of OS preference, so nothing renders
+ * half-dark-mode — a partial dark theme (brand-hue text tokens below were never designed
+ * for a dark background) is worse than one well-executed light theme.
+ *
+ * Public inner pages not yet individually redesigned (docs/public-design-system.md's
+ * "deferred" list) still render through the *shared* src/components/ui/** primitives
+ * (Card, Alert, EmptyState, ...), which read the tokens above and DO flip to their dark
+ * values under prefers-color-scheme — appropriate for the admin portal, wrong here (it
+ * produced unreadable dark-on-dark cards under a light PublicPageShell intro band). Re-pinning
+ * those shared tokens back to their light `:root` values, scoped to `.pub-root`, fixes every
+ * not-yet-redesigned public page without touching the admin portal's dark-mode support at all
+ * (admin has no `.pub-root` ancestor).
+ */
+.pub-root {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #171717;
+  --surface: #ffffff;
+  --surface-muted: #f4f4f5;
+  --border-subtle: #e4e4e7;
+  --placeholder-bg: #fef9c3;
+  --placeholder-border: #eab308;
+  --placeholder-foreground: #713f12;
+  --info-bg: #eff6ff;
+  --info-border: #93c5fd;
+  --info-foreground: #1e3a8a;
+  --success-bg: #f0fdf4;
+  --success-border: #86efac;
+  --success-foreground: #14532d;
+  --warning-bg: #fffbeb;
+  --warning-border: #fcd34d;
+  --warning-foreground: #78350f;
+  --danger-bg: #fef2f2;
+  --danger-border: #fca5a5;
+  --danger-foreground: #7f1d1d;
+}
+
+/* Editorial display type — headlines only, applied explicitly (never inherited globally),
+   so it can never bleed into the admin portal's UI. */
+.pub-font-display {
+  font-family: var(--pub-font-display);
+  font-feature-settings: "ss01" 1, "liga" 1;
+}
+
+/* Entrance reveal for section content — off by default (progressive enhancement: content is
+   fully visible without JS/before the observer runs) and always skipped for users who asked
+   for less motion. See src/components/public/Reveal.tsx. */
+@media (prefers-reduced-motion: no-preference) {
+  .pub-reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity var(--pub-duration-slow) var(--pub-ease),
+      transform var(--pub-duration-slow) var(--pub-ease);
+  }
+  .pub-reveal.pub-reveal-visible {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Texture used behind dark (navy) sections — a barely-there dot grid, not a stock pattern. */
+.pub-texture-dots {
+  background-image: radial-gradient(currentColor 1px, transparent 1px);
+  background-size: 20px 20px;
+}

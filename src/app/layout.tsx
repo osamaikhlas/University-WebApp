@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import { SkipLink } from "@/components/SkipLink";
 import "./globals.css";
@@ -11,6 +11,14 @@ const geistSans = Geist({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+// Editorial display face for the public site's headlines only (src/app/globals.css's
+// `.pub-font-display`, consumed by src/components/public/**) — the admin portal never
+// references `--font-display`, so loading it here has no visual effect on admin pages.
+const fraunces = Fraunces({
+  variable: "--font-display",
   subsets: ["latin"],
 });
 
@@ -27,9 +35,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="flex min-h-full flex-col">
+      <body className="flex min-h-full flex-col" suppressHydrationWarning>
         {/* Visually hidden until focused — lets keyboard/screen-reader users jump past the
             header/nav straight to the page's main content. Targets #main-content, set on
             each layout's <main> below. */}

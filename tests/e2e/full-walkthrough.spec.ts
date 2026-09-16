@@ -46,24 +46,31 @@ test.describe("Public site walkthrough", () => {
   test("3. open a notice on the Notices page", async ({ page }) => {
     await page.goto("/notices");
     await expect(page.getByRole("heading", { level: 1, name: "Notices" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "[PLACEHOLDER] Sample Notice", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "[PLACEHOLDER] Admissions Open for Academic Year 2026-27", exact: true }),
+    ).toBeVisible();
   });
 
   test("4. search for a program via the real search box", async ({ page }) => {
     await page.goto("/search");
-    await page.getByLabel("Search").fill("Sample Studies");
+    // Not getByLabel("Search") — the redesigned header (src/components/layout/PublicHeader.tsx)
+    // added two "Search the site" links (utility bar + icon), both of which also match
+    // getByLabel's substring search, making it ambiguous. The searchbox role is unique.
+    await page.getByRole("searchbox", { name: "Search" }).fill("Bachelor of Education");
     await page.getByRole("button", { name: "Search" }).click();
 
     await expect(page).toHaveURL(/\/search\?q=/);
     await expect(
-      page.getByRole("list", { name: /search results/i }).getByRole("link", { name: "[PLACEHOLDER] BS Sample Studies" }),
+      page
+        .getByRole("list", { name: /search results/i })
+        .getByRole("link", { name: "[PLACEHOLDER] Bachelor of Education (B.Ed.)" }),
     ).toBeVisible();
   });
 
   test("5. open the Faculty page", async ({ page }) => {
     await page.goto("/faculty");
     await expect(page.getByRole("heading", { level: 1, name: "Faculty" })).toBeVisible();
-    await expect(page.getByText("[PLACEHOLDER] Dr. Sample Faculty")).toBeVisible();
+    await expect(page.getByText("[PLACEHOLDER] Dr. Ayesha Rahman")).toBeVisible();
   });
 
   test("6. open the Admissions page", async ({ page }) => {

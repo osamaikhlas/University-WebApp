@@ -41,7 +41,10 @@ test.describe.serial("Location CMS module (singleton, findFirst-based guard)", (
 
   test("the updated address is now visible on the public Campus page", async ({ page }) => {
     await page.goto("/campus");
-    await expect(page.getByText(address)).toBeVisible();
+    // Scoped to <main>: the public-site redesign (docs/public-design-system.md) added the
+    // college's address to PublicFooter too, which now legitimately repeats this same text
+    // sitewide — a bare page-wide getByText would match both.
+    await expect(page.locator("#main-content").getByText(address)).toBeVisible();
   });
 
   test("FACULTY_EDITOR (wrong domain) cannot edit the location", async ({ page }) => {

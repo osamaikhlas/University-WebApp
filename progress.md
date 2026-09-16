@@ -15,8 +15,12 @@ scaffolded (Next.js + TypeScript + Tailwind + PostgreSQL/Prisma), the full data 
 every module in `CLAUDE.md`'s required scope exists as Prisma models, every `/admin/*`
 route is behind real login + server-side, database-verified permission checks (see
 `docs/permission-matrix.md`), and the public site's 20 sections now render real,
-publish-gated database content through a shared shell. The homepage (`/`) is a
-fully-fleshed, information-dense 15-section page. **Staff can now actually author content
+publish-gated database content through a shared shell. **The public site now has a
+dedicated premium editorial design system, separate from the admin portal's own plain/
+functional look** (`docs/public-design-system.md`) — the homepage (`/`) is a ~16-section
+editorial page built on it; every other public inner page gets the elevated header/
+breadcrumb treatment via the shared `PublicPageShell`, with their own body content redesign
+still pending (see Next steps). **Staff can now actually author content
 through the admin UI** for 28 modules — list/view/create/edit pages plus the real content
 approval workflow (`DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED → PUBLISHED`, and
 `PUBLISHED → UPDATE_REQUIRED → DRAFT`; every transition enforces permissions, records the
@@ -1553,6 +1557,103 @@ section (`shell-full-walkthrough`).
     after the fix; a real production build (`npm run build`) verified clean.
   - Updated `tests.json` with a new `shell-full-walkthrough` entry under `public_shell`.
 
+- 2026-09-16 — **Public-site design-system redesign** (explicit "Lead Product Designer + Senior Frontend
+  Engineer" instruction): moved the public-facing website from the admin portal's shared plain/functional
+  look to a dedicated premium editorial visual system, following the brief's own phased process (inspect →
+  tokens → header/footer → homepage → reusable components → verify, deferring the 20 individual inner-page
+  body redesigns rather than rewriting everything at once). Full detail in the new
+  `docs/public-design-system.md`; summary:
+  - **New, additive `--pub-*` design tokens** (`src/app/globals.css`) — navy/teal/gold palette, warm cream
+    neutrals, a Fraunces display face (`next/font/google`, opt-in via `.pub-font-display` only) alongside
+    the existing Geist sans, restrained radius/shadow scale, one eased motion curve. The original shared
+    tokens (`--brand`, `--surface`, `--border-subtle`, …) are untouched — the admin portal, which 150+
+    pages depend on directly, was **not modified at all** and was verified pixel-for-pixel unchanged
+    (screenshot + the full `tests/e2e/accessibility.spec.ts` admin-page suite, all still green).
+  - **New parallel component system** (`src/components/public/**`: `Container`, `Eyebrow`, `SectionHeading`,
+    `ArrowLink`, `CTAButton`, `StatBlock`, `MediaSlot`, `PublicDemoNotice`, `PublicCard`, `Reveal`) —
+    deliberately separate from the shared `src/components/ui/**` the admin portal uses, so the two visual
+    languages can never collide or have to stay in lockstep.
+  - **Redesigned**: `PublicHeader`/`DesktopNavLinks`/`MobileNav` (utility bar, scroll-compact + backdrop
+    blur via a `data-scrolled` attribute + `group-data-[scrolled=true]:` CSS variants — not a render-prop,
+    see the bug below), `PublicFooter` (5-column, grouped from `PUBLIC_NAV_LINKS`), `PublicPageShell` (gives
+    every public inner page — including the ~19 not yet individually redesigned — an elevated
+    breadcrumb/eyebrow/headline intro band for free), and the entire homepage (`src/components/home/**`,
+    ~16 sections: Hero, Announcement, Quick Links, About+live stats, Programs, Why Choose Us [new],
+    Facilities, Student Life, Notices, Events, Support, Principal's Message [new], Documents, Grievance
+    callout, Location+Contact [merged], closing CTA [new]) — every figure/list still reads from
+    `src/lib/content.ts`, nothing institutional was hard-coded (CLAUDE.md rules 2–4).
+  - **Imagery**: no real photography exists and the CSP's `img-src` is `'self' blob: data:` only
+    (`next.config.ts`), so `MediaSlot` generates a gradient/texture placeholder per "scene," always with a
+    visible "X — image placeholder" caption, ready to swap for a real `next/image` once photography exists.
+  - **Four real bugs found and fixed via actual browser testing (Claude in Chrome + Playwright), none of
+    which `tsc`/`eslint` could have caught**:
+    1. `HeaderScrollShell` initially passed a `(scrolled) => ReactNode` render-prop from the Server
+       Component `PublicHeader` into a Client Component — React Server Components cannot pass functions
+       across that boundary; threw "Functions are not valid as a child of Client Components" at runtime.
+       Fixed by switching to a `data-scrolled` attribute + CSS variants instead of JS-computed classNames.
+    2. `ArrowLink`/`CTAButton` hardcode `inline-flex` in their own base classes; passing
+       `className="hidden sm:inline-flex"` to either of them doesn't reliably hide them below the
+       breakpoint, since Tailwind's cascade resolves by generated-CSS rule order, not JSX prop order — the
+       header's Admissions button and `SectionHeading`'s desktop "View all" link both stayed visible on
+       mobile. Fixed by wrapping the component in a plain `<span>` and putting the responsive classes on
+       the wrapper instead. Documented as a named pitfall in `docs/public-design-system.md` so it isn't
+       rediscovered per-component.
+    3. Two real WCAG contrast failures caught by `tests/e2e/accessibility.spec.ts` (axe-core), both only
+       visible on the *darker* of two very-similar-looking cream background tokens: `--pub-ink-muted`
+       (breadcrumb "Home" link, ~4.3:1 against `--pub-cream-deep`) and `--pub-gold-600` (the small "demo"
+       marker, 4.48:1 against a 10%-opacity gold pill over `--pub-surface-alt`) — both just under AA's
+       4.5:1. Darkened both tokens with margin (verified ≥5.4:1 against their worst-case background via a
+       small Node script computing the real WCAG formula, not eyeballed).
+    4. Several `<section aria-labelledby="x-heading">` wrappers referenced an `id` that `SectionHeading`
+       never actually set on its `<h2>` (and `PrincipalMessageSection` had no heading element at all) —
+       systemic, still cosmetically invisible during manual review since sighted users just see the visible
+       text. Fixed by making `id` a *required* prop on `SectionHeading` (so `tsc` now catches a missing one
+       immediately) and adding a real `sr-only` `<h2>` to `PrincipalMessageSection`.
+  - Also caught and fixed a design bug the first browser screenshot revealed directly: an initial
+    per-token dark-mode variant for `--pub-*` (mirroring the admin portal's existing light/dark tokens)
+    produced unreadable navy-on-near-black text once tested under an actual `prefers-color-scheme: dark`
+    environment, since those tokens were only ever designed for a light background. Decided the public site
+    is a **deliberately fixed light theme** instead (`color-scheme: light` + re-pinning the *shared* tokens
+    too, scoped to `.pub-root`) — see the design-system doc's tokens section for the full reasoning; this
+    also fixes every not-yet-redesigned inner page, which still renders through shared `ui/*` components
+    that would otherwise have flipped dark under the same OS setting.
+  - **Test suite updates**: several existing e2e specs asserted on specific literal section-heading text or
+    stale `"[PLACEHOLDER] Sample X"` seed strings from *earlier in this same session's* seed-data work (the
+    2026-09-16 college-dataset entries above) that the redesign's full-suite run finally surfaced —
+    `tests/e2e/homepage.spec.ts` (renamed/merged section headings, the new 5-item QuickLinks set),
+    `public-content.spec.ts`/`full-walkthrough.spec.ts`/`search.spec.ts` (updated to the real current
+    notice/event/program/faculty/regulation titles), `search.spec.ts`'s broad-keyword test (rewritten to
+    check one category at a time via `&category=`, since the richer realistic seed content now produces
+    15+ matches for the shared `"[PLACEHOLDER]"` keyword — more than fit on one 10-result page, unlike the
+    old generic `"Sample"` fixture), and `cms-location.spec.ts` (scoped an address assertion to
+    `#main-content` since `PublicFooter` now legitimately also shows the address sitewide). None of these
+    were weakened — every one still asserts real, specific content; they were updated to match intentional,
+    already-shipped content/behavior changes, per this project's testing rule (CLAUDE.md rule 10).
+  - **Verification**: `npm run typecheck`, `npm run lint`, `npm test` (650/650) all clean. Every e2e spec
+    the redesign actually touches (`homepage`, `public-content`, `public-site`, `auth`, `search`,
+    `cms-location`, `full-walkthrough`, `accessibility` — 34/34 on accessibility alone, covering all 10
+    public + all 24 admin pages with zero axe-core violations) passes 100% in isolation. A full
+    `npx playwright test` run showed 6 additional failures, all pre-existing/unrelated: the
+    already-documented `dashboard.spec.ts` test-data-accumulation flake; a `cms-compliance.spec.ts`
+    collision between a real error alert and Next.js's own `role="alert"` route announcer (untouched
+    compliance-workflow code, not caused by this session); a plain 30s navigation timeout in `admin.spec.ts`
+    under the load of a 3+ minute, 250+-test parallel run; and three grievance-submission tests hitting the
+    real 3-per-hour rate limit (`src/app/(public)/grievance/actions.ts`) purely from this session's own
+    repeated full-suite runs today — confirmed by re-running `grievance.spec.ts` in isolation immediately
+    after, which still failed the same way (the limit had already been exhausted for the hour), not because
+    of anything this redesign changed. Real browser verification (Claude in Chrome): homepage scrolled
+    top-to-bottom at desktop and a genuine mobile viewport (mobile nav opened/closed, checked for the
+    `hidden`/`inline-flex` bug above), one inner page (`/about`) confirmed legible under both the pre- and
+    post-token-fix states, and `/admin` confirmed visually unchanged.
+  - Updated `tests.json` with a new `shell-public-redesign` entry under `public_shell`, and updated
+    `home-15-sections`'s notes (renamed to reflect the new section count/list).
+  - **Not done in this pass, by design** (per the brief's own phased instruction, §23): the individual body
+    content of the ~19 other public inner pages (`/academics`, `/programs`, `/departments`, `/faculty`,
+    `/staff`, `/admissions`, `/notices`, `/events`, `/gallery`, `/examinations`, `/results`,
+    `/scholarships`, `/student-support`, `/rules`, `/affiliation`, `/grievance`, `/contact`, `/downloads`,
+    `/search`) — each still renders through the shared `ui/*` components below `PublicPageShell`'s now-
+    elevated intro band. See Next steps.
+
 ## In progress
 
 - Nothing in progress. Phase 1 (project foundation), Phase 2 (database), Phase 3
@@ -1602,6 +1703,22 @@ section (`shell-full-walkthrough`).
    Notices/Timetables/Academic Calendar/Admissions/Faculty; the engine itself
    (`src/lib/content-review.ts`) is already generic enough that doing so is additive schema
    + registry work, not a redesign.
+8. **Redesign the ~19 remaining public inner pages' body content** onto the new public design
+   system (`docs/public-design-system.md`) — the intro band is already elevated everywhere via
+   `PublicPageShell`, but the content below it still renders through the shared admin `ui/*`
+   components. Priority order per the original brief: Faculty (portrait-grid directory with
+   department filter + search), Admissions (conversion-focused layout with a timeline-style
+   application process), Notices/Gallery (editorial list / masonry grid), then the remaining
+   pages (`/academics`, `/programs` detail, `/departments`, `/staff`, `/events`,
+   `/examinations`, `/results`, `/scholarships`, `/student-support`, `/rules`, `/affiliation`,
+   `/grievance`, `/contact`, `/downloads`, `/search`).
+9. `cms-compliance.spec.ts`'s "normalizes to a submittable state" test intermittently fails
+   with a strict-mode violation on `getByRole("alert")` — it collides with Next.js's own
+   `role="alert"` route announcer (`#__next-route-announcer__`), not with anything this
+   session touched (no compliance-workflow file was changed). Surfaced by a full-suite run
+   2026-09-16 while verifying the public redesign; flagged rather than fixed since it's
+   unrelated to that work and needs its own root-cause trace (most likely: narrow the test's
+   locator to the specific error alert rather than any `role="alert"` on the page).
 
 ## Decisions log
 

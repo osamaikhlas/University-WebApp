@@ -34,7 +34,7 @@ export function MobileNav({ links }: { links: NavLink[] }) {
         aria-expanded={open}
         aria-controls={PANEL_ID}
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex items-center justify-center rounded-md p-2 text-foreground/80 hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        className="inline-flex items-center justify-center rounded-[var(--pub-radius-sm)] p-2 text-[var(--pub-ink)] hover:bg-[var(--pub-navy-900)]/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--pub-gold-500)]"
       >
         <span className="sr-only">{open ? "Close menu" : "Open menu"}</span>
         <svg
@@ -56,10 +56,10 @@ export function MobileNav({ links }: { links: NavLink[] }) {
         aria-label="Primary"
         hidden={!open}
         className={clsx(
-          "absolute inset-x-0 top-full z-20 border-b border-border-subtle bg-surface shadow-sm",
+          "absolute inset-x-0 top-full z-20 border-b border-[var(--pub-border)] bg-[var(--pub-cream)] shadow-[var(--pub-shadow-md)]",
         )}
       >
-        <ul className="flex flex-col divide-y divide-border-subtle px-4 py-2 sm:px-6">
+        <ul className="flex flex-col divide-y divide-[var(--pub-border)] px-5 py-2 sm:px-8">
           {links.map((link) => {
             const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
             return (
@@ -69,8 +69,10 @@ export function MobileNav({ links }: { links: NavLink[] }) {
                   onClick={() => setOpen(false)}
                   aria-current={isActive ? "page" : undefined}
                   className={clsx(
-                    "block py-3 text-sm font-medium",
-                    isActive ? "text-foreground" : "text-foreground/80 hover:text-foreground",
+                    "block py-3.5 text-base font-medium",
+                    isActive
+                      ? "text-[var(--pub-navy-900)]"
+                      : "text-[var(--pub-ink-soft)] hover:text-[var(--pub-navy-900)]",
                   )}
                 >
                   {link.label}

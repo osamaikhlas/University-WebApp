@@ -1,22 +1,21 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Container } from "@/components/ui/Container";
-import { SectionSkeleton } from "@/components/ui/Skeleton";
 import { Hero } from "@/components/home/Hero";
 import { AnnouncementBanner } from "@/components/home/AnnouncementBanner";
 import { QuickLinks } from "@/components/home/QuickLinks";
-import { NoticesSection } from "@/components/home/NoticesSection";
-import { EventsSection } from "@/components/home/EventsSection";
 import { IntroSection } from "@/components/home/IntroSection";
 import { ProgramsSection } from "@/components/home/ProgramsSection";
-import { DepartmentsSection } from "@/components/home/DepartmentsSection";
+import { WhyChooseUsSection } from "@/components/home/WhyChooseUsSection";
 import { FacilitiesSection } from "@/components/home/FacilitiesSection";
-import { ActivitiesSection } from "@/components/home/ActivitiesSection";
+import { StudentLifeSection } from "@/components/home/StudentLifeSection";
+import { NoticesSection } from "@/components/home/NoticesSection";
+import { EventsSection } from "@/components/home/EventsSection";
 import { SupportSection } from "@/components/home/SupportSection";
+import { PrincipalMessageSection } from "@/components/home/PrincipalMessageSection";
 import { DocumentsSection } from "@/components/home/DocumentsSection";
 import { GrievanceCallout } from "@/components/home/GrievanceCallout";
 import { LocationSection } from "@/components/home/LocationSection";
-import { ContactSection } from "@/components/home/ContactSection";
+import { CTASection } from "@/components/home/CTASection";
 import { getCollegeProfile, getContacts, getLocation, getPrimaryCollege } from "@/lib/content";
 import { buildCollegeJsonLd, serializeJsonLd } from "@/lib/seo";
 
@@ -51,6 +50,13 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+/**
+ * Every section below owns its own full-bleed background band (see
+ * docs/public-design-system.md's "section rhythm" — alternating cream / surface-alt / navy)
+ * rather than living inside one shared max-width container, which is what makes the
+ * "layered sections" composition possible. Each section is independently `Suspense`-wrapped
+ * so a slow query for one section never blocks the rest of the page from streaming in.
+ */
 export default async function HomePage() {
   const [college, contacts, location] = await Promise.all([
     getPrimaryCollege(),
@@ -72,65 +78,57 @@ export default async function HomePage() {
 
       <Hero />
 
-      <Container>
-        <div className="flex flex-col gap-12 py-10 sm:gap-16 sm:py-12">
-          <Suspense fallback={<SectionSkeleton rows={1} />}>
-            <AnnouncementBanner />
-          </Suspense>
+      <Suspense fallback={null}>
+        <AnnouncementBanner />
+      </Suspense>
 
-          <QuickLinks />
+      <QuickLinks />
 
-          <div className="grid gap-10 lg:grid-cols-2 lg:gap-8">
-            <Suspense fallback={<SectionSkeleton />}>
-              <NoticesSection />
-            </Suspense>
-            <Suspense fallback={<SectionSkeleton />}>
-              <EventsSection />
-            </Suspense>
-          </div>
+      <Suspense fallback={null}>
+        <IntroSection />
+      </Suspense>
 
-          <Suspense fallback={<SectionSkeleton />}>
-            <IntroSection />
-          </Suspense>
+      <Suspense fallback={null}>
+        <ProgramsSection />
+      </Suspense>
 
-          <div className="grid gap-10 lg:grid-cols-2 lg:gap-8">
-            <Suspense fallback={<SectionSkeleton />}>
-              <ProgramsSection />
-            </Suspense>
-            <Suspense fallback={<SectionSkeleton />}>
-              <DepartmentsSection />
-            </Suspense>
-          </div>
+      <WhyChooseUsSection />
 
-          <div className="grid gap-10 lg:grid-cols-2 lg:gap-8">
-            <Suspense fallback={<SectionSkeleton />}>
-              <FacilitiesSection />
-            </Suspense>
-            <Suspense fallback={<SectionSkeleton />}>
-              <ActivitiesSection />
-            </Suspense>
-          </div>
+      <Suspense fallback={null}>
+        <FacilitiesSection />
+      </Suspense>
 
-          <Suspense fallback={<SectionSkeleton rows={4} />}>
-            <SupportSection />
-          </Suspense>
+      <Suspense fallback={null}>
+        <StudentLifeSection />
+      </Suspense>
 
-          <Suspense fallback={<SectionSkeleton />}>
-            <DocumentsSection />
-          </Suspense>
+      <Suspense fallback={null}>
+        <NoticesSection />
+      </Suspense>
 
-          <GrievanceCallout />
+      <Suspense fallback={null}>
+        <EventsSection />
+      </Suspense>
 
-          <div className="grid gap-10 lg:grid-cols-2 lg:gap-8">
-            <Suspense fallback={<SectionSkeleton />}>
-              <LocationSection />
-            </Suspense>
-            <Suspense fallback={<SectionSkeleton />}>
-              <ContactSection />
-            </Suspense>
-          </div>
-        </div>
-      </Container>
+      <Suspense fallback={null}>
+        <SupportSection />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <PrincipalMessageSection />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <DocumentsSection />
+      </Suspense>
+
+      <GrievanceCallout />
+
+      <Suspense fallback={null}>
+        <LocationSection />
+      </Suspense>
+
+      <CTASection />
     </>
   );
 }

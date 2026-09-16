@@ -102,3 +102,19 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# PUBLIC DESIGN RULE:
+
+1. The public website is a premium institutional experience, not an administration
+portal.
+
+2. Never default to "dashboard aesthetics" on public pages.
+
+3. Avoid repetitive card grids, excessive rounded containers, heavy borders,
+generic gradients, dense tables, and default component-library styling.
+
+4. Prefer editorial layouts, strong typography, photography, whitespace,
+visual hierarchy, sophisticated navigation, subtle motion, and varied section
+composition.
+
+5. The admin application may remain functional and utilitarian.

@@ -12,7 +12,9 @@ test.describe("database-backed content", () => {
     page,
   }) => {
     await page.goto("/notices");
-    await expect(page.getByRole("heading", { name: "[PLACEHOLDER] Sample Notice" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "[PLACEHOLDER] Admissions Open for Academic Year 2026-27" }),
+    ).toBeVisible();
     await expect(page.getByText(/demo content/i)).toBeVisible();
   });
 
@@ -20,7 +22,7 @@ test.describe("database-backed content", () => {
     await page.goto("/faculty");
     const table = page.getByRole("table", { name: "Faculty" });
     await expect(table).toBeVisible();
-    await expect(table.getByText("[PLACEHOLDER] Dr. Sample Faculty")).toBeVisible();
+    await expect(table.getByText("[PLACEHOLDER] Dr. Ayesha Rahman")).toBeVisible();
   });
 
   test("a page with no data for one section shows an empty state, not fabricated rows", async ({
@@ -66,8 +68,8 @@ test.describe("search", () => {
   test("searching for the seeded demo program returns a result linking to Academics", async ({
     page,
   }) => {
-    await page.goto("/search?q=Sample+Studies");
-    const result = page.getByRole("link", { name: "[PLACEHOLDER] BS Sample Studies" });
+    await page.goto("/search?q=Bachelor+of+Education");
+    const result = page.getByRole("link", { name: "[PLACEHOLDER] Bachelor of Education (B.Ed.)" });
     await expect(result).toBeVisible();
     await expect(result).toHaveAttribute("href", "/academics");
   });
