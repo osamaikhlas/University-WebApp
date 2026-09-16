@@ -18,16 +18,32 @@ export default async function EditCollegeProfilePage() {
   const profile = college
     ? await prisma.collegeProfile.findUnique({ where: { collegeId: college.id } })
     : null;
-  if (!profile) {
+  if (!profile || !college) {
     redirect("/admin/college-profile/new");
   }
+
+  const [logo, principalPhoto] = await Promise.all([
+    prisma.media.findFirst({
+      where: { entityType: "College", entityId: college.id },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.media.findFirst({
+      where: { entityType: "CollegeProfile", entityId: profile.id },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
 
   return (
     <Container>
       <div className="flex flex-col gap-6 py-10">
         <PageHeading title="Edit college profile" description="College Profile" />
         <Card>
-          <CollegeProfileForm mode="edit" profile={profile} />
+          <CollegeProfileForm
+            mode="edit"
+            profile={profile}
+            logoUrl={logo ? `/api/files/media/${logo.id}` : null}
+            principalPhotoUrl={principalPhoto ? `/api/files/media/${principalPhoto.id}` : null}
+          />
         </Card>
       </div>
     </Container>

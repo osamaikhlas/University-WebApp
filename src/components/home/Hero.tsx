@@ -2,7 +2,7 @@ import { Eyebrow } from "@/components/public/Eyebrow";
 import { CTAButton } from "@/components/public/CTAButton";
 import { MediaSlot } from "@/components/public/MediaSlot";
 import { PublicContainer } from "@/components/public/Container";
-import { getAdmissions, getCollegeProfile, getPrimaryCollege } from "@/lib/content";
+import { getAdmissions, getCollegeProfile, getGalleryPhotoMap, getPrimaryCollege } from "@/lib/content";
 
 const FALLBACK_SITE_NAME = "[PLACEHOLDER] Affiliated College Portal";
 const FALLBACK_TAGLINE =
@@ -18,11 +18,13 @@ const FALLBACK_TAGLINE =
  * heading immediately).
  */
 export async function Hero() {
-  const [college, profile, admissions] = await Promise.all([
+  const [college, profile, admissions, photoMap] = await Promise.all([
     getPrimaryCollege(),
     getCollegeProfile(),
     getAdmissions(),
+    getGalleryPhotoMap(),
   ]);
+  const heroPhoto = photoMap.get("auditorium / event space");
 
   const isPlaceholder = !college || college.isPlaceholder;
   const siteName = college && !college.isPlaceholder ? college.name : FALLBACK_SITE_NAME;
@@ -69,7 +71,13 @@ export async function Hero() {
           </div>
 
           <div className="relative">
-            <MediaSlot scene="campus" caption="Campus" ratio="square" className="lg:aspect-[4/3]" />
+            <MediaSlot
+              scene="campus"
+              caption="Campus"
+              ratio="square"
+              className="lg:aspect-[4/3]"
+              photo={heroPhoto}
+            />
 
             {currentAdmission ? (
               <div className="absolute -top-6 right-4 left-4 sm:left-auto sm:right-8 sm:w-72">

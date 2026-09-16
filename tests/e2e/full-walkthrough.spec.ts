@@ -27,7 +27,9 @@ test.describe("Public site walkthrough", () => {
   test("1. homepage opens and identifies the site", async ({ page }) => {
     await page.goto("/");
     await expect(page).toHaveTitle(/./);
-    await expect(page.getByRole("banner").getByRole("link", { name: /affiliated college portal/i })).toBeVisible();
+    await expect(
+      page.getByRole("banner").getByRole("link", { name: /sindh muslim government science college/i }),
+    ).toBeVisible();
   });
 
   test("2. main menu navigates to key public sections", async ({ page }) => {
@@ -47,7 +49,7 @@ test.describe("Public site walkthrough", () => {
     await page.goto("/notices");
     await expect(page.getByRole("heading", { level: 1, name: "Notices" })).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "[PLACEHOLDER] Admissions Open for Academic Year 2026-27", exact: true }),
+      page.getByRole("heading", { name: "Academic Activities and Student Discipline", exact: true }),
     ).toBeVisible();
   });
 
@@ -56,21 +58,21 @@ test.describe("Public site walkthrough", () => {
     // Not getByLabel("Search") — the redesigned header (src/components/layout/PublicHeader.tsx)
     // added two "Search the site" links (utility bar + icon), both of which also match
     // getByLabel's substring search, making it ambiguous. The searchbox role is unique.
-    await page.getByRole("searchbox", { name: "Search" }).fill("Bachelor of Education");
+    await page.getByRole("searchbox", { name: "Search" }).fill("Pre-Medical");
     await page.getByRole("button", { name: "Search" }).click();
 
     await expect(page).toHaveURL(/\/search\?q=/);
     await expect(
       page
         .getByRole("list", { name: /search results/i })
-        .getByRole("link", { name: "[PLACEHOLDER] Bachelor of Education (B.Ed.)" }),
+        .getByRole("link", { name: "F.Sc. Pre-Medical" }),
     ).toBeVisible();
   });
 
   test("5. open the Faculty page", async ({ page }) => {
     await page.goto("/faculty");
     await expect(page.getByRole("heading", { level: 1, name: "Faculty" })).toBeVisible();
-    await expect(page.getByText("[PLACEHOLDER] Dr. Ayesha Rahman")).toBeVisible();
+    await expect(page.getByText("Dr. Muhammad Ahmed Khan")).toBeVisible();
   });
 
   test("6. open the Admissions page", async ({ page }) => {

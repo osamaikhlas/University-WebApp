@@ -32,6 +32,30 @@ export const getCollegeProfile = cache(async () => {
   return prisma.collegeProfile.findFirst({ where: { collegeId, status: "PUBLISHED" } });
 });
 
+// The site logo and principal's photo are ordinary `Media` rows attached generically via
+// (entityType, entityId) rather than a dedicated column (schema.prisma §15) — mirror the
+// visibility rules in src/app/api/files/media/[id]/route.ts's `resolveMediaVisibility` (a
+// logo is public once the college is real, non-placeholder data; a principal photo is public
+// once its CollegeProfile is PUBLISHED) so these never resolve to an asset the file route
+// would actually refuse to serve.
+export const getCollegeLogo = cache(async () => {
+  const college = await getPrimaryCollege();
+  if (!college || college.isPlaceholder) return null;
+  return prisma.media.findFirst({
+    where: { collegeId: college.id, entityType: "College", entityId: college.id },
+    orderBy: { createdAt: "desc" },
+  });
+});
+
+export const getPrincipalPhoto = cache(async () => {
+  const profile = await getCollegeProfile();
+  if (!profile) return null;
+  return prisma.media.findFirst({
+    where: { entityType: "CollegeProfile", entityId: profile.id },
+    orderBy: { createdAt: "desc" },
+  });
+});
+
 // --- Academics -----------------------------------------------------------------------------
 
 export async function getDepartments() {
@@ -254,6 +278,31 @@ export async function getGalleryAlbums() {
     orderBy: { createdAt: "desc" },
   });
 }
+
+/**
+ * Published gallery photos keyed by their (lowercased, trimmed) caption — lets other public
+ * sections (Hero, IntroSection, FacilitiesSection, EventsSection, ...) reuse a real Gallery
+ * photo as their own illustrative image, by matching against their own content's name/title,
+ * without a bespoke Media upload flow (and its own visibility-route branch) for every module.
+ * A soft, content-based link rather than a real FK — captions can drift from what a section
+ * looks up for, in which case that section's slot just falls back to MediaSlot's placeholder.
+ */
+export const getGalleryPhotoMap = cache(async () => {
+  const collegeId = await primaryCollegeId();
+  const map = new Map<string, { mediaId: string; altText: string }>();
+  if (!collegeId) return map;
+
+  const items = await prisma.galleryItem.findMany({
+    where: { collegeId, status: "PUBLISHED" },
+    include: { media: { select: { id: true, altText: true } } },
+  });
+  for (const item of items) {
+    if (item.caption) {
+      map.set(item.caption.trim().toLowerCase(), { mediaId: item.media.id, altText: item.media.altText });
+    }
+  }
+  return map;
+});
 
 // --- Examinations & results ---------------------------------------------------------------------
 

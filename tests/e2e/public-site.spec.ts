@@ -1,13 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { PUBLIC_NAV_LINKS } from "../../src/lib/navigation";
 
-test("home page loads and identifies itself as a placeholder", async ({ page }) => {
+test("home page loads and identifies the real college", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Affiliated College Portal",
+    "Sindh Muslim Government Science College, Karachi",
   );
-  await expect(page.getByText(/development placeholder/i).first()).toBeVisible();
 });
 
 test("every public nav link resolves without a server error", async ({ page }) => {

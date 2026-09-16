@@ -8,30 +8,33 @@ import { expect, test } from "@playwright/test";
  */
 
 test.describe("database-backed content", () => {
-  test("notices page lists the seeded demo notice and marks it as demo content", async ({
+  test("notices page lists real content and still marks the kept [DEV SEED] fixture as demo content", async ({
     page,
   }) => {
     await page.goto("/notices");
     await expect(
-      page.getByRole("heading", { name: "[PLACEHOLDER] Admissions Open for Academic Year 2026-27" }),
+      page.getByRole("heading", { name: "Academic Activities and Student Discipline" }),
     ).toBeVisible();
+    // The one remaining isPlaceholder: true notice ([DEV SEED] Expired Test Notice, kept as
+    // a regression fixture — see prisma/seed.ts) is enough to trigger the page-level
+    // DemoDataNotice banner (src/app/(public)/notices/page.tsx: `notices.some(isPlaceholder)`).
     await expect(page.getByText(/demo content/i)).toBeVisible();
   });
 
-  test("faculty page lists the seeded demo faculty member in a real table", async ({ page }) => {
+  test("faculty page lists the real faculty member in a real table", async ({ page }) => {
     await page.goto("/faculty");
     const table = page.getByRole("table", { name: "Faculty" });
     await expect(table).toBeVisible();
-    await expect(table.getByText("[PLACEHOLDER] Dr. Ayesha Rahman")).toBeVisible();
+    await expect(table.getByText("Dr. Muhammad Ahmed Khan")).toBeVisible();
   });
 
   test("a page with no data for one section shows an empty state, not fabricated rows", async ({
     page,
   }) => {
     await page.goto("/results");
-    // The seeded result is deliberately public; results should render. Assert the table
-    // exists and never silently substitutes invented rows when a query is legitimately
-    // empty elsewhere on the same page pattern (checked via the results heading itself).
+    // The college content register supplied no exam results, so this table is genuinely
+    // empty (CLAUDE.md rule 1 — never fabricate data to fill it). Assert the page still
+    // renders correctly (heading present, no crash) rather than substituting invented rows.
     await expect(page.getByRole("heading", { name: "Results" })).toBeVisible();
   });
 });
@@ -65,11 +68,11 @@ test.describe("mobile navigation", () => {
 });
 
 test.describe("search", () => {
-  test("searching for the seeded demo program returns a result linking to Academics", async ({
+  test("searching for the real program returns a result linking to Academics", async ({
     page,
   }) => {
-    await page.goto("/search?q=Bachelor+of+Education");
-    const result = page.getByRole("link", { name: "[PLACEHOLDER] Bachelor of Education (B.Ed.)" });
+    await page.goto("/search?q=Pre-Medical");
+    const result = page.getByRole("link", { name: "F.Sc. Pre-Medical" });
     await expect(result).toBeVisible();
     await expect(result).toHaveAttribute("href", "/academics");
   });

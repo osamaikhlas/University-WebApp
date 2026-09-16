@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import { SkipLink } from "@/components/SkipLink";
+import { getPrimaryCollege } from "@/lib/content";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -22,14 +23,24 @@ const fraunces = Fraunces({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "[PLACEHOLDER] Affiliated College Portal",
-    template: "%s | [PLACEHOLDER] Affiliated College Portal",
-  },
-  description:
-    "Official website of an affiliated college — content pending. Built per Shah Abdul Latif University, Khairpur circular I.C/SALU/KHP/-662.",
-};
+const FALLBACK_SITE_NAME = "[PLACEHOLDER] Affiliated College Portal";
+const FALLBACK_DESCRIPTION =
+  "Official website of an affiliated college — content pending. Built per Shah Abdul Latif University, Khairpur circular I.C/SALU/KHP/-662.";
+
+// Every other page's <title> falls back to this template (`%s | <site name>`) unless it sets
+// its own `title` metadata — the homepage is the only page that overrides it outright (see
+// src/app/(public)/page.tsx's `{ absolute: title }`), so this is the one place that needs to
+// read the real college name for every other page's tab title to stop saying "[PLACEHOLDER]"
+// once real, non-placeholder college data exists (CLAUDE.md rules 1, 14).
+export async function generateMetadata(): Promise<Metadata> {
+  const college = await getPrimaryCollege();
+  const siteName = college && !college.isPlaceholder ? college.name : FALLBACK_SITE_NAME;
+
+  return {
+    title: { default: siteName, template: `%s | ${siteName}` },
+    description: FALLBACK_DESCRIPTION,
+  };
+}
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PUBLIC_NAV_LINKS } from "@/lib/navigation";
-import { getPrimaryCollege } from "@/lib/content";
+import { getPrimaryCollege, getCollegeLogo } from "@/lib/content";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { DesktopNavLinks } from "@/components/layout/DesktopNavLinks";
 import { HeaderScrollShell } from "@/components/layout/HeaderScrollShell";
@@ -16,7 +16,7 @@ const UTILITY_LINKS = [
 ];
 
 export async function PublicHeader() {
-  const college = await getPrimaryCollege();
+  const [college, logo] = await Promise.all([getPrimaryCollege(), getCollegeLogo()]);
   // Never show a placeholder college's name as if it were real (CLAUDE.md rules 1, 14).
   const siteName = college && !college.isPlaceholder ? college.name : FALLBACK_SITE_NAME;
   const shortName = siteName.length > 42 ? siteName.slice(0, 39).trimEnd() + "…" : siteName;
@@ -72,12 +72,21 @@ export async function PublicHeader() {
             href="/"
             className="group/logo flex min-w-0 shrink-0 items-center gap-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--pub-gold-500)]"
           >
-            <span
-              aria-hidden="true"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--pub-navy-900)] pub-font-display text-sm text-[var(--pub-ink-on-navy)]"
-            >
-              {shortName.charAt(0)}
-            </span>
+            {logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={`/api/files/media/${logo.id}`}
+                alt={logo.altText}
+                className="h-9 w-9 shrink-0 rounded-full object-cover"
+              />
+            ) : (
+              <span
+                aria-hidden="true"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--pub-navy-900)] pub-font-display text-sm text-[var(--pub-ink-on-navy)]"
+              >
+                {shortName.charAt(0)}
+              </span>
+            )}
             <span className="min-w-0">
               <span className="block truncate pub-font-display text-base leading-tight font-medium text-[var(--pub-ink)] sm:text-lg">
                 {shortName}

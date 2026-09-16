@@ -28,18 +28,25 @@ const SCENES = {
 
 export type MediaScene = keyof typeof SCENES;
 
+export type RealPhoto = { mediaId: string; altText: string };
+
 export function MediaSlot({
   scene = "generic",
   caption,
   ratio = "video",
   className,
   rounded = true,
+  photo,
 }: {
   scene?: MediaScene;
   caption: string;
   ratio?: "video" | "square" | "portrait" | "wide";
   className?: string;
   rounded?: boolean;
+  /** A real, published Media asset (e.g. from src/lib/content.ts's getGalleryPhotoMap) to
+   * render instead of the gradient placeholder — the caption/scene props become unused for
+   * accessibility (the real alt text takes over) once this is supplied. */
+  photo?: RealPhoto;
 }) {
   const aspectClass = {
     video: "aspect-video",
@@ -47,6 +54,27 @@ export function MediaSlot({
     portrait: "aspect-[3/4]",
     wide: "aspect-[21/9]",
   }[ratio];
+
+  if (photo) {
+    return (
+      <div
+        className={clsx(
+          "group relative isolate overflow-hidden",
+          aspectClass,
+          rounded && "rounded-[var(--pub-radius-lg)]",
+          className,
+        )}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- served from our own permission-checked API route, not a static/remote asset */}
+        <img
+          src={`/api/files/media/${photo.mediaId}`}
+          alt={photo.altText}
+          loading="lazy"
+          className="h-full w-full object-cover transition-transform duration-[var(--pub-duration-slow)] ease-[var(--pub-ease)] group-hover:scale-105"
+        />
+      </div>
+    );
+  }
 
   return (
     <div

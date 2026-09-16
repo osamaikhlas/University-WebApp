@@ -2,7 +2,7 @@ import { SectionHeading } from "@/components/public/SectionHeading";
 import { MediaSlot } from "@/components/public/MediaSlot";
 import { PublicDemoNotice } from "@/components/public/PublicDemoNotice";
 import { PublicContainer } from "@/components/public/Container";
-import { getUpcomingEvents } from "@/lib/content";
+import { getGalleryPhotoMap, getUpcomingEvents } from "@/lib/content";
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
@@ -10,10 +10,11 @@ function formatDate(date: Date): string {
 
 /** The nearest upcoming event gets a large featured treatment; the rest are compact rows. */
 export async function EventsSection() {
-  const events = await getUpcomingEvents(4);
+  const [events, photoMap] = await Promise.all([getUpcomingEvents(4), getGalleryPhotoMap()]);
   if (events.length === 0) return null;
 
   const [featured, ...rest] = events;
+  const featuredPhoto = photoMap.get(featured.title.trim().toLowerCase());
 
   return (
     <section aria-labelledby="events-heading" className="bg-[var(--pub-cream)]">
@@ -24,7 +25,7 @@ export async function EventsSection() {
 
           <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-10">
             <div>
-              <MediaSlot scene="event" caption={featured.title} ratio="video" />
+              <MediaSlot scene="event" caption={featured.title} ratio="video" photo={featuredPhoto} />
               <p className="mt-4 text-xs font-semibold tracking-[0.1em] text-[var(--pub-teal-600)] uppercase">
                 {formatDate(featured.startDate)}
                 {featured.location ? ` · ${featured.location}` : ""}

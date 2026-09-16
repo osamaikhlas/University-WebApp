@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 
 /**
  * Phase: homepage. Requires the dev database to have been seeded (`npm run db:seed`), which
- * publishes one demo record per module plus a deliberately-expired notice and a
- * 30-days-out event specifically so the announcement/upcoming-events filtering below has
+ * publishes the real Sindh Muslim Government Science College content plus a deliberately-kept
+ * `[DEV SEED]` expired notice so the announcement/upcoming-events filtering below has
  * something real to assert against.
  */
 
@@ -52,19 +52,22 @@ test.describe("homepage sections", () => {
     // getImportantAnnouncement() orders by publishDate desc (src/lib/content.ts); of the
     // three demo notices seeded with the same publishDate, "Faculty Development Workshop" is
     // the last one the seed script creates, so it has the latest timestamp and wins.
+    // getImportantAnnouncement() orders by publishDate desc (src/lib/content.ts); of the
+    // real notices seeded from the college content register, "Mid-Term Examination Notice"
+    // (publishDate 2026-10-16) has the latest publishDate, so it wins the banner.
     await expect(
-      announcement.getByText("[PLACEHOLDER] Faculty Development Workshop", { exact: true }),
+      announcement.getByText("Mid-Term Examination Notice", { exact: true }),
     ).toBeVisible();
-    await expect(announcement.getByText("[PLACEHOLDER] Expired Sample Notice")).toHaveCount(0);
+    await expect(announcement.getByText("[DEV SEED] Expired Test Notice")).toHaveCount(0);
   });
 
-  test("upcoming events shows the future demo event", async ({ page }) => {
+  test("upcoming events shows the future real event", async ({ page }) => {
     await page.goto("/");
     const eventsSection = page.locator("section", { has: page.getByRole("heading", { name: "Upcoming events" }) });
     // The featured event's title also appears a second time inside its MediaSlot's
     // image-placeholder caption, so scope to the real <h3> rather than a generic text match.
     await expect(
-      eventsSection.getByRole("heading", { level: 3, name: "[PLACEHOLDER] Teacher Education Seminar 2026" }),
+      eventsSection.getByRole("heading", { level: 3, name: "Annual Science Exhibition" }),
     ).toBeVisible();
   });
 
@@ -107,7 +110,7 @@ test.describe("homepage accessibility", () => {
 test.describe("homepage SEO", () => {
   test("has a non-generic title and meta description", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveTitle(/Affiliated College Portal/);
+    await expect(page).toHaveTitle(/Sindh Muslim Government Science College/);
     const description = await page
       .locator('meta[name="description"]')
       .getAttribute("content");
@@ -115,11 +118,11 @@ test.describe("homepage SEO", () => {
     expect(description!.length).toBeGreaterThan(20);
   });
 
-  test("does not publish structured data while the college is still placeholder demo data", async ({
+  test("publishes structured data now that the college is real, non-placeholder data", async ({
     page,
   }) => {
     await page.goto("/");
-    await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
+    await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(1);
   });
 
   test("robots.txt and sitemap.xml are both reachable", async ({ request }) => {

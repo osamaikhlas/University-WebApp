@@ -52,3 +52,7 @@ prisma/dev.db-journal
 
 # grievance attachments — private submitter files, never committed (CLAUDE.md rule 6, 12)
 /storage/
+
+# source images/documents supplied for real content seeding (prisma/seed.ts reads from here) —
+# a staging drop folder, not meant to be committed; the served copies live in /storage/uploads
+/Images/

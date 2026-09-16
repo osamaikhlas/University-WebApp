@@ -12,19 +12,64 @@ import {
 
 const initialState: CollegeProfileFormState = { error: null };
 
-type Props = { mode: "create" } | { mode: "edit"; profile: CollegeProfile };
+type Props = {
+  mode: "create" | "edit";
+  profile?: CollegeProfile;
+  logoUrl?: string | null;
+  principalPhotoUrl?: string | null;
+};
 
 const inputClass =
   "rounded-md border border-border-subtle bg-surface px-3 py-2 text-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
+
+const fileInputClass =
+  "text-sm text-foreground/70 file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand-foreground";
 
 export function CollegeProfileForm(props: Props) {
   const isEdit = props.mode === "edit";
   const action = isEdit ? updateCollegeProfile : createCollegeProfile;
   const [state, formAction, isPending] = useActionState(action, initialState);
-  const profile = isEdit ? props.profile : null;
+  const profile = isEdit ? (props.profile ?? null) : null;
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form action={formAction} className="flex flex-col gap-4" encType="multipart/form-data">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="logo" className="text-sm font-medium text-foreground">
+            Site logo <span className="font-normal text-foreground/60">(optional)</span>
+          </label>
+          {props.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={props.logoUrl}
+              alt="Current site logo"
+              className="h-16 w-16 rounded-md border border-border-subtle object-contain"
+            />
+          ) : null}
+          <input id="logo" name="logo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={fileInputClass} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="principalPhoto" className="text-sm font-medium text-foreground">
+            Principal&apos;s photo <span className="font-normal text-foreground/60">(optional)</span>
+          </label>
+          {props.principalPhotoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={props.principalPhotoUrl}
+              alt="Current principal photo"
+              className="h-16 w-16 rounded-full border border-border-subtle object-cover"
+            />
+          ) : null}
+          <input
+            id="principalPhoto"
+            name="principalPhoto"
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            className={fileInputClass}
+          />
+        </div>
+      </div>
+
       <div className="flex flex-col gap-1.5">
         <label htmlFor="overview" className="text-sm font-medium text-foreground">
           Overview <span className="font-normal text-foreground/60">(optional)</span>

@@ -2,7 +2,7 @@ import { SectionHeading } from "@/components/public/SectionHeading";
 import { MediaSlot, type MediaScene } from "@/components/public/MediaSlot";
 import { PublicDemoNotice } from "@/components/public/PublicDemoNotice";
 import { PublicContainer } from "@/components/public/Container";
-import { getActivities, getClubs } from "@/lib/content";
+import { getActivities, getClubs, getGalleryPhotoMap } from "@/lib/content";
 
 const PREVIEW_COUNT = 4;
 const TILE_SCENES: MediaScene[] = ["students", "event", "seminar", "sports"];
@@ -14,9 +14,14 @@ const TILE_SCENES: MediaScene[] = ["students", "event", "seminar", "sports"];
  * for the club list.
  */
 export async function StudentLifeSection() {
-  const [activities, clubs] = await Promise.all([getActivities(), getClubs()]);
+  const [activities, clubs, photoMap] = await Promise.all([
+    getActivities(),
+    getClubs(),
+    getGalleryPhotoMap(),
+  ]);
   const preview = activities.slice(0, PREVIEW_COUNT);
   if (preview.length === 0 && clubs.length === 0) return null;
+  const clubsPhoto = photoMap.get("student clubs");
 
   const anyPlaceholder = [...preview, ...clubs].some((row) => row.isPlaceholder);
 
@@ -43,6 +48,7 @@ export async function StudentLifeSection() {
                       scene={TILE_SCENES[index % TILE_SCENES.length]}
                       caption={activity.title}
                       ratio="portrait"
+                      photo={clubsPhoto}
                     />
                     {activity.category ? (
                       <p className="mt-2 text-xs font-medium tracking-wide text-[var(--pub-ink-on-navy-muted)] uppercase">

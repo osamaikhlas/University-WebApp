@@ -13,6 +13,7 @@ import {
 } from "@/lib/content-workflow";
 import { logAudit } from "@/lib/audit";
 import { getPrimaryCollege } from "@/lib/content";
+import { saveUploadedFile, validateUpload, UploadValidationError } from "@/lib/security/upload-storage";
 
 /**
  * College Profile is a singleton per college (`CollegeProfile.collegeId` is `@unique` —
@@ -23,6 +24,57 @@ import { getPrimaryCollege } from "@/lib/content";
 
 const PERMISSIONS = MODULE_PERMISSIONS.collegeProfile;
 const ENTITY_TYPE = "CollegeProfile";
+
+/**
+ * The site logo (`entityType: "College"`) and the principal's photo (`entityType:
+ * "CollegeProfile"`) are singleton `Media` rows per college — replacing one overwrites the
+ * previous row's file in place (mirroring GalleryItem's edit-form "replace image" pattern in
+ * src/app/admin/gallery/actions.ts) rather than accumulating orphaned rows. Visibility for
+ * both is resolved generically by src/app/api/files/media/[id]/route.ts /
+ * src/lib/content.ts's getCollegeLogo/getPrincipalPhoto — no extra status field needed here.
+ */
+async function upsertSingletonMedia(params: {
+  collegeId: string;
+  entityType: "College" | "CollegeProfile";
+  entityId: string;
+  file: File;
+  altText: string;
+  uploadedById: string;
+}): Promise<{ error: string } | null> {
+  try {
+    validateUpload("media", params.file);
+  } catch (error) {
+    if (!(error instanceof UploadValidationError)) throw error;
+    return { error: error.message };
+  }
+
+  const existing = await prisma.media.findFirst({
+    where: { entityType: params.entityType, entityId: params.entityId },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const media = existing
+    ? existing
+    : await prisma.media.create({
+        data: {
+          collegeId: params.collegeId,
+          entityType: params.entityType,
+          entityId: params.entityId,
+          altText: params.altText,
+          mediaType: "IMAGE",
+          uploadedById: params.uploadedById,
+          isPlaceholder: false,
+        },
+      });
+
+  const stored = await saveUploadedFile("media", media.id, params.file);
+  await prisma.media.update({
+    where: { id: media.id },
+    data: { storedPath: stored.storedPath, mimeType: stored.mimeType, altText: params.altText },
+  });
+
+  return null;
+}
 
 const profileSchema = z.object({
   overview: z.string().trim().max(4000).optional(),
@@ -97,6 +149,15 @@ export async function createCollegeProfile(
     after: profile,
   });
 
+  const uploadError = await handleProfileImageUploads(
+    formData,
+    college.id,
+    college.name,
+    profile.id,
+    user.id,
+  );
+  if (uploadError) return uploadError;
+
   redirect("/admin/college-profile");
 }
 
@@ -115,7 +176,7 @@ export async function updateCollegeProfile(
   const before = college
     ? await prisma.collegeProfile.findUnique({ where: { collegeId: college.id } })
     : null;
-  if (!before) {
+  if (!before || !college) {
     return { error: "College profile not found." };
   }
 
@@ -145,7 +206,53 @@ export async function updateCollegeProfile(
     after,
   });
 
+  const uploadError = await handleProfileImageUploads(
+    formData,
+    before.collegeId,
+    college.name,
+    before.id,
+    user.id,
+  );
+  if (uploadError) return uploadError;
+
   redirect("/admin/college-profile");
+}
+
+async function handleProfileImageUploads(
+  formData: FormData,
+  collegeId: string,
+  collegeName: string,
+  profileId: string,
+  uploadedById: string,
+): Promise<CollegeProfileFormState | null> {
+  const logo = formData.get("logo");
+  if (logo instanceof File && logo.size > 0) {
+    const error = await upsertSingletonMedia({
+      collegeId,
+      entityType: "College",
+      entityId: collegeId,
+      file: logo,
+      altText: `${collegeName} logo`,
+      uploadedById,
+    });
+    if (error) return error;
+  }
+
+  const principalPhoto = formData.get("principalPhoto");
+  if (principalPhoto instanceof File && principalPhoto.size > 0) {
+    const principalName = formData.get("principalName")?.toString().trim();
+    const error = await upsertSingletonMedia({
+      collegeId,
+      entityType: "CollegeProfile",
+      entityId: profileId,
+      file: principalPhoto,
+      altText: principalName ? `${principalName}, Principal` : "Principal's photo",
+      uploadedById,
+    });
+    if (error) return error;
+  }
+
+  return null;
 }
 
 export async function transitionCollegeProfile(

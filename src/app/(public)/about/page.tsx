@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DemoDataNotice } from "@/components/DemoDataNotice";
 import { PublicPageShell } from "@/components/layout/PublicPageShell";
-import { getCollegeProfile } from "@/lib/content";
+import { getCollegeProfile, getPrincipalPhoto } from "@/lib/content";
 
 // Always render per-request: this page reads live, publish-gated content from the
 // database (CLAUDE.md rule 4), so a stale statically-prerendered build must never be
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AboutPage() {
-  const profile = await getCollegeProfile();
+  const [profile, principalPhoto] = await Promise.all([getCollegeProfile(), getPrincipalPhoto()]);
 
   return (
     <PublicPageShell
@@ -67,12 +67,24 @@ export default async function AboutPage() {
 
           <Card>
             <h2 className="text-lg font-semibold">Principal&apos;s Message</h2>
-            {profile.principalName ? (
-              <p className="mt-1 text-sm font-medium text-foreground">{profile.principalName}</p>
-            ) : null}
-            <p className="mt-2 text-sm text-foreground/70">
-              {profile.principalMessage ?? "Not yet provided."}
-            </p>
+            <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-start">
+              {principalPhoto ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/api/files/media/${principalPhoto.id}`}
+                  alt={principalPhoto.altText}
+                  className="h-28 w-28 shrink-0 rounded-full object-cover"
+                />
+              ) : null}
+              <div>
+                {profile.principalName ? (
+                  <p className="text-sm font-medium text-foreground">{profile.principalName}</p>
+                ) : null}
+                <p className="mt-2 text-sm text-foreground/70">
+                  {profile.principalMessage ?? "Not yet provided."}
+                </p>
+              </div>
+            </div>
           </Card>
         </div>
       )}

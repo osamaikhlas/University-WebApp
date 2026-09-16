@@ -82,16 +82,34 @@ These apply to all work in this repository, regardless of stack or phase:
 
 ## Commands
 
-None yet — no build tooling exists. This section must be filled in with real commands (install, dev build,
-lint, test, run a single test) as soon as a stack is chosen and set up.
+Stack: Next.js (App Router) + TypeScript + Tailwind CSS + PostgreSQL/Prisma.
+
+```bash
+npm install                # install deps (also runs `prisma generate`)
+cp .env.example .env       # then fill in DATABASE_URL etc. — see docs/user-guide.md §1.2
+npm run db:migrate         # apply migrations locally
+npm run db:seed            # seed roles/permissions/demo content (idempotent)
+npm run dev                # http://localhost:3000
+npm run typecheck          # tsc --noEmit
+npm run lint                # eslint .
+npm test                    # vitest run
+npm run test:e2e             # playwright test (needs `npx playwright install` once)
+npm run build                 # production build
+```
+
+Run a single test: `npx vitest run <path>` or `npx playwright test <path>`. Full reference
+(env vars, dev login accounts, every command): `docs/user-guide.md` §1.
 
 ## Architecture notes
 
-No architecture exists yet. When implementation begins, the data model and CMS schema should map directly
-to the Public website / Admin system sections listed above, since traceability back to those sections (and
-ultimately back to the circular) is the point of the project. Design the CMS-to-public-site relationship
-around rule 4 (draft vs. published state) and rule 8 (audit trail) from the outset, since retrofitting them
-later is costly.
+Built. The data model (`prisma/schema.prisma`) maps directly to the Public website / Admin system
+sections above, traceable back to the circular via `docs/compliance-matrix.md`. Every content
+module shares one draft → review → publish state machine (`src/lib/content-workflow.ts`, rule 4)
+and one audit writer (`src/lib/audit.ts`, rule 8). For what's actually implemented, how the
+approval/compliance/grievance workflows work, and a field-level module reference, see
+`docs/user-guide.md`; for the permission model, `docs/permission-matrix.md`; for the full ER
+model, `docs/database-design.md`. `progress.md` has the phase-by-phase build history and current
+gaps (`docs/user-guide.md` §5).
 
 <!-- BEGIN:nextjs-agent-rules -->
 

@@ -7,6 +7,7 @@ import {
   getCollegeProfile,
   getEnrollmentStatistics,
   getFacultyMembers,
+  getGalleryPhotoMap,
   getPrograms,
 } from "@/lib/content";
 
@@ -20,14 +21,16 @@ import {
  * PublicDemoNotice when any of it is placeholder content.
  */
 export async function IntroSection() {
-  const [profile, programs, faculty, enrollmentStats] = await Promise.all([
+  const [profile, programs, faculty, enrollmentStats, photoMap] = await Promise.all([
     getCollegeProfile(),
     getPrograms(),
     getFacultyMembers(),
     getEnrollmentStatistics(),
+    getGalleryPhotoMap(),
   ]);
 
   if (!profile) return null;
+  const introPhoto = photoMap.get("faculty");
 
   const currentYear = new Date().getFullYear();
   const yearsOfEducation = profile.establishedYear ? currentYear - profile.establishedYear : null;
@@ -54,7 +57,13 @@ export async function IntroSection() {
     <section aria-labelledby="intro-heading" className="bg-[var(--pub-cream)]">
       <PublicContainer size="wide">
         <div className="grid gap-12 py-[var(--pub-section-y)] lg:grid-cols-2 lg:items-center lg:gap-16">
-          <MediaSlot scene="faculty" caption="Principal & faculty" ratio="square" className="order-2 lg:order-1" />
+          <MediaSlot
+            scene="faculty"
+            caption="Principal & faculty"
+            ratio="square"
+            className="order-2 lg:order-1"
+            photo={introPhoto}
+          />
 
           <div className="order-1 flex flex-col gap-6 lg:order-2">
             <SectionHeading id="intro-heading" eyebrow="About the College" title="Educating with purpose, for over a generation." />

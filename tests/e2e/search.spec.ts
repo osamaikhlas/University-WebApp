@@ -17,58 +17,55 @@ async function loginAs(page: Page, roleSlug: string): Promise<void> {
 }
 
 test.describe("Global search", () => {
-  test("a broad keyword returns results from every database-backed category", async ({ page }) => {
-    // Every seeded demo row's title carries the "[PLACEHOLDER]" marker (CLAUDE.md rule 14) —
-    // one per category. Checked one category at a time (via `&category=`) rather than in one
-    // unfiltered page: the 2026-09-16 seed-data pass replaced the old generic
-    // "[PLACEHOLDER] Sample X" rows with realistic-sounding content, and there are now
-    // enough "[PLACEHOLDER]"-matching rows across all categories combined (15+) that an
-    // unfiltered query no longer fits everything on page 1 (SEARCH_DEFAULT_PAGE_SIZE = 10 in
-    // src/lib/content.ts) — a category filter sidesteps relying on alphabetical tie-break
-    // order to guess which category lands on which page.
-    const expectedByCategory: Record<string, string> = {
-      notices: "[PLACEHOLDER] Admissions Open for Academic Year 2026-27",
-      events: "[PLACEHOLDER] Teacher Education Seminar 2026",
-      programs: "[PLACEHOLDER] Bachelor of Education (B.Ed.)",
-      faculty: "[PLACEHOLDER] Dr. Ayesha Rahman (demo data, not verified)",
-      documents: "[PLACEHOLDER] Sample Attachment",
-      policies: "[PLACEHOLDER] Sample Policy",
-      regulations: "[PLACEHOLDER] Student Code of Conduct",
+  test("a per-category keyword returns the expected real result in every database-backed category", async ({
+    page,
+  }) => {
+    // The 2026-09-16 seed-data pass replaced the fictional "[PLACEHOLDER]"-tagged demo
+    // college with real content for Sindh Muslim Government Science College, Karachi — real
+    // content has no shared marker string across categories the way the old demo data did
+    // (every old row's title carried "[PLACEHOLDER]"), so each category needs its own
+    // realistic query term rather than one query reused everywhere.
+    const casesByCategory: Record<string, { query: string; title: string }> = {
+      notices: { query: "Academic Activities", title: "Academic Activities and Student Discipline" },
+      events: { query: "Science Exhibition", title: "Annual Science Exhibition" },
+      programs: { query: "Pre-Medical", title: "F.Sc. Pre-Medical" },
+      faculty: { query: "Ahmed Khan", title: "Dr. Muhammad Ahmed Khan" },
+      documents: { query: "Recognition Letter", title: "Affiliation / Recognition Letter — HEC" },
+      policies: { query: "Grievance Handling", title: "Grievance Handling Procedure" },
+      regulations: { query: "Code of Conduct", title: "Student Code of Conduct" },
     };
 
-    for (const [category, title] of Object.entries(expectedByCategory)) {
-      await page.goto(`/search?q=${encodeURIComponent("[PLACEHOLDER]")}&category=${category}`);
+    for (const [category, { query, title }] of Object.entries(casesByCategory)) {
+      await page.goto(`/search?q=${encodeURIComponent(query)}&category=${category}`);
       await expect(
         page.getByRole("list", { name: /search results/i }).getByRole("link", { name: title }),
         `missing "${category}" result: ${title}`,
       ).toBeVisible();
     }
-
-    // The unfiltered, cross-category query genuinely aggregates all of the above into one
-    // ranked, paginated list — assert that without depending on exact page-1 ordering.
-    await page.goto("/search?q=" + encodeURIComponent("[PLACEHOLDER]"));
-    await expect(page.getByRole("navigation", { name: "Pagination" })).toBeVisible();
   });
 
   test("static pages are searchable by keyword, not just database content", async ({ page }) => {
     await page.goto("/search?q=grievance");
     const results = page.getByRole("list", { name: /search results/i });
-    const result = results.getByRole("link", { name: "Grievance" });
+    // exact: true — the real "Grievance Handling Procedure" policy also matches "grievance"
+    // and would otherwise collide with the static Grievance page's plain "Grievance" link.
+    const result = results.getByRole("link", { name: "Grievance", exact: true });
     await expect(result).toBeVisible();
     await expect(result).toHaveAttribute("href", "/grievance");
     await expect(results.getByText("Pages", { exact: true })).toBeVisible();
   });
 
   test("a category filter narrows results to only that category", async ({ page }) => {
-    await page.goto("/search?q=" + encodeURIComponent("[PLACEHOLDER]") + "&category=notices");
+    // "Examination" matches both the notices category (Mid-Term/Annual Examination Notice)
+    // and, unfiltered, would also surface the "Examinations" static page — filtering to
+    // category=notices must exclude that static-page result. Scoped to the results list
+    // itself, not the whole page — the primary nav also has an "Examinations" link.
+    await page.goto("/search?q=" + encodeURIComponent("Examination") + "&category=notices");
+    const results = page.getByRole("list", { name: /search results/i });
 
-    await expect(
-      page.getByRole("link", { name: "[PLACEHOLDER] Admissions Open for Academic Year 2026-27" }),
-    ).toBeVisible();
-    await expect(page.getByRole("link", { name: "[PLACEHOLDER] Sample Policy" })).toHaveCount(0);
-    await expect(
-      page.getByRole("link", { name: "[PLACEHOLDER] Bachelor of Education (B.Ed.)" }),
-    ).toHaveCount(0);
+    await expect(results.getByRole("link", { name: "Mid-Term Examination Notice" })).toBeVisible();
+    await expect(results.getByRole("link", { name: "Annual Examination Notice" })).toBeVisible();
+    await expect(results.getByRole("link", { name: "Examinations", exact: true })).toHaveCount(0);
   });
 
   test("filtering to a category with no matches shows the empty state", async ({ page }) => {
@@ -90,19 +87,16 @@ test.describe("Global search", () => {
 
   test("relevance: an exact title match ranks first", async ({ page }) => {
     // src/lib/content.ts's scoreMatch() gives an exact title match (100) the top score,
-    // ahead of a prefix (70), whole-word (50), or substring (30) match. The realistic
-    // seed titles introduced 2026-09-16 no longer share a common word the way the old
-    // generic "[PLACEHOLDER] Sample X" placeholders did (e.g. searching "Sample" no longer
-    // collides Notices/Events/Programs/Faculty/Regulations against each other — see the
-    // broad-keyword test above), so this only has one candidate row to rank; it still
+    // ahead of a prefix (70), whole-word (50), or substring (30) match. "Student Code of
+    // Conduct" is a unique title with no other row sharing enough of it to compete, so this
     // verifies an exact-title search reliably surfaces that row as the top/only result.
-    await page.goto("/search?q=" + encodeURIComponent("[PLACEHOLDER] Bachelor of Education (B.Ed.)"));
+    await page.goto("/search?q=" + encodeURIComponent("Student Code of Conduct"));
     const firstResultLink = page.locator("ul[aria-label*='Search results'] li").first().getByRole("link");
-    await expect(firstResultLink).toHaveText("[PLACEHOLDER] Bachelor of Education (B.Ed.)");
+    await expect(firstResultLink).toHaveText("Student Code of Conduct");
   });
 
   test("pagination controls are absent when everything fits on one page", async ({ page }) => {
-    await page.goto("/search?q=Sample&category=notices");
+    await page.goto("/search?q=Examination&category=notices");
     await expect(page.getByRole("navigation", { name: /pagination/i })).toHaveCount(0);
   });
 
