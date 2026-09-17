@@ -84,6 +84,12 @@ test.describe("search", () => {
 });
 
 test.describe("grievance submission", () => {
+  // See the matching comment in tests/e2e/grievance.spec.ts: a distinct synthetic
+  // x-forwarded-for keeps this file's real submission out of the same rate-limit bucket as
+  // grievance.spec.ts's and audit-logs.spec.ts's, which would otherwise all collide on
+  // "unknown" since no real reverse proxy sits in front of the local dev server.
+  test.use({ extraHTTPHeaders: { "x-forwarded-for": "203.0.113.22" } });
+
   test("submitting the grievance form succeeds and never lists the submission back publicly", async ({
     page,
   }) => {

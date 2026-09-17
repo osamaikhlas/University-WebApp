@@ -39,6 +39,17 @@ export const envSchema = z.object({
     .string()
     .regex(/^[0-9a-f]{64}$/i, "GRIEVANCE_ENCRYPTION_KEY must be 64 hex characters (32 bytes)")
     .optional(),
+  // S3-compatible object storage for uploaded Document/Media/grievance-attachment files
+  // (src/lib/security/object-storage.ts) — any provider works (AWS S3, Cloudflare R2,
+  // Backblaze B2, DigitalOcean Spaces, MinIO). Unset in local dev, which writes to
+  // storage/ on disk instead — no cloud account needed to run this app locally. The
+  // `.superRefine` below requires all three when NODE_ENV=production, since this app
+  // deploys to Vercel (no persistent filesystem — local disk silently loses every upload).
+  STORAGE_S3_BUCKET: z.string().min(1).optional(),
+  STORAGE_S3_REGION: z.string().min(1).optional(),
+  STORAGE_S3_ENDPOINT: z.string().url("STORAGE_S3_ENDPOINT must be a valid URL").optional(),
+  STORAGE_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+  STORAGE_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -47,6 +58,15 @@ export type Env = z.infer<typeof envSchema>;
  * Parses and validates a raw environment object against {@link envSchema}.
  * Exposed separately from the module-level `env` singleton so it can be unit tested
  * with arbitrary input instead of mutating `process.env`.
+ *
+ * Deliberately does NOT hard-fail here when STORAGE_S3_* is missing in production, even
+ * though that's a real production misconfiguration — `next build` runs with
+ * NODE_ENV=production and must never require external-service credentials to compile (this
+ * file's own top comment; verified the hard way: a production-only `.superRefine` here broke
+ * `next build` itself, since Next evaluates this module while collecting page data). The
+ * same pattern as GRIEVANCE_ENCRYPTION_KEY below: stays presence/format-optional here, and
+ * `src/lib/security/object-storage.ts` throws its own clear error at the point a file
+ * upload/read is actually attempted in production without S3 configured.
  */
 export function parseEnv(source: Record<string, string | undefined>): Env {
   const result = envSchema.safeParse(source);

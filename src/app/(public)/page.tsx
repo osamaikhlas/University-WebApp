@@ -30,7 +30,13 @@ const FALLBACK_DESCRIPTION =
   "Khairpur circular I.C/SALU/KHP/-662. Content is pending official records.";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const [college, profile] = await Promise.all([getPrimaryCollege(), getCollegeProfile()]);
+  // This page is force-dynamic, so Next never resolves this at build time — but a transient
+  // DB hiccup at request time would otherwise throw here and 500 the entire page just to
+  // render a <title>. Degrade to the placeholder instead, matching src/app/layout.tsx's own
+  // build-time fallback for the same underlying query.
+  const [college, profile] = await Promise.all([getPrimaryCollege(), getCollegeProfile()]).catch(
+    () => [null, null],
+  );
 
   const title = college && !college.isPlaceholder ? college.name : FALLBACK_SITE_NAME;
   const description =

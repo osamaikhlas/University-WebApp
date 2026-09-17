@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
-import { assignRoleAction, removeRoleAction } from "@/app/admin/users/actions";
+import { assignRoleAction, createUserAction, removeRoleAction } from "@/app/admin/users/actions";
 
 export const metadata: Metadata = { title: "Users" };
 export const dynamic = "force-dynamic";
@@ -17,10 +17,10 @@ export const dynamic = "force-dynamic";
 export default async function UsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ roleError?: string }>;
+  searchParams: Promise<{ roleError?: string; userError?: string }>;
 }) {
   await requirePermission("users:manage");
-  const { roleError } = await searchParams;
+  const { roleError, userError } = await searchParams;
   const college = await getPrimaryCollege();
 
   const users = college
@@ -40,6 +40,76 @@ export default async function UsersPage({
         />
 
         {roleError ? <Alert tone="danger">{roleError}</Alert> : null}
+        {userError ? <Alert tone="danger">{userError}</Alert> : null}
+
+        <Card>
+          <h2 className="text-sm font-semibold text-foreground">Create a new user</h2>
+          <p className="mt-1 text-xs text-foreground/60">
+            There&apos;s no email invite flow yet — set an initial password here and relay it
+            to them directly; they can change it after signing in.
+          </p>
+          <form action={createUserAction} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="new-user-name" className="text-xs font-medium text-foreground">
+                Name
+              </label>
+              <input
+                id="new-user-name"
+                name="name"
+                type="text"
+                required
+                className="rounded-md border border-border-subtle bg-surface px-3 py-2 text-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="new-user-email" className="text-xs font-medium text-foreground">
+                Email
+              </label>
+              <input
+                id="new-user-email"
+                name="email"
+                type="email"
+                required
+                className="rounded-md border border-border-subtle bg-surface px-3 py-2 text-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="new-user-password" className="text-xs font-medium text-foreground">
+                Initial password
+              </label>
+              <input
+                id="new-user-password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                required
+                className="rounded-md border border-border-subtle bg-surface px-3 py-2 text-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="new-user-role" className="text-xs font-medium text-foreground">
+                Starting role <span className="font-normal text-foreground/60">(optional)</span>
+              </label>
+              <select
+                id="new-user-role"
+                name="roleName"
+                defaultValue=""
+                className="rounded-md border border-border-subtle bg-surface px-3 py-2 text-sm"
+              >
+                <option value="">No role yet</option>
+                {ROLE_NAMES.map((roleName) => (
+                  <option key={roleName} value={roleName}>
+                    {roleName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button type="submit" className="self-start sm:col-span-2 lg:col-span-4">
+              Create user
+            </Button>
+          </form>
+        </Card>
 
         {!college ? (
           <Alert tone="warning">No college record exists yet.</Alert>

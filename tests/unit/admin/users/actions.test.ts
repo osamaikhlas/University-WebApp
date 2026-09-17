@@ -2,14 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    user: { findUnique: vi.fn() },
-    role: { findUnique: vi.fn() },
+    user: { findUnique: vi.fn(), create: vi.fn() },
+    role: { findUnique: vi.fn(), findUniqueOrThrow: vi.fn() },
     userRole: { findMany: vi.fn(), create: vi.fn(), deleteMany: vi.fn() },
     auditLog: { create: vi.fn() },
   },
 }));
 
 vi.mock("@/lib/auth/guard", () => ({ requirePermission: vi.fn() }));
+vi.mock("@/lib/auth/password", () => ({ hashPassword: vi.fn() }));
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((url: string) => {
     throw new Error(`REDIRECT:${url}`);
@@ -18,7 +19,8 @@ vi.mock("next/navigation", () => ({
 
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
-import { assignRoleAction, removeRoleAction } from "@/app/admin/users/actions";
+import { hashPassword } from "@/lib/auth/password";
+import { assignRoleAction, createUserAction, removeRoleAction } from "@/app/admin/users/actions";
 
 const actor = { id: "actor-1", collegeId: "college-1", permissions: new Set() } as never;
 const targetUser = { id: "user-2", name: "Jane Editor", email: "jane@example.invalid", collegeId: "college-1" };
@@ -35,6 +37,106 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(requirePermission).mockResolvedValue(actor);
   vi.mocked(prisma.user.findUnique).mockResolvedValue(targetUser as never);
+});
+
+describe("createUserAction", () => {
+  it("requires users:manage", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null); // no existing account with this email
+    vi.mocked(hashPassword).mockResolvedValue("hashed");
+    vi.mocked(prisma.user.create).mockResolvedValue({ id: "user-new" } as never);
+
+    await expect(
+      createUserAction(formData({ name: "New Person", email: "new@example.invalid", password: "longenoughpw" })),
+    ).rejects.toThrow("REDIRECT:/admin/users");
+    expect(requirePermission).toHaveBeenCalledWith("users:manage");
+  });
+
+  it("rejects a password under 8 characters without touching the database", async () => {
+    await expect(
+      createUserAction(formData({ name: "New Person", email: "new@example.invalid", password: "short" })),
+    ).rejects.toThrow(/userError=/);
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid email without touching the database", async () => {
+    await expect(
+      createUserAction(formData({ name: "New Person", email: "not-an-email", password: "longenoughpw" })),
+    ).rejects.toThrow(/userError=/);
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid starting role without touching the database", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+    await expect(
+      createUserAction(
+        formData({
+          name: "New Person",
+          email: "new@example.invalid",
+          password: "longenoughpw",
+          roleName: "NOT_A_ROLE",
+        }),
+      ),
+    ).rejects.toThrow(/userError=/);
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses a duplicate email", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(targetUser as never);
+    await expect(
+      createUserAction(
+        formData({ name: "New Person", email: targetUser.email, password: "longenoughpw" }),
+      ),
+    ).rejects.toThrow(/userError=.*already%20exists/i);
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it("lowercases the email, hashes the password, and creates the account with no starting role", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+    vi.mocked(hashPassword).mockResolvedValue("hashed-pw");
+    vi.mocked(prisma.user.create).mockResolvedValue({ id: "user-new" } as never);
+
+    await expect(
+      createUserAction(
+        formData({ name: "New Person", email: "New@Example.invalid", password: "longenoughpw" }),
+      ),
+    ).rejects.toThrow("REDIRECT:/admin/users");
+
+    expect(hashPassword).toHaveBeenCalledWith("longenoughpw");
+    expect(prisma.user.create).toHaveBeenCalledWith({
+      data: { collegeId: "college-1", name: "New Person", email: "new@example.invalid", passwordHash: "hashed-pw" },
+    });
+    expect(prisma.userRole.create).not.toHaveBeenCalled();
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        actorId: "actor-1",
+        action: "CREATE",
+        entityType: "User",
+        entityId: "user-new",
+      }),
+    });
+  });
+
+  it("assigns the chosen starting role", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+    vi.mocked(hashPassword).mockResolvedValue("hashed-pw");
+    vi.mocked(prisma.user.create).mockResolvedValue({ id: "user-new" } as never);
+    vi.mocked(prisma.role.findUniqueOrThrow).mockResolvedValue(editorRole as never);
+
+    await expect(
+      createUserAction(
+        formData({
+          name: "New Person",
+          email: "new@example.invalid",
+          password: "longenoughpw",
+          roleName: "EDITOR",
+        }),
+      ),
+    ).rejects.toThrow("REDIRECT:/admin/users");
+
+    expect(prisma.userRole.create).toHaveBeenCalledWith({
+      data: { userId: "user-new", roleId: "role-editor", collegeId: "college-1" },
+    });
+  });
 });
 
 describe("assignRoleAction", () => {

@@ -22,6 +22,9 @@ const cspDirectives = [
   "img-src 'self' blob: data:",
   "font-src 'self'",
   "connect-src 'self'",
+  // Only the homepage's Location section's Google Maps embed (built from the college's real
+  // address, no API key) needs this — every other external frame source stays blocked.
+  "frame-src https://www.google.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

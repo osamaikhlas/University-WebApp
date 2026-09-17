@@ -102,6 +102,12 @@ test.describe.serial("Audit log — department CREATE and PUBLISH", () => {
 });
 
 test.describe.serial("Audit log — grievance status change", () => {
+  // See the matching comment in tests/e2e/grievance.spec.ts: a distinct synthetic
+  // x-forwarded-for keeps this file's real submission out of the same rate-limit bucket as
+  // grievance.spec.ts's and public-content.spec.ts's, which would otherwise all collide on
+  // "unknown" since no real reverse proxy sits in front of the local dev server.
+  test.use({ extraHTTPHeaders: { "x-forwarded-for": "203.0.113.33" } });
+
   const subject = `E2E Audit Grievance ${Date.now()}`;
 
   test("a grievance is submitted publicly", async ({ page }) => {

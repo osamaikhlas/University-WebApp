@@ -24,6 +24,15 @@ async function loginAs(page: Page, roleSlug: string): Promise<void> {
 }
 
 test.describe.serial("Grievance system — full workflow", () => {
+  // A synthetic per-file x-forwarded-for: the dev server sees no real reverse proxy, so
+  // getClientIpHash() (src/lib/security/rate-limit.ts) would otherwise hash every e2e
+  // request's IP down to the same "unknown" bucket, wrongly sharing the 3-per-hour grievance
+  // submission rate limit across public-content.spec.ts, audit-logs.spec.ts, and this file.
+  // A distinguishing header is exactly what a real reverse proxy (Vercel) supplies for each
+  // real, distinct visitor — this isn't a test-only workaround, it's what production already
+  // does, just simulated here so the suite doesn't self-collide.
+  test.use({ extraHTTPHeaders: { "x-forwarded-for": "203.0.113.11" } });
+
   const subject = `E2E Test Grievance ${Date.now()}`;
   const submitterEmail = `e2e-submitter-${Date.now()}@example.invalid`;
   let referenceNumber = "";

@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { hashPassword } from "../src/lib/auth/password";
 import {
   PERMISSIONS,
@@ -28,14 +29,40 @@ function seedEncryptSecret(plainText: string): string {
 }
 
 /**
- * A standalone copy of `src/lib/security/upload-storage.ts`'s storage layout (same reasoning
- * as `seedEncryptSecret` above — that module is `import "server-only"`-guarded). Writes a
- * real uploaded file (read from `Images/`, the drop folder the college owner supplied — see
- * `.gitignore`) so seeded Document/Media rows work end-to-end through the actual
- * file-serving routes (src/app/api/files/*), not just as inert database rows.
+ * A standalone copy of `src/lib/security/object-storage.ts` + `upload-storage.ts`'s storage
+ * layout (same reasoning as `seedEncryptSecret` above — those modules are `import
+ * "server-only"`-guarded, empirically confirmed to throw even under plain `tsx` execution,
+ * not just in a browser bundle). Writes a real uploaded file (read from `Images/`, the drop
+ * folder the college owner supplied — see `.gitignore`) so seeded Document/Media rows work
+ * end-to-end through the actual file-serving routes (src/app/api/files/*), not just as inert
+ * database rows. Same `STORAGE_S3_*` env vars as the real app — local disk when unset (dev),
+ * S3-compatible object storage when set (so seeding directly against a production database
+ * also uploads the real photos/documents to the same place the deployed app reads them from).
  */
-const UPLOAD_STORAGE_ROOT = path.join(process.cwd(), "storage", "uploads");
 const REAL_IMAGES_DIR = path.join(process.cwd(), "Images");
+
+const SEED_S3_BUCKET = process.env.STORAGE_S3_BUCKET;
+const SEED_S3_ACCESS_KEY_ID = process.env.STORAGE_S3_ACCESS_KEY_ID;
+const SEED_S3_SECRET_ACCESS_KEY = process.env.STORAGE_S3_SECRET_ACCESS_KEY;
+const SEED_USE_S3 = Boolean(SEED_S3_BUCKET && SEED_S3_ACCESS_KEY_ID && SEED_S3_SECRET_ACCESS_KEY);
+const seedS3Client = SEED_USE_S3
+  ? new S3Client({
+      region: process.env.STORAGE_S3_REGION || "auto",
+      endpoint: process.env.STORAGE_S3_ENDPOINT || undefined,
+      credentials: { accessKeyId: SEED_S3_ACCESS_KEY_ID!, secretAccessKey: SEED_S3_SECRET_ACCESS_KEY! },
+    })
+  : null;
+const LOCAL_STORAGE_ROOT = path.join(process.cwd(), "storage");
+
+async function seedWriteObject(key: string, bytes: Buffer): Promise<void> {
+  if (seedS3Client) {
+    await seedS3Client.send(new PutObjectCommand({ Bucket: SEED_S3_BUCKET, Key: key, Body: bytes }));
+    return;
+  }
+  const absolutePath = path.join(LOCAL_STORAGE_ROOT, key);
+  await mkdir(path.dirname(absolutePath), { recursive: true });
+  await writeFile(absolutePath, bytes);
+}
 
 function guessMimeType(fileName: string): string {
   const ext = fileName.toLowerCase().split(".").pop();
@@ -58,11 +85,10 @@ async function seedWriteRealFile(
   sourceFileName: string,
 ): Promise<{ storedPath: string; mimeType: string; sizeBytes: number; fileName: string }> {
   const bytes = await readFile(path.join(REAL_IMAGES_DIR, sourceFileName));
-  const directory = path.join(UPLOAD_STORAGE_ROOT, kind, entityId);
-  await mkdir(directory, { recursive: true });
-  await writeFile(path.join(directory, sourceFileName), bytes);
+  const storedPath = path.join(kind, entityId, sourceFileName);
+  await seedWriteObject(path.join("uploads", storedPath), bytes);
   return {
-    storedPath: path.join(kind, entityId, sourceFileName),
+    storedPath,
     mimeType: guessMimeType(sourceFileName),
     sizeBytes: bytes.length,
     fileName: sourceFileName,
@@ -226,13 +252,26 @@ async function main() {
       where: { key: { in: [...permissionKeys] } },
     });
 
-    // Replace this role's grants wholesale on every seed run, so removing a permission
-    // from the matrix actually revokes it in the database, not just adds new ones.
-    await prisma.rolePermission.deleteMany({ where: { roleId: role.id } });
-    await prisma.rolePermission.createMany({
-      data: permissions.map((permission) => ({ roleId: role.id, permissionId: permission.id })),
-      skipDuplicates: true,
-    });
+    if (process.env.NODE_ENV === "production") {
+      // Real admins can now edit a role's grants at runtime through /admin/roles (src/app/
+      // admin/roles/actions.ts), and `RolePermission` is what getCurrentUser() actually
+      // reads — so in production this only ever *adds* a missing default grant (e.g. a
+      // newly-shipped module's baseline permission), never removes one, so a real edit
+      // survives the next deploy's `npm run db:seed` instead of being silently reverted.
+      await prisma.rolePermission.createMany({
+        data: permissions.map((permission) => ({ roleId: role.id, permissionId: permission.id })),
+        skipDuplicates: true,
+      });
+    } else {
+      // Local/dev/test: keep the matrix locked to the code-defined baseline on every seed run,
+      // so removing a permission from ROLE_PERMISSIONS during development actually revokes it
+      // — otherwise iterating on the matrix in code would require a manual DB fix each time.
+      await prisma.rolePermission.deleteMany({ where: { roleId: role.id } });
+      await prisma.rolePermission.createMany({
+        data: permissions.map((permission) => ({ roleId: role.id, permissionId: permission.id })),
+        skipDuplicates: true,
+      });
+    }
   }
 
   // --- Remove the old fictional "GCE Khairpur" demo college content --------------------
@@ -1153,13 +1192,19 @@ async function main() {
 
   const ADDRESS =
     "Sindh Muslim Government Science College, Shahrah-e-Liaquat, Seari Quarters, Karachi, Sindh, Pakistan";
+  // The register only described a Maps *link* by name ("Google Maps – Sindh Muslim Government
+  // Science College"), not an actual URL — rather than leaving the homepage's map slot empty, or
+  // inventing a URL, this builds Google's standard no-API-key query-embed URL directly from the
+  // real address above (next.config.ts's CSP has a matching `frame-src https://www.google.com`).
+  const MAP_EMBED_URL = `https://www.google.com/maps?q=${encodeURIComponent(ADDRESS)}&output=embed`;
   await prisma.location.upsert({
     where: { id: "location-main" },
-    update: { address: ADDRESS, status: "PUBLISHED", isPlaceholder: false },
+    update: { address: ADDRESS, mapEmbedUrl: MAP_EMBED_URL, status: "PUBLISHED", isPlaceholder: false },
     create: {
       id: "location-main",
       collegeId: COLLEGE_ID,
       address: ADDRESS,
+      mapEmbedUrl: MAP_EMBED_URL,
       status: "PUBLISHED",
       isPlaceholder: false,
       createdBy: devUser.id,
@@ -1198,6 +1243,8 @@ async function main() {
     { id: "gallery-faculty", fileName: "faculty.jpg", caption: "Faculty", altText: "Members of the college's teaching faculty." },
     { id: "gallery-staff", fileName: "staff.jpg", caption: "Non-teaching Staff", altText: "Members of the college's non-teaching staff." },
     { id: "gallery-clubs", fileName: "club.jpg", caption: "Student Clubs", altText: "Students gathered for a college club event with colorful decorations and a stage." },
+    { id: "gallery-students", fileName: "student.jpg", caption: "Students", altText: "Graduating students celebrating and throwing their caps in the air." },
+    { id: "gallery-campus", fileName: "campus.jpg", caption: "Campus", altText: "A campus academic building with a domed roof, surrounded by trees and lawns." },
   ];
 
   for (const photo of GALLERY_PHOTOS) {

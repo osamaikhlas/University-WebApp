@@ -21,7 +21,9 @@ export async function StudentLifeSection() {
   ]);
   const preview = activities.slice(0, PREVIEW_COUNT);
   if (preview.length === 0 && clubs.length === 0) return null;
-  const clubsPhoto = photoMap.get("student clubs");
+  // Alternate between the two real photos available so adjacent tiles don't repeat the same
+  // image — neither photo depicts a specific activity, so which tile gets which is arbitrary.
+  const TILE_PHOTOS = [photoMap.get("student clubs"), photoMap.get("students")];
 
   const anyPlaceholder = [...preview, ...clubs].some((row) => row.isPlaceholder);
 
@@ -48,7 +50,7 @@ export async function StudentLifeSection() {
                       scene={TILE_SCENES[index % TILE_SCENES.length]}
                       caption={activity.title}
                       ratio="portrait"
-                      photo={clubsPhoto}
+                      photo={TILE_PHOTOS[index % TILE_PHOTOS.length]}
                     />
                     {activity.category ? (
                       <p className="mt-2 text-xs font-medium tracking-wide text-[var(--pub-ink-on-navy-muted)] uppercase">

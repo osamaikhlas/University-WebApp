@@ -83,7 +83,9 @@ describe("readGrievanceAttachment", () => {
   });
 
   it("rejects a path that escapes the storage root", async () => {
-    await expect(readGrievanceAttachment("../../etc/passwd")).rejects.toThrow(/Invalid attachment path/);
+    // Message now comes from the shared object-storage.ts backend (local disk/S3), not this
+    // module directly — the containment check itself is unchanged.
+    await expect(readGrievanceAttachment("../../etc/passwd")).rejects.toThrow(/Invalid storage key/);
     expect(readFileMock).not.toHaveBeenCalled();
   });
 });

@@ -24,7 +24,7 @@ export async function Hero() {
     getAdmissions(),
     getGalleryPhotoMap(),
   ]);
-  const heroPhoto = photoMap.get("auditorium / event space");
+  const heroPhoto = photoMap.get("campus");
 
   const isPlaceholder = !college || college.isPlaceholder;
   const siteName = college && !college.isPlaceholder ? college.name : FALLBACK_SITE_NAME;

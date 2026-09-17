@@ -1,20 +1,78 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/guard";
 import { isRoleName } from "@/lib/auth/permissions";
+import { hashPassword } from "@/lib/auth/password";
 import { logAudit } from "@/lib/audit";
 
 /**
- * Permission changes, in this app's data model, mean *which roles a user holds*
- * (`UserRole`) — the roles' own permission grants (`ROLE_PERMISSIONS` /
- * `RolePermission`) are fixed in code and seeded, not edited at runtime (see
- * src/lib/auth/permissions.ts's doc comment). Assigning/revoking a role is the one real
- * "permission change" a human can make, so it's the one this module implements and audits
- * (`ROLE_CHANGE`) — not a full role/permission-matrix editor, which CLAUDE.md's required
- * scope lists as a separate, still-unbuilt module (`/admin/roles`, `/admin/permissions`).
+ * User accounts: creating one (`createUserAction`) and assigning/revoking which roles it
+ * holds (`assignRoleAction`/`removeRoleAction`, `UserRole`). A role's own permission grants
+ * (`ROLE_PERMISSIONS`/`RolePermission`) are a separate, runtime-editable concern — see
+ * src/app/admin/roles/actions.ts.
+ *
+ * There is no email-sending/invite flow in this app, so account creation is admin-set-initial-
+ * password, not an emailed invite link — the creating admin relays the password to the new
+ * person out of band and they're expected to change it themselves (no forced-change-on-
+ * first-login flag exists either; a real gap worth closing later, not invented here).
  */
+
+const createUserSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(200),
+  email: z.string().trim().min(1, "Email is required").toLowerCase().email("Enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  roleName: z.string().trim().optional(),
+});
+
+export async function createUserAction(formData: FormData): Promise<void> {
+  const actor = await requirePermission("users:manage");
+
+  const parsed = createUserSchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+    roleName: formData.get("roleName") || undefined,
+  });
+  if (!parsed.success) {
+    redirect(`/admin/users?userError=${encodeURIComponent(parsed.error.issues[0]?.message ?? "Invalid input")}`);
+  }
+  const { name, email, password, roleName } = parsed.data;
+
+  if (roleName && !isRoleName(roleName)) {
+    redirect(`/admin/users?userError=${encodeURIComponent("Select a valid role.")}`);
+  }
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    redirect(`/admin/users?userError=${encodeURIComponent("A user with that email already exists.")}`);
+  }
+
+  const passwordHash = await hashPassword(password);
+  const user = await prisma.user.create({
+    data: { collegeId: actor.collegeId, name, email, passwordHash },
+  });
+
+  if (roleName) {
+    const role = await prisma.role.findUniqueOrThrow({ where: { name: roleName } });
+    await prisma.userRole.create({
+      data: { userId: user.id, roleId: role.id, collegeId: actor.collegeId },
+    });
+  }
+
+  await logAudit({
+    actorId: actor.id,
+    action: "CREATE",
+    entityType: "User",
+    entityId: user.id,
+    after: { name: user.name, email: user.email, initialRole: roleName ?? null },
+    comment: `Created user ${email}${roleName ? ` with role ${roleName}` : ""}.`,
+  });
+
+  redirect("/admin/users");
+}
 
 async function currentRoleNames(userId: string, collegeId: string): Promise<string[]> {
   const rows = await prisma.userRole.findMany({

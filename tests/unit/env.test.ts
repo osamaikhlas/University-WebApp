@@ -94,4 +94,32 @@ describe("parseEnv", () => {
       }),
     ).toThrowError(/NEXT_PUBLIC_SITE_URL/);
   });
+
+  it("allows STORAGE_S3_* to be omitted, including in production — enforced at use-time by object-storage.ts, not here (next build sets NODE_ENV=production and must never require these)", () => {
+    const result = parseEnv({
+      NODE_ENV: "production",
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/db",
+    });
+    expect(result.STORAGE_S3_BUCKET).toBeUndefined();
+  });
+
+  it("accepts a fully-configured S3 backend", () => {
+    const result = parseEnv({
+      NODE_ENV: "production",
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/db",
+      STORAGE_S3_BUCKET: "prod-bucket",
+      STORAGE_S3_ACCESS_KEY_ID: "key-id",
+      STORAGE_S3_SECRET_ACCESS_KEY: "secret",
+    });
+    expect(result.STORAGE_S3_BUCKET).toBe("prod-bucket");
+  });
+
+  it("rejects a non-URL STORAGE_S3_ENDPOINT", () => {
+    expect(() =>
+      parseEnv({
+        DATABASE_URL: "postgresql://user:pass@localhost:5432/db",
+        STORAGE_S3_ENDPOINT: "not-a-url",
+      }),
+    ).toThrowError(/STORAGE_S3_ENDPOINT/);
+  });
 });

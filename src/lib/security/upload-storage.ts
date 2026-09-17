@@ -1,9 +1,9 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { matchesDeclaredType } from "@/lib/security/file-signature";
+import { readObject, writeObject } from "@/lib/security/object-storage";
 
 /**
  * Storage for real uploaded Document/Media files (as distinct from
@@ -15,11 +15,11 @@ import { matchesDeclaredType } from "@/lib/security/file-signature";
  *
  * Kept entirely outside `public/` regardless of eventual visibility, so "is this file
  * reachable" is always a single, auditable decision made in the serving route, never an
- * accident of static file serving.
+ * accident of static file serving. Actual bytes live in object-storage.ts's backend (local
+ * disk in dev, S3-compatible in production — see that module) under an "uploads/" prefix, so
+ * `storedPath` here is unchanged from before that module existed.
  */
 export type UploadKind = "document" | "media";
-
-const STORAGE_ROOT = path.join(process.cwd(), "storage", "uploads");
 
 type KindConfig = { maxBytes: number; allowedTypes: ReadonlySet<string> };
 
@@ -108,15 +108,13 @@ export async function saveUploadedFile(
     );
   }
 
-  const directory = path.join(STORAGE_ROOT, kind, entityId);
-  await mkdir(directory, { recursive: true });
-
   const storedName = `${randomUUID()}-${sanitizeFileName(file.name)}`;
-  await writeFile(path.join(directory, storedName), buffer);
+  const storedPath = path.join(kind, entityId, storedName);
+  await writeObject(path.join("uploads", storedPath), buffer);
 
   return {
     fileName: file.name || storedName,
-    storedPath: path.join(kind, entityId, storedName),
+    storedPath,
     mimeType: file.type,
     sizeBytes: file.size,
   };
@@ -124,11 +122,7 @@ export async function saveUploadedFile(
 
 /** Reads a previously stored upload back by its DB-recorded relative path. `storedPath`
  * always originates from `Document.storedPath`/`Media.storedPath` (never raw user input at
- * read time), but the containment check stays as defense in depth. */
+ * read time) — object-storage.ts's own containment check still applies as defense in depth. */
 export async function readUploadedFile(storedPath: string): Promise<Buffer> {
-  const absolutePath = path.resolve(STORAGE_ROOT, storedPath);
-  if (!absolutePath.startsWith(STORAGE_ROOT + path.sep)) {
-    throw new Error("Invalid upload path.");
-  }
-  return readFile(absolutePath);
+  return readObject(path.join("uploads", storedPath));
 }

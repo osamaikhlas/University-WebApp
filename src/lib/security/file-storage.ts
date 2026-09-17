@@ -1,21 +1,19 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { matchesDeclaredType } from "@/lib/security/file-signature";
+import { readObject, writeObject } from "@/lib/security/object-storage";
 
 /**
  * Storage for public grievance-submission attachments. Kept entirely outside `public/` — the
  * only way to read a file back is `readGrievanceAttachment`, called exclusively from the
  * authenticated, permission-checked download route
  * (src/app/api/admin/grievances/[id]/attachments/[attachmentId]/route.ts), never from a public
- * URL (CLAUDE.md rule 6). This project has no cloud object storage configured (see
- * `docs/architecture.md`'s known gaps), so local disk is the real, working implementation for
- * the environment this app actually runs in — the same constraint every other module's
- * `Document.fileUrl` already lives with.
+ * URL (CLAUDE.md rule 6). Actual bytes live in object-storage.ts's backend (local disk in
+ * dev, S3-compatible in production) under a "grievance-attachments/" prefix.
  */
-const STORAGE_ROOT = path.join(process.cwd(), "storage", "grievance-attachments");
+const KEY_PREFIX = "grievance-attachments";
 
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10MB
 const ALLOWED_MIME_TYPES = new Set([
@@ -72,27 +70,21 @@ export async function saveGrievanceAttachment(
     );
   }
 
-  const directory = path.join(STORAGE_ROOT, grievanceId);
-  await mkdir(directory, { recursive: true });
-
   const storedName = `${randomUUID()}-${sanitizeFileName(file.name)}`;
-  await writeFile(path.join(directory, storedName), buffer);
+  const storedPath = path.join(grievanceId, storedName);
+  await writeObject(path.join(KEY_PREFIX, storedPath), buffer);
 
   return {
     fileName: file.name || storedName,
-    storedPath: path.join(grievanceId, storedName),
+    storedPath,
     mimeType: file.type || null,
     sizeBytes: file.size,
   };
 }
 
 /** Reads a previously stored attachment back by its DB-recorded relative path. `storedPath`
- * always originates from `GrievanceAttachment.storedPath` (never raw user input at read time),
- * but the containment check stays as defense in depth. */
+ * always originates from `GrievanceAttachment.storedPath` (never raw user input at read
+ * time) — object-storage.ts's own containment check still applies as defense in depth. */
 export async function readGrievanceAttachment(storedPath: string): Promise<Buffer> {
-  const absolutePath = path.resolve(STORAGE_ROOT, storedPath);
-  if (!absolutePath.startsWith(STORAGE_ROOT + path.sep)) {
-    throw new Error("Invalid attachment path.");
-  }
-  return readFile(absolutePath);
+  return readObject(path.join(KEY_PREFIX, storedPath));
 }

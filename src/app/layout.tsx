@@ -32,9 +32,17 @@ const FALLBACK_DESCRIPTION =
 // src/app/(public)/page.tsx's `{ absolute: title }`), so this is the one place that needs to
 // read the real college name for every other page's tab title to stop saying "[PLACEHOLDER]"
 // once real, non-placeholder college data exists (CLAUDE.md rules 1, 14).
+//
+// This runs for *every* route, including ones Next statically prerenders at build time (e.g.
+// /admin/*, /_not-found) — unlike the homepage, which forces dynamic rendering and so only
+// ever resolves this at request time. A build environment isn't guaranteed DB access (`next
+// build` must never require a live external service — see .github/workflows/ci.yml's build
+// job, which deliberately omits DB/S3 credentials), so the DB read here must degrade to the
+// placeholder name rather than fail the build.
 export async function generateMetadata(): Promise<Metadata> {
-  const college = await getPrimaryCollege();
-  const siteName = college && !college.isPlaceholder ? college.name : FALLBACK_SITE_NAME;
+  const siteName = await getPrimaryCollege()
+    .then((college) => (college && !college.isPlaceholder ? college.name : FALLBACK_SITE_NAME))
+    .catch(() => FALLBACK_SITE_NAME);
 
   return {
     title: { default: siteName, template: `%s | ${siteName}` },
